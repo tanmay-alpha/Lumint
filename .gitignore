@@ -7,13 +7,24 @@ venv/
 .venv/
 *.egg-info/
 
-# Uploads
-backend/uploads/
+# Uploads (real files only — keep sample_data)
+backend/uploads/*.pdf
+backend/uploads/*.jpg
+backend/uploads/*.png
 
 # DB
 *.db
 *.sqlite
 
+# Node
+node_modules/
+.next/
+.vercel/
+
+# ML models
+*.pkl
+*.joblib
+ai/models/large_*
 # OS
 .DS_Store
 Thumbs.db
@@ -22,6 +33,5 @@ Thumbs.db
 .vscode/settings.json
 .idea/
 
-# Node
-node_modules/
-.next/
+# Alembic
+# Keep alembic folder, only ignore local junk
