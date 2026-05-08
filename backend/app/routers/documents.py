@@ -2,10 +2,7 @@ import uuid
 from pathlib import Path
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from app.schemas.document import DocumentAnalysisResponse
-from app.services.docshield.metadata_analyzer import run_metadata_analysis
-from app.services.docshield.text_extractor import extract_text
-from app.services.docshield.layout_checker import check_layout
-from app.services.docshield.risk_scorer import calculate_risk
+from app.services.docshield.analyzer import analyze_pdf_document
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
@@ -24,7 +21,7 @@ async def analyze_document(file: UploadFile = File(...)):
     if suffix not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=400,
-            detail=f"File type '{suffix}' not allowed. Use: {ALLOWED_EXTENSIONS}",
+            detail=f"File type '{suffix}' not allowed. Accepted: {sorted(ALLOWED_EXTENSIONS)}",
         )
 
     contents = await file.read()
@@ -49,39 +46,12 @@ async def analyze_document(file: UploadFile = File(...)):
         return DocumentAnalysisResponse(
             **base,
             analysis_status="image_analysis_not_implemented_yet",
-            message="Image uploaded. OCR + ELA analysis coming in next milestone.",
+            message="Image uploaded successfully. OCR and ELA for images coming in next milestone.",
         )
 
-    # PDF full analysis
     try:
-        metadata_result = run_metadata_analysis(save_path)
+        result = analyze_pdf_document(save_path, len(contents))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Metadata analysis failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
-    try:
-        text_result = extract_text(save_path)
-    except Exception as e:
-        text_result = None
-
-    try:
-        layout_result = check_layout(save_path)
-    except Exception as e:
-        layout_result = None
-
-    scoring = calculate_risk(
-        metadata_indicators=metadata_result["indicators"],
-        text_analysis=text_result,
-        layout_analysis=layout_result,
-    )
-
-    return DocumentAnalysisResponse(
-        **base,
-        analysis_status="completed",
-        risk_score=scoring["risk_score"],
-        risk_level=scoring["risk_level"],
-        metadata=metadata_result["metadata"],
-        text_analysis=text_result,
-        layout_analysis=layout_result,
-        indicators=scoring["indicators"],
-        explanation=scoring["explanation"],
-    )
+    return DocumentAnalysisResponse(**base, **result)

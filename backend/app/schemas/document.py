@@ -23,7 +23,7 @@ class DocumentMetadata(BaseModel):
 class DocumentAnalysisResponse(BaseModel):
     doc_id: str
     original_filename: str
-    saved_filename: strgit
+    saved_filename: str
     file_path: str
     file_size: int
     content_type: str
@@ -33,6 +33,7 @@ class DocumentAnalysisResponse(BaseModel):
     metadata: Optional[DocumentMetadata] = None
     text_analysis: Optional[Any] = None
     layout_analysis: Optional[Any] = None
+    ela_analysis: Optional[Any] = None
     indicators: Optional[List[IndicatorDetail]] = None
     explanation: Optional[List[str]] = None
     message: Optional[str] = None
