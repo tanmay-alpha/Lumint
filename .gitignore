@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+venv/
+.venv/
+*.egg-info/
+
+# Uploads (real files only — keep sample_data)
+backend/uploads/*.pdf
+backend/uploads/*.jpg
+backend/uploads/*.png
+
+# DB
+*.db
+*.sqlite
+
+# Node
+node_modules/
+.next/
+.vercel/
+
+# ML models
+*.pkl
+*.joblib
+ai/models/large_*
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# Alembic
+# Keep alembic folder, only ignore local junk
