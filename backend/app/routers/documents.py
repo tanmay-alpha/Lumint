@@ -3,6 +3,8 @@ from pathlib import Path
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from app.schemas.document import DocumentAnalysisResponse
 from app.services.docshield.analyzer import analyze_pdf_document
+from app.services.fraud_dna.fingerprinter import generate_fingerprint
+from app.services.fraud_dna.store import save_fingerprint
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
@@ -46,7 +48,7 @@ async def analyze_document(file: UploadFile = File(...)):
         return DocumentAnalysisResponse(
             **base,
             analysis_status="image_analysis_not_implemented_yet",
-            message="Image uploaded successfully. OCR and ELA for images coming in next milestone.",
+            message="Image uploaded successfully. OCR and ELA for images coming later.",
         )
 
     try:
@@ -54,4 +56,18 @@ async def analyze_document(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
+    # Generate + store Fraud DNA fingerprint silently
+    try:
+        fingerprint = generate_fingerprint(
+            doc_id=doc_id,
+            file_path=save_path,
+            original_filename=file.filename,
+            saved_filename=saved_filename,
+            analysis_result=result,
+        )
+        save_fingerprint(fingerprint)
+    except Exception:
+        pass  # Never break DocShield response for DNA errors
+
     return DocumentAnalysisResponse(**base, **result)
+
