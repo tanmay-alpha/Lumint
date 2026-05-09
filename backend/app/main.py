@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.routers import health, documents, fraud_dna
+from app.routers import health, documents, fraud_dna, phishing, dashboard
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -20,6 +20,8 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(documents.router)
 app.include_router(fraud_dna.router)
+app.include_router(phishing.router)
+app.include_router(dashboard.router)
 
 
 @app.get("/")

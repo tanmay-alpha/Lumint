@@ -35,3 +35,12 @@ Thumbs.db
 
 # Alembic
 # Keep alembic folder, only ignore local junk
+backend/uploads/
+backend/data/fraud_events.json
+backend/venv/
+__pycache__/
+*.pycbackend/uploads/
+backend/data/fraud_events.json
+backend/venv/
+__pycache__/
+*.pyc
