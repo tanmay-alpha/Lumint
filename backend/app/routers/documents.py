@@ -12,6 +12,21 @@ UPLOADS_DIR = Path("uploads")
 UPLOADS_DIR.mkdir(exist_ok=True)
 
 ALLOWED_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg"}
+MAX_UPLOAD_BYTES = 15 * 1024 * 1024  # 15 MB
+
+MAGIC_BYTES = {
+    ".pdf": b"%PDF",
+    ".png": b"\x89PNG",
+    ".jpg": b"\xff\xd8\xff",
+    ".jpeg": b"\xff\xd8\xff",
+}
+
+
+def _validate_magic(contents: bytes, suffix: str) -> bool:
+    magic = MAGIC_BYTES.get(suffix)
+    if not magic:
+        return True
+    return contents[:len(magic)] == magic
 
 
 @router.post("/analyze", response_model=DocumentAnalysisResponse)
@@ -27,8 +42,21 @@ async def analyze_document(file: UploadFile = File(...)):
         )
 
     contents = await file.read()
+
     if len(contents) == 0:
         raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+
+    if len(contents) > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File exceeds maximum allowed size of 15 MB.",
+        )
+
+    if not _validate_magic(contents, suffix):
+        raise HTTPException(
+            status_code=400,
+            detail=f"File content does not match expected type '{suffix}'. Possible spoofed extension.",
+        )
 
     doc_id = str(uuid.uuid4())
     saved_filename = f"{doc_id}{suffix}"
@@ -56,7 +84,11 @@ async def analyze_document(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
-    # Generate + store Fraud DNA fingerprint silently
+    # Trim text_preview
+    if result.get("text_analysis") and result["text_analysis"].get("text_preview"):
+        preview = result["text_analysis"]["text_preview"]
+        result["text_analysis"]["text_preview"] = preview[:1500]
+
     try:
         fingerprint = generate_fingerprint(
             doc_id=doc_id,
@@ -67,7 +99,6 @@ async def analyze_document(file: UploadFile = File(...)):
         )
         save_fingerprint(fingerprint)
     except Exception:
-        pass  # Never break DocShield response for DNA errors
+        pass
 
     return DocumentAnalysisResponse(**base, **result)
-
