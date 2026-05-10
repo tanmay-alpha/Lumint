@@ -6,34 +6,48 @@ RISK_BUCKETS = [
     (61, 100, "HIGH"),
 ]
 
+# Plain-English explanations shown to frontend/judges
 EXPLANATION_MAP = {
-    "suspicious_editor":      "Document was created or edited using image manipulation software.",
-    "metadata_mismatch":      "Document shows signs of modification after original creation.",
-    "blank_author":           "Author information is missing from document metadata.",
-    "encrypted_pdf":          "Document is encrypted, which may conceal tampered content.",
-    "scanned_or_image_based": "Document appears scanned or image-based with no extractable text.",
-    "low_text_content":       "Document has unusually low text content relative to its page count.",
-    "font_anomaly":           "More than 3 font families detected — uncommon in genuine financial documents.",
-    "font_size_anomaly":      "More than 5 unique font sizes found — may indicate pasted or edited content.",
-    "sparse_text_layout":     "Multiple pages have very few text blocks — suggests deleted or replaced content.",
-    "suspicious_spacing":     "One or more pages have large empty areas with minimal text.",
-    "ela_tampering":          "Document contains visual inconsistency signals that may indicate edited regions.",
-    "ela_minor_inconsistency":"Minor visual inconsistencies detected — could indicate light editing.",
+    "suspicious_editor":
+        "Document was created or edited using image manipulation software — a risk signal.",
+    "metadata_mismatch":
+        "Document was modified after original creation — possible tampering signal.",
+    "blank_author":
+        "Author field is missing — weak signal, common in some auto-generated documents.",
+    "encrypted_pdf":
+        "Document is encrypted — content cannot be fully verified.",
+    "scanned_or_image_based":
+        "Document has no extractable text — likely scanned. OCR needed for full analysis.",
+    "low_text_content":
+        "Document has unusually low text for its page count — possible content replacement.",
+    "font_anomaly":
+        "More than 3 font families detected — uncommon in genuine financial documents.",
+    "font_size_anomaly":
+        "More than 5 unique font sizes found — may indicate pasted or edited content.",
+    "sparse_text_layout":
+        "Some pages have very few text blocks — possible deleted or replaced content.",
+    "suspicious_spacing":
+        "Large empty areas detected on some pages — weak signal, review recommended.",
+    "ela_tampering":
+        "Visual inconsistency detected via ELA — possible edited image regions (not conclusive).",
+    "ela_minor_inconsistency":
+        "Minor visual inconsistency via ELA — low-confidence signal only.",
 }
 
+# Adjusted scores — reduce false-positive weight on weak signals
 SCORE_MAP = {
-    "suspicious_editor":      25,
-    "metadata_mismatch":      20,
-    "blank_author":           10,
+    "suspicious_editor":      25,   # strong — GIMP/Photoshop is unusual for financial docs
+    "metadata_mismatch":      20,   # moderate
+    "blank_author":            5,   # REDUCED — very common in legitimate docs
     "encrypted_pdf":          15,
     "scanned_or_image_based": 20,
-    "low_text_content":       15,
+    "low_text_content":       10,   # REDUCED — sparse docs can be legitimate
     "font_anomaly":           15,
-    "font_size_anomaly":      10,
-    "sparse_text_layout":     15,
-    "suspicious_spacing":     10,
-    "ela_tampering":          30,
-    "ela_minor_inconsistency": 10,
+    "font_size_anomaly":       8,   # REDUCED
+    "sparse_text_layout":     10,   # REDUCED — weak alone
+    "suspicious_spacing":      5,   # REDUCED — very weak signal
+    "ela_tampering":          25,   # REDUCED from 30 — ELA is signal, not proof
+    "ela_minor_inconsistency": 5,   # REDUCED from 10
 }
 
 
@@ -51,7 +65,7 @@ def _text_indicators(text_analysis: Optional[dict]) -> List[dict]:
         out.append({
             "rule": "low_text_content",
             "score": SCORE_MAP["low_text_content"],
-            "detail": "Document has very low text content relative to page count.",
+            "detail": "Document has low text content relative to its page count.",
         })
     return out
 
@@ -108,14 +122,14 @@ def _ela_indicators(ela_analysis: Optional[dict]) -> List[dict]:
         out.append({
             "rule": "ela_tampering",
             "score": SCORE_MAP["ela_tampering"],
-            "detail": f"High recompression difference detected on page(s): {pages_str}.",
+            "detail": f"High recompression difference on page(s): {pages_str}. Review recommended.",
         })
     elif ela_score >= 10:
         pages_str = ", ".join(str(p) for p in suspicious_pages)
         out.append({
             "rule": "ela_minor_inconsistency",
             "score": SCORE_MAP["ela_minor_inconsistency"],
-            "detail": f"Minor recompression inconsistency on page(s): {pages_str}.",
+            "detail": f"Minor recompression inconsistency on page(s): {pages_str}. Low confidence.",
         })
 
     return out

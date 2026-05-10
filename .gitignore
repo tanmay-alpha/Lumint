@@ -2,29 +2,50 @@
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
+*.egg-info/
+.pytest_cache/
+
+# Env and secrets
 .env
+.env.*
+!.env.example
+!backend/.env.example
+
+# Virtual environments
 venv/
 .venv/
-*.egg-info/
+backend/venv/
+backend/.venv/
 
-# Uploads (real files only — keep sample_data)
-backend/uploads/*.pdf
-backend/uploads/*.jpg
-backend/uploads/*.png
+# Uploads: keep folder placeholder, ignore real uploads
+backend/uploads/*
+!backend/uploads/.gitkeep
 
-# DB
+# Generated local data: keep folder placeholder, ignore runtime JSON
+backend/data/fraud_events.json
+backend/data/.fraud_events_tmp_*
+backend/data/*.tmp
+!backend/data/.gitkeep
+
+# Database files
 *.db
 *.sqlite
+*.sqlite3
 
-# Node
+# Node / Next.js
 node_modules/
 .next/
 .vercel/
+out/
+dist/
+build/
 
-# ML models
+# ML / large model files
 *.pkl
 *.joblib
 ai/models/large_*
+
 # OS
 .DS_Store
 Thumbs.db
@@ -33,17 +54,6 @@ Thumbs.db
 .vscode/settings.json
 .idea/
 
-# Alembic
-# Keep alembic folder, only ignore local junk
-backend/uploads/
-backend/data/fraud_events.json
-backend/venv/
-__pycache__/
-*.pycbackend/uploads/
-backend/data/fraud_events.json
-backend/venv/
-__pycache__/
-*.pyc
-
-
-*.exe
+# Temp files
+*.tmp
+*.temp
