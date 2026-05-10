@@ -25,6 +25,29 @@ def _common_values(lists: List[List[str]], top_n: int = 5) -> List[str]:
     return [item for item, _ in counter.most_common(top_n)]
 
 
+def _event_label(e: dict) -> str:
+    """Safe label for graph/campaign: use filename OR domain OR event_id."""
+    return (
+        e.get("original_filename")
+        or e.get("source_domain")
+        or e.get("event_id", "unknown")
+    )
+
+
+def _slim_event(e: dict) -> dict:
+    """Frontend-safe minimal event summary."""
+    return {
+        "event_id": e.get("event_id"),
+        "doc_id": e.get("doc_id"),
+        "source_type": e.get("source_type", "DOCUMENT"),
+        "label": _event_label(e),
+        "risk_score": e.get("risk_score", 0),
+        "risk_level": e.get("risk_level", "CLEAN"),
+        "document_type_hint": e.get("document_type_hint"),
+        "created_at": e.get("created_at"),
+    }
+
+
 def run_clustering() -> dict:
     fingerprints = load_all()
     total_events = len(fingerprints)
@@ -33,17 +56,12 @@ def run_clustering() -> dict:
         return {"campaigns": [], "total_campaigns": 0, "total_events": 0}
 
     matrix, vectorizer, valid_event_ids = build_tfidf_matrix(fingerprints)
-
-    # Map event_id → fingerprint
     fp_map: Dict[str, dict] = {fp["event_id"]: fp for fp in fingerprints}
 
     if matrix is None:
-        # 0 or 1 fingerprints — return singletons, no campaigns
         return {"campaigns": [], "total_campaigns": 0, "total_events": total_events}
 
-    # DBSCAN with cosine distance
-    distance_matrix = 1 - cosine_similarity(matrix)
-    distance_matrix = np.clip(distance_matrix, 0, None)  # avoid -0 floats
+    distance_matrix = np.clip(1 - cosine_similarity(matrix), 0, None)
 
     labels = DBSCAN(
         eps=DBSCAN_EPS,
@@ -51,7 +69,6 @@ def run_clustering() -> dict:
         metric="precomputed",
     ).fit_predict(distance_matrix)
 
-    # Group by cluster label (skip noise = -1)
     cluster_groups: Dict[int, List[str]] = {}
     for label, event_id in zip(labels, valid_event_ids):
         if label == -1:
@@ -66,40 +83,23 @@ def run_clustering() -> dict:
 
         scores = [e.get("risk_score", 0) for e in events]
         avg_score = round(sum(scores) / len(scores), 1)
+        dominant_level = Counter(e.get("risk_level", "CLEAN") for e in events).most_common(1)[0][0]
 
-        risk_levels = [e.get("risk_level", "CLEAN") for e in events]
-        dominant_level = Counter(risk_levels).most_common(1)[0][0]
-
-        common_indicators = _common_values([e.get("risk_indicators", []) for e in events])
-        common_keywords = _common_values([e.get("top_keywords", []) for e in events])
-
-        timestamps = sorted([e.get("created_at", "") for e in events])
+        timestamps = sorted(e.get("created_at", "") for e in events)
 
         campaigns.append({
             "campaign_id": _campaign_id_from_event_ids(event_ids),
             "event_count": len(events),
             "risk_level": dominant_level,
             "avg_risk_score": avg_score,
-            "common_indicators": common_indicators,
-            "common_keywords": common_keywords,
+            "common_indicators": _common_values([e.get("risk_indicators", []) for e in events]),
+            "common_keywords": _common_values([e.get("top_keywords", []) for e in events]),
             "first_seen": timestamps[0] if timestamps else None,
             "last_seen": timestamps[-1] if timestamps else None,
-            "events": [
-                {
-                    "event_id": e["event_id"],
-                    "doc_id": e["doc_id"],
-                    "original_filename": e["original_filename"],
-                    "risk_score": e["risk_score"],
-                    "risk_level": e["risk_level"],
-                    "document_type_hint": e.get("document_type_hint"),
-                    "created_at": e.get("created_at"),
-                }
-                for e in events
-            ],
+            "events": [_slim_event(e) for e in events],
         })
 
     campaigns.sort(key=lambda c: c["avg_risk_score"], reverse=True)
-
     return {
         "campaigns": campaigns,
         "total_campaigns": len(campaigns),
@@ -118,11 +118,12 @@ def build_graph() -> dict:
     nodes = [
         {
             "id": fp["event_id"],
-            "label": fp["original_filename"],
+            "label": _event_label(fp),
             "type": "event",
             "risk_level": fp.get("risk_level", "CLEAN"),
             "risk_score": fp.get("risk_score", 0),
-            "doc_id": fp["doc_id"],
+            "source_type": fp.get("source_type", "DOCUMENT"),
+            "doc_id": fp.get("doc_id"),
         }
         for fp in fingerprints
     ]

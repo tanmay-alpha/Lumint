@@ -4,20 +4,22 @@ from fastapi import APIRouter, UploadFile, File, HTTPException
 from app.schemas.document import DocumentAnalysisResponse
 from app.services.docshield.analyzer import analyze_pdf_document
 from app.services.fraud_dna.fingerprinter import generate_fingerprint
-from app.services.fraud_dna.store import save_fingerprint
+from app.services.fraud_dna.store import save_fingerprint, STORE_PATH
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
-UPLOADS_DIR = Path("uploads")
-UPLOADS_DIR.mkdir(exist_ok=True)
+# Stable path: backend/uploads/ always, regardless of working directory
+_BACKEND_DIR = Path(__file__).resolve().parents[2]
+UPLOADS_DIR = _BACKEND_DIR / "uploads"
+UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
 ALLOWED_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg"}
 MAX_UPLOAD_BYTES = 15 * 1024 * 1024  # 15 MB
 
 MAGIC_BYTES = {
-    ".pdf": b"%PDF",
-    ".png": b"\x89PNG",
-    ".jpg": b"\xff\xd8\xff",
+    ".pdf":  b"%PDF",
+    ".png":  b"\x89PNG",
+    ".jpg":  b"\xff\xd8\xff",
     ".jpeg": b"\xff\xd8\xff",
 }
 
@@ -26,7 +28,7 @@ def _validate_magic(contents: bytes, suffix: str) -> bool:
     magic = MAGIC_BYTES.get(suffix)
     if not magic:
         return True
-    return contents[:len(magic)] == magic
+    return contents[: len(magic)] == magic
 
 
 @router.post("/analyze", response_model=DocumentAnalysisResponse)
@@ -47,10 +49,7 @@ async def analyze_document(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="Uploaded file is empty.")
 
     if len(contents) > MAX_UPLOAD_BYTES:
-        raise HTTPException(
-            status_code=413,
-            detail=f"File exceeds maximum allowed size of 15 MB.",
-        )
+        raise HTTPException(status_code=413, detail="File exceeds maximum allowed size of 15 MB.")
 
     if not _validate_magic(contents, suffix):
         raise HTTPException(
@@ -84,11 +83,7 @@ async def analyze_document(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
-    # Trim text_preview
-    if result.get("text_analysis") and result["text_analysis"].get("text_preview"):
-        preview = result["text_analysis"]["text_preview"]
-        result["text_analysis"]["text_preview"] = preview[:1500]
-
+    # Store Fraud DNA fingerprint silently
     try:
         fingerprint = generate_fingerprint(
             doc_id=doc_id,
@@ -98,7 +93,10 @@ async def analyze_document(file: UploadFile = File(...)):
             analysis_result=result,
         )
         save_fingerprint(fingerprint)
-    except Exception:
-        pass
+    except Exception as e:
+        # Surface as warning, never crash upload
+        if result.get("analysis_warnings") is None:
+            result["analysis_warnings"] = []
+        result["analysis_warnings"].append(f"Fraud DNA fingerprint storage failed: {str(e)}")
 
     return DocumentAnalysisResponse(**base, **result)

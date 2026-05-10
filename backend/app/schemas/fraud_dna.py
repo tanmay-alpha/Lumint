@@ -3,11 +3,12 @@ from typing import List, Optional, Any
 
 
 class FraudEventSummary(BaseModel):
-    event_id: str
-    doc_id: str
-    original_filename: str
-    risk_score: int
-    risk_level: str
+    event_id: Optional[str] = None
+    doc_id: Optional[str] = None          # None for URL events
+    source_type: Optional[str] = "DOCUMENT"
+    label: Optional[str] = None           # filename or domain
+    risk_score: Optional[int] = 0
+    risk_level: Optional[str] = "CLEAN"
     document_type_hint: Optional[str] = None
     created_at: Optional[str] = None
 
@@ -36,7 +37,8 @@ class GraphNode(BaseModel):
     type: str
     risk_level: str
     risk_score: int
-    doc_id: str
+    source_type: Optional[str] = "DOCUMENT"
+    doc_id: Optional[str] = None          # None for URL events
 
 
 class GraphEdge(BaseModel):

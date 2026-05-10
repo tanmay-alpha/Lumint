@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import List
 
 from app.services.docshield.metadata_analyzer import run_metadata_analysis
 from app.services.docshield.text_extractor import extract_text
@@ -8,32 +9,41 @@ from app.services.docshield.risk_scorer import calculate_risk
 
 
 def analyze_pdf_document(file_path: Path, file_size: int) -> dict:
+    warnings: List[str] = []
+
     # Metadata
+    metadata = None
+    metadata_indicators = []
     try:
         metadata_result = run_metadata_analysis(file_path)
         metadata = metadata_result["metadata"]
         metadata_indicators = metadata_result["indicators"]
     except Exception as e:
-        metadata = None
-        metadata_indicators = []
+        warnings.append(f"Metadata analysis failed: {str(e)}")
 
     # Text extraction
+    text_result = None
     try:
         text_result = extract_text(file_path)
-    except Exception:
-        text_result = None
+        # Trim preview to keep response clean
+        if text_result and text_result.get("text_preview"):
+            text_result["text_preview"] = text_result["text_preview"][:1500]
+    except Exception as e:
+        warnings.append(f"Text extraction failed: {str(e)}")
 
     # Layout analysis
+    layout_result = None
     try:
         layout_result = check_layout(file_path)
-    except Exception:
-        layout_result = None
+    except Exception as e:
+        warnings.append(f"Layout analysis failed: {str(e)}")
 
     # ELA forensics
+    ela_result = None
     try:
         ela_result = run_ela(file_path)
-    except Exception:
-        ela_result = None
+    except Exception as e:
+        warnings.append(f"ELA analysis failed: {str(e)}")
 
     # Combined risk scoring
     scoring = calculate_risk(
@@ -53,5 +63,6 @@ def analyze_pdf_document(file_path: Path, file_size: int) -> dict:
         "ela_analysis": ela_result,
         "indicators": scoring["indicators"],
         "explanation": scoring["explanation"],
+        "analysis_warnings": warnings if warnings else None,
         "message": "Document analyzed successfully",
     }

@@ -36,4 +36,5 @@ class DocumentAnalysisResponse(BaseModel):
     ela_analysis: Optional[Any] = None
     indicators: Optional[List[IndicatorDetail]] = None
     explanation: Optional[List[str]] = None
+    analysis_warnings: Optional[List[str]] = None   # NEW: surface sub-module failures
     message: Optional[str] = None
