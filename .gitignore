@@ -3,40 +3,48 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.egg-info/
 .pytest_cache/
 
 # Env and secrets
 .env
 .env.*
 !.env.example
+!backend/.env.example
 
 # Virtual environments
-backend/venv/
-backend/.venv/
 venv/
 .venv/
+backend/venv/
+backend/.venv/
 
-# Uploads (real user files — not committed)
-backend/uploads/
+# Uploads: keep folder placeholder, ignore real uploads
+backend/uploads/*
 !backend/uploads/.gitkeep
 
-# Generated data (not committed)
+# Generated local data: keep folder placeholder, ignore runtime JSON
 backend/data/fraud_events.json
+backend/data/.fraud_events_tmp_*
+backend/data/*.tmp
 !backend/data/.gitkeep
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
 
 # Node / Next.js
 node_modules/
 .next/
 .vercel/
 out/
+dist/
+build/
 
-# DB
-*.db
-*.sqlite
-
-# ML models
+# ML / large model files
 *.pkl
 *.joblib
+ai/models/large_*
 
 # OS
 .DS_Store
@@ -49,4 +57,3 @@ Thumbs.db
 # Temp files
 *.tmp
 *.temp
-.fraud_events_tmp_*
