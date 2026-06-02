@@ -7,52 +7,19 @@ from app.services.docshield.layout_checker import check_layout
 from app.services.docshield.ela_forensics import run_ela
 from app.services.docshield.risk_scorer import calculate_risk
 
+_IMAGE_TEXT = {
+    "extracted_text": "", "text_preview": "", "has_suspicious_keywords": False,
+    "suspicious_keywords_found": [], "keyword_score": 0,
+    "text_warnings": ["OCR for images is not implemented yet. Text analysis skipped."],
+}
+_IMAGE_LAYOUT = {
+    "font_families": [], "font_count": 0, "font_sizes": [], "font_size_count": 0,
+    "page_layouts": [], "layout_warnings": ["Layout analysis is not applicable for raw images."],
+    "layout_score": 0,
+}
 
-def analyze_pdf_document(file_path: Path, file_size: int) -> dict:
-    warnings: List[str] = []
 
-    # Metadata
-    metadata = None
-    metadata_indicators = []
-    try:
-        metadata_result = run_metadata_analysis(file_path)
-        metadata = metadata_result["metadata"]
-        metadata_indicators = metadata_result["indicators"]
-    except Exception as e:
-        warnings.append(f"Metadata analysis failed: {str(e)}")
-
-    # Text extraction
-    text_result = None
-    try:
-        text_result = extract_text(file_path)
-        # Trim preview to keep response clean
-        if text_result and text_result.get("text_preview"):
-            text_result["text_preview"] = text_result["text_preview"][:1500]
-    except Exception as e:
-        warnings.append(f"Text extraction failed: {str(e)}")
-
-    # Layout analysis
-    layout_result = None
-    try:
-        layout_result = check_layout(file_path)
-    except Exception as e:
-        warnings.append(f"Layout analysis failed: {str(e)}")
-
-    # ELA forensics
-    ela_result = None
-    try:
-        ela_result = run_ela(file_path)
-    except Exception as e:
-        warnings.append(f"ELA analysis failed: {str(e)}")
-
-    # Combined risk scoring
-    scoring = calculate_risk(
-        metadata_indicators=metadata_indicators,
-        text_analysis=text_result,
-        layout_analysis=layout_result,
-        ela_analysis=ela_result,
-    )
-
+def _build_result(metadata, text_result, layout_result, ela_result, scoring, warnings, message) -> dict:
     return {
         "analysis_status": "completed",
         "risk_score": scoring["risk_score"],
@@ -63,70 +30,42 @@ def analyze_pdf_document(file_path: Path, file_size: int) -> dict:
         "ela_analysis": ela_result,
         "indicators": scoring["indicators"],
         "explanation": scoring["explanation"],
-        "analysis_warnings": warnings if warnings else None,
-        "message": "Document analyzed successfully",
+        "analysis_warnings": warnings or None,
+        "message": message,
     }
+
+
+def _run_safe(fn, *args, warnings: List[str], label: str):
+    try:
+        return fn(*args)
+    except Exception as e:
+        warnings.append(f"{label} failed: {e}")
+        return None
+
+
+def analyze_pdf_document(file_path: Path, file_size: int) -> dict:
+    warnings: List[str] = []
+    meta_result = _run_safe(run_metadata_analysis, file_path, warnings=warnings, label="Metadata analysis")
+    metadata = meta_result["metadata"] if meta_result else None
+    metadata_indicators = meta_result["indicators"] if meta_result else []
+
+    text_result = _run_safe(extract_text, file_path, warnings=warnings, label="Text extraction")
+    if text_result and text_result.get("text_preview"):
+        text_result["text_preview"] = text_result["text_preview"][:1500]
+
+    layout_result = _run_safe(check_layout, file_path, warnings=warnings, label="Layout analysis")
+    ela_result = _run_safe(run_ela, file_path, warnings=warnings, label="ELA analysis")
+
+    scoring = calculate_risk(metadata_indicators, text_result, layout_result, ela_result)
+    return _build_result(metadata, text_result, layout_result, ela_result, scoring, warnings, "Document analyzed successfully")
 
 
 def analyze_image_document(file_path: Path, file_size: int) -> dict:
     warnings: List[str] = []
+    meta_result = _run_safe(run_metadata_analysis, file_path, warnings=warnings, label="Metadata analysis")
+    metadata = meta_result["metadata"] if meta_result else None
+    metadata_indicators = meta_result["indicators"] if meta_result else []
 
-    # Metadata
-    metadata = None
-    metadata_indicators = []
-    try:
-        metadata_result = run_metadata_analysis(file_path)
-        metadata = metadata_result["metadata"]
-        metadata_indicators = metadata_result["indicators"]
-    except Exception as e:
-        warnings.append(f"Metadata analysis failed: {str(e)}")
-
-    # Text extraction (Not implemented for images yet without OCR)
-    text_result = {
-        "extracted_text": "",
-        "text_preview": "",
-        "has_suspicious_keywords": False,
-        "suspicious_keywords_found": [],
-        "keyword_score": 0,
-        "text_warnings": ["OCR for images is not implemented yet. Text analysis skipped."]
-    }
-
-    # Layout analysis (Not applicable for raw images without OCR/bboxes)
-    layout_result = {
-        "font_families": [],
-        "font_count": 0,
-        "font_sizes": [],
-        "font_size_count": 0,
-        "page_layouts": [],
-        "layout_warnings": ["Layout analysis is not applicable for raw images."],
-        "layout_score": 0,
-    }
-
-    # ELA forensics
-    ela_result = None
-    try:
-        ela_result = run_ela(file_path)
-    except Exception as e:
-        warnings.append(f"ELA analysis failed: {str(e)}")
-
-    # Combined risk scoring
-    scoring = calculate_risk(
-        metadata_indicators=metadata_indicators,
-        text_analysis=text_result,
-        layout_analysis=layout_result,
-        ela_analysis=ela_result,
-    )
-
-    return {
-        "analysis_status": "completed",
-        "risk_score": scoring["risk_score"],
-        "risk_level": scoring["risk_level"],
-        "metadata": metadata,
-        "text_analysis": text_result,
-        "layout_analysis": layout_result,
-        "ela_analysis": ela_result,
-        "indicators": scoring["indicators"],
-        "explanation": scoring["explanation"],
-        "analysis_warnings": warnings if warnings else None,
-        "message": "Image analyzed successfully (Metadata + ELA)",
-    }
+    ela_result = _run_safe(run_ela, file_path, warnings=warnings, label="ELA analysis")
+    scoring = calculate_risk(metadata_indicators, _IMAGE_TEXT, _IMAGE_LAYOUT, ela_result)
+    return _build_result(metadata, _IMAGE_TEXT, _IMAGE_LAYOUT, ela_result, scoring, warnings, "Image analyzed successfully (Metadata + ELA)")

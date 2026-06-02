@@ -1,175 +1,109 @@
+from io import BytesIO
 from pathlib import Path
 from typing import List
-from io import BytesIO
 
 import fitz
 import numpy as np
 from PIL import Image
 
 MAX_PAGES = 3
-RENDER_DPI = 72          # low DPI keeps it fast and memory-safe
+RENDER_DPI = 72
 JPEG_QUALITY = 90
-HOTSPOT_THRESHOLD_HIGH = 0.15
-HOTSPOT_THRESHOLD_LOW = 0.08
+HOTSPOT_HIGH = 0.15
+HOTSPOT_LOW = 0.08
 MEAN_DIFF_SUSPICIOUS = 8.0
-HOTSPOT_PIXEL_THRESHOLD = 25  # per-channel diff considered "high error"
+HOTSPOT_PX_THRESHOLD = 25
+
+_ELA_BASE = {
+    "enabled": True,
+    "method": "jpeg_recompression_difference",
+}
 
 
-def _render_page_to_image(page: fitz.Page) -> Image.Image:
-    mat = fitz.Matrix(RENDER_DPI / 72, RENDER_DPI / 72)
-    pix = page.get_pixmap(matrix=mat, colorspace=fitz.csRGB)
-    img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-    return img
-
-
-def _ela_diff(original: Image.Image) -> dict:
-    buffer = BytesIO()
-    original.save(buffer, format="JPEG", quality=JPEG_QUALITY)
-    buffer.seek(0)
-    recompressed = Image.open(buffer).convert("RGB")
-
-    orig_arr = np.array(original, dtype=np.float32)
-    recomp_arr = np.array(recompressed, dtype=np.float32)
-
-    diff = np.abs(orig_arr - recomp_arr)
-    mean_diff = float(np.mean(diff))
-    max_diff = int(np.max(diff))
-
-    hotspot_mask = np.any(diff > HOTSPOT_PIXEL_THRESHOLD, axis=2)
-    hotspot_ratio = float(np.sum(hotspot_mask) / hotspot_mask.size)
-
+def _ela_diff(img: Image.Image) -> dict:
+    buf = BytesIO()
+    img.save(buf, format="JPEG", quality=JPEG_QUALITY)
+    buf.seek(0)
+    recomp = Image.open(buf).convert("RGB")
+    diff = np.abs(np.array(img, dtype=np.float32) - np.array(recomp, dtype=np.float32))
+    hotspot_mask = np.any(diff > HOTSPOT_PX_THRESHOLD, axis=2)
     return {
-        "mean_difference": round(mean_diff, 4),
-        "max_difference": max_diff,
-        "hotspot_ratio": round(hotspot_ratio, 4),
+        "mean_difference": round(float(np.mean(diff)), 4),
+        "max_difference": int(np.max(diff)),
+        "hotspot_ratio": round(float(np.sum(hotspot_mask) / hotspot_mask.size), 4),
     }
 
 
-def _classify_page(stats: dict, page_number: int) -> dict:
-    hotspot = stats["hotspot_ratio"]
-    mean_diff = stats["mean_difference"]
-
-    if hotspot > HOTSPOT_THRESHOLD_HIGH or mean_diff > MEAN_DIFF_SUSPICIOUS:
-        suspicious = True
-        reason = (
-            f"High recompression inconsistency detected "
-            f"(hotspot_ratio={hotspot}, mean_diff={mean_diff})."
-        )
-    elif hotspot > HOTSPOT_THRESHOLD_LOW:
-        suspicious = True
-        reason = (
-            f"Minor recompression inconsistency detected "
-            f"(hotspot_ratio={hotspot})."
-        )
+def _classify(stats: dict, page_num: int) -> dict:
+    h, m = stats["hotspot_ratio"], stats["mean_difference"]
+    if h > HOTSPOT_HIGH or m > MEAN_DIFF_SUSPICIOUS:
+        suspicious, reason = True, f"High recompression inconsistency (hotspot_ratio={h}, mean_diff={m})."
+    elif h > HOTSPOT_LOW:
+        suspicious, reason = True, f"Minor recompression inconsistency (hotspot_ratio={h})."
     else:
-        suspicious = False
-        reason = "No significant recompression inconsistency detected."
+        suspicious, reason = False, "No significant recompression inconsistency detected."
+    return {"page_number": page_num, **stats, "suspicious": suspicious, "reason": reason}
 
+
+def _ela_score_from_results(results: List[dict]) -> int:
+    score = 0
+    for r in results:
+        if not r.get("suspicious"):
+            continue
+        h = r.get("hotspot_ratio") or 0
+        if h > HOTSPOT_HIGH:
+            score = max(score, 30)
+        elif h > HOTSPOT_LOW:
+            score = max(score, 10)
+    return score
+
+
+def _build_response(results: List[dict], warnings: List[str], pages_analyzed: int) -> dict:
+    suspicious_pages = [r["page_number"] for r in results if r.get("suspicious")]
     return {
-        "page_number": page_number,
-        "mean_difference": stats["mean_difference"],
-        "max_difference": stats["max_difference"],
-        "hotspot_ratio": hotspot,
-        "suspicious": suspicious,
-        "reason": reason,
+        **_ELA_BASE,
+        "pages_analyzed": pages_analyzed,
+        "ela_score": _ela_score_from_results(results),
+        "suspicious_pages": suspicious_pages,
+        "page_results": results,
+        "warnings": warnings,
     }
-
-
-def run_ela_image(file_path: Path) -> dict:
-    warnings: List[str] = []
-    try:
-        img = Image.open(file_path).convert("RGB")
-        stats = _ela_diff(img)
-        result = _classify_page(stats, page_number=1)
-        
-        ela_score = 0
-        hotspot = result.get("hotspot_ratio") or 0
-        if hotspot > HOTSPOT_THRESHOLD_HIGH:
-            ela_score = 30
-        elif hotspot > HOTSPOT_THRESHOLD_LOW:
-            ela_score = 10
-            
-        return {
-            "enabled": True,
-            "method": "jpeg_recompression_difference",
-            "pages_analyzed": 1,
-            "ela_score": ela_score,
-            "suspicious_pages": [1] if result.get("suspicious") else [],
-            "page_results": [result],
-            "warnings": warnings,
-        }
-    except Exception as e:
-        return {
-            "enabled": True,
-            "method": "jpeg_recompression_difference",
-            "pages_analyzed": 0,
-            "ela_score": 0,
-            "suspicious_pages": [],
-            "page_results": [],
-            "warnings": [f"Could not open image for ELA: {str(e)}"],
-        }
 
 
 def run_ela(file_path: Path) -> dict:
-    if file_path.suffix.lower() in [".png", ".jpg", ".jpeg"]:
-        return run_ela_image(file_path)
+    """Run ELA on images directly; render PDF pages for PDFs."""
+    suffix = file_path.suffix.lower()
+
+    if suffix in (".png", ".jpg", ".jpeg"):
+        try:
+            result = _classify(_ela_diff(Image.open(file_path).convert("RGB")), 1)
+            return _build_response([result], [], 1)
+        except Exception as e:
+            return {**_ELA_BASE, "pages_analyzed": 0, "ela_score": 0,
+                    "suspicious_pages": [], "page_results": [],
+                    "warnings": [f"Could not open image for ELA: {e}"]}
 
     warnings: List[str] = []
-    page_results = []
+    results: List[dict] = []
 
     try:
         doc = fitz.open(str(file_path))
     except Exception as e:
-        return {
-            "enabled": True,
-            "method": "jpeg_recompression_difference",
-            "pages_analyzed": 0,
-            "ela_score": 0,
-            "suspicious_pages": [],
-            "page_results": [],
-            "warnings": [f"Could not open PDF for ELA: {str(e)}"],
-        }
+        return {**_ELA_BASE, "pages_analyzed": 0, "ela_score": 0,
+                "suspicious_pages": [], "page_results": [],
+                "warnings": [f"Could not open PDF for ELA: {e}"]}
 
     pages_to_analyze = min(doc.page_count, MAX_PAGES)
-
     for i in range(pages_to_analyze):
         try:
-            page = doc[i]
-            img = _render_page_to_image(page)
-            stats = _ela_diff(img)
-            result = _classify_page(stats, page_number=i + 1)
-            page_results.append(result)
+            mat = fitz.Matrix(RENDER_DPI / 72, RENDER_DPI / 72)
+            pix = doc[i].get_pixmap(matrix=mat, colorspace=fitz.csRGB)
+            img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+            results.append(_classify(_ela_diff(img), i + 1))
         except Exception as e:
-            warnings.append(f"Page {i + 1} ELA failed: {str(e)}")
-            page_results.append({
-                "page_number": i + 1,
-                "mean_difference": None,
-                "max_difference": None,
-                "hotspot_ratio": None,
-                "suspicious": False,
-                "reason": f"ELA could not be completed for this page: {str(e)}",
-            })
-
+            warnings.append(f"Page {i + 1} ELA failed: {e}")
+            results.append({"page_number": i + 1, "mean_difference": None, "max_difference": None,
+                             "hotspot_ratio": None, "suspicious": False,
+                             "reason": f"ELA could not be completed: {e}"})
     doc.close()
-
-    suspicious_pages = [r["page_number"] for r in page_results if r.get("suspicious")]
-
-    ela_score = 0
-    for r in page_results:
-        if not r.get("suspicious"):
-            continue
-        hotspot = r.get("hotspot_ratio") or 0
-        if hotspot > HOTSPOT_THRESHOLD_HIGH:
-            ela_score = max(ela_score, 30)
-        elif hotspot > HOTSPOT_THRESHOLD_LOW:
-            ela_score = max(ela_score, 10)
-
-    return {
-        "enabled": True,
-        "method": "jpeg_recompression_difference",
-        "pages_analyzed": pages_to_analyze,
-        "ela_score": ela_score,
-        "suspicious_pages": suspicious_pages,
-        "page_results": page_results,
-        "warnings": warnings,
-    }
+    return _build_response(results, warnings, pages_to_analyze)
