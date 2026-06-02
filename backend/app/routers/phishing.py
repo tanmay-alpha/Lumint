@@ -1,5 +1,7 @@
 import uuid
 from datetime import datetime, timezone
+from typing import List
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
@@ -15,12 +17,14 @@ class PhishingCheckRequest(BaseModel):
     url: str
 
 
-@router.post("/check", response_model=PhishingCheckResponse)
-def check_url(body: PhishingCheckRequest):
-    raw = (body.url or "").strip()
+class BatchCheckRequest(BaseModel):
+    urls: List[str]
+
+
+def _analyze_single(raw: str) -> PhishingCheckResponse:
+    raw = (raw or "").strip()
     if not raw:
         raise HTTPException(status_code=400, detail="URL must not be empty.")
-
     analysis = analyze_url(raw)
     scoring = score_url(analysis["triggered_rules"])
 
@@ -44,9 +48,7 @@ def check_url(body: PhishingCheckRequest):
             "risk_level": scoring["risk_level"],
             "document_type_hint": "phishing_url",
             "fingerprint_text": " ".join(
-                [analysis["domain"]]
-                + analysis["top_keywords"]
-                + [r["rule"] for r in analysis["triggered_rules"]]
+                [analysis["domain"]] + analysis["top_keywords"] + [r["rule"] for r in analysis["triggered_rules"]]
             ),
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
@@ -66,3 +68,44 @@ def check_url(body: PhishingCheckRequest):
         phishing_fingerprint=fingerprint,
         message="URL analyzed successfully",
     )
+
+
+@router.post("/check", response_model=PhishingCheckResponse)
+def check_url(body: PhishingCheckRequest):
+    return _analyze_single(body.url)
+
+
+@router.post("/check/batch")
+def check_url_batch(body: BatchCheckRequest):
+    """AI feature: analyze up to 20 URLs in a single request for bulk threat screening."""
+    if not body.urls:
+        raise HTTPException(status_code=400, detail="urls list must not be empty.")
+    if len(body.urls) > 20:
+        raise HTTPException(status_code=400, detail="Maximum 20 URLs per batch request.")
+    results = []
+    for url in body.urls:
+        try:
+            results.append(_analyze_single(url).model_dump())
+        except HTTPException as e:
+            results.append({"url": url, "error": e.detail})
+    return {"total": len(results), "results": results}
+
+
+@router.get("/confidence/{risk_score}")
+def explain_confidence(risk_score: int):
+    """AI feature: translate a numeric risk score into a human-readable confidence explanation."""
+    if not 0 <= risk_score <= 100:
+        raise HTTPException(status_code=400, detail="risk_score must be between 0 and 100.")
+    if risk_score <= 30:
+        label, confidence, explanation = "CLEAN", "HIGH", "URL shows no significant phishing signals. Safe to proceed with normal caution."
+    elif risk_score <= 60:
+        label, confidence, explanation = "SUSPICIOUS", "MEDIUM", "URL has moderate risk signals. Verify the domain independently before entering credentials."
+    else:
+        label, confidence, explanation = "HIGH", "HIGH", "URL shows strong phishing indicators. Do not interact with this URL. Report it immediately."
+    return {
+        "risk_score": risk_score,
+        "risk_level": label,
+        "model_confidence": confidence,
+        "explanation": explanation,
+        "recommendation": "Block" if risk_score > 60 else ("Review" if risk_score > 30 else "Allow"),
+    }
