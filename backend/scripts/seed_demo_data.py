@@ -108,7 +108,7 @@ def seed():
             existing = []
     combined = existing + SEED_EVENTS
     STORE.write_text(json.dumps(combined, indent=2, default=str), encoding="utf-8")
-    print(f"Seeded {len(SEED_EVENTS)} events → {STORE}")
+    print(f"Seeded {len(SEED_EVENTS)} events -> {STORE}")
 
 
 if __name__ == "__main__":

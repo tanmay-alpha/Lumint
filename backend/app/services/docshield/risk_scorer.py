@@ -158,6 +158,12 @@ def calculate_risk(
         + _ela_indicators(ela_analysis)
     )
 
+    # Normalize scores with central SCORE_MAP to prevent discrepancy from external tools
+    for ind in all_indicators:
+        rule = ind.get("rule")
+        if rule in SCORE_MAP:
+            ind["score"] = SCORE_MAP[rule]
+
     score = min(sum(i["score"] for i in all_indicators), 100)
 
     level = "CLEAN"

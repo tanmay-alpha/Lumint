@@ -2,7 +2,7 @@ import uuid
 from pathlib import Path
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from app.schemas.document import DocumentAnalysisResponse
-from app.services.docshield.analyzer import analyze_pdf_document
+from app.services.docshield.analyzer import analyze_pdf_document, analyze_image_document
 from app.services.fraud_dna.fingerprinter import generate_fingerprint
 from app.services.fraud_dna.store import save_fingerprint, STORE_PATH
 
@@ -72,16 +72,15 @@ async def analyze_document(file: UploadFile = File(...)):
     }
 
     if suffix != ".pdf":
-        return DocumentAnalysisResponse(
-            **base,
-            analysis_status="image_analysis_not_implemented_yet",
-            message="Image uploaded successfully. OCR and ELA for images coming later.",
-        )
-
-    try:
-        result = analyze_pdf_document(save_path, len(contents))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+        try:
+            result = analyze_image_document(save_path, len(contents))
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Image analysis failed: {str(e)}")
+    else:
+        try:
+            result = analyze_pdf_document(save_path, len(contents))
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
     # Store Fraud DNA fingerprint silently
     try:
