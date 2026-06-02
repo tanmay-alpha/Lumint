@@ -1,15 +1,41 @@
 @import "tailwindcss";
+@config "../tailwind.config.ts";
 
 :root {
-  --background: #fbfbfd;
-  --foreground: #1d1d1f;
-  --primary: #0284c7;
-  --border: rgba(0, 0, 0, 0.06);
+  --bg-base: #F7F8FA;
+  --surface: rgba(255, 255, 255, 0.72);
+  --border: #E2E5EA;
+  --text-primary: #1A1D23;
+  --text-secondary: #6B7280;
+  --accent-blue: #0A84FF;
+  --accent-teal: #00C9A7;
+  --risk-critical: #FF453A;
+  --risk-high: #FF9F0A;
+  --risk-medium: #FFCC00;
+  --risk-safe: #30D158;
+}
+
+@theme {
+  --color-bg-base: var(--bg-base);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-accent-blue: var(--accent-blue);
+  --color-accent-teal: var(--accent-teal);
+  --color-risk-critical: var(--risk-critical);
+  --color-risk-high: var(--risk-high);
+  --color-risk-medium: var(--risk-medium);
+  --color-risk-safe: var(--risk-safe);
+
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
+  --font-sans: var(--font-sans);
 }
 
 body {
-  background-color: var(--background);
-  color: var(--foreground);
+  background-color: var(--bg-base);
+  color: var(--text-primary);
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   overflow-x: hidden;
 }
@@ -25,24 +51,18 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.1);
+  background: rgba(26, 29, 35, 0.1);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(26, 29, 35, 0.2);
 }
 
 /* Custom premium grid background for hero sections */
 .grid-bg {
   background-image: 
-    linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+    linear-gradient(rgba(26, 29, 35, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(26, 29, 35, 0.02) 1px, transparent 1px);
   background-size: 24px 24px;
-}
-
-.gradient-text {
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
 }
