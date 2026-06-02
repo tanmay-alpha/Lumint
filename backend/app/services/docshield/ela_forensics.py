@@ -75,7 +75,45 @@ def _classify_page(stats: dict, page_number: int) -> dict:
     }
 
 
+def run_ela_image(file_path: Path) -> dict:
+    warnings: List[str] = []
+    try:
+        img = Image.open(file_path).convert("RGB")
+        stats = _ela_diff(img)
+        result = _classify_page(stats, page_number=1)
+        
+        ela_score = 0
+        hotspot = result.get("hotspot_ratio") or 0
+        if hotspot > HOTSPOT_THRESHOLD_HIGH:
+            ela_score = 30
+        elif hotspot > HOTSPOT_THRESHOLD_LOW:
+            ela_score = 10
+            
+        return {
+            "enabled": True,
+            "method": "jpeg_recompression_difference",
+            "pages_analyzed": 1,
+            "ela_score": ela_score,
+            "suspicious_pages": [1] if result.get("suspicious") else [],
+            "page_results": [result],
+            "warnings": warnings,
+        }
+    except Exception as e:
+        return {
+            "enabled": True,
+            "method": "jpeg_recompression_difference",
+            "pages_analyzed": 0,
+            "ela_score": 0,
+            "suspicious_pages": [],
+            "page_results": [],
+            "warnings": [f"Could not open image for ELA: {str(e)}"],
+        }
+
+
 def run_ela(file_path: Path) -> dict:
+    if file_path.suffix.lower() in [".png", ".jpg", ".jpeg"]:
+        return run_ela_image(file_path)
+
     warnings: List[str] = []
     page_results = []
 
