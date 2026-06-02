@@ -1,0 +1,181 @@
+// Type declarations matching the SentinelX FastAPI backend models
+
+export interface IndicatorCount {
+  indicator: string;
+  count: number;
+}
+
+export type RiskLevel = "CLEAN" | "SUSPICIOUS" | "HIGH" | "CRITICAL" | "NONE" | "NORMAL" | "ELEVATED";
+
+export interface StatsResponse {
+  total_events: number;
+  document_events: number;
+  url_events: number;
+  clean_count: number;
+  suspicious_count: number;
+  high_risk_count: number;
+  active_campaigns: number;
+  average_risk_score: number;
+  top_indicators: IndicatorCount[];
+  last_updated: string;
+}
+
+export interface RecentEvent {
+  event_id: string;
+  doc_id: string | null;
+  source_type: "DOCUMENT" | "URL";
+  original_filename: string | null;
+  saved_filename: string | null;
+  file_hash: string | null;
+  metadata_hash: string | null;
+  editor_tool: string | null;
+  producer: string | null;
+  creator: string | null;
+  source_domain: string | null;
+  top_keywords: string[];
+  risk_indicators: string[];
+  risk_score: number;
+  risk_level: RiskLevel;
+  document_type_hint: string;
+  created_at: string;
+}
+
+export interface RecentEventsResponse {
+  total: number;
+  limit: number;
+  events: RecentEvent[];
+}
+
+export interface RiskDistributionItem {
+  risk_level: string;
+  count: number;
+}
+
+export interface RiskDistributionResponse {
+  distribution: RiskDistributionItem[];
+}
+
+export interface IndicatorSummaryResponse {
+  indicators: IndicatorCount[];
+}
+
+// DocShield Forensics Types
+export interface IndicatorDetail {
+  rule: string;
+  score: number;
+  detail: string;
+}
+
+export interface DocumentMetadata {
+  title: string | null;
+  author: string | null;
+  creator: string | null;
+  producer: string | null;
+  creation_date: string | null;
+  modification_date: string | null;
+  page_count: number | null;
+  is_encrypted: boolean;
+  file_size: number;
+}
+
+export interface DocumentAnalysisResponse {
+  doc_id: string;
+  original_filename: string;
+  saved_filename: string;
+  file_path: string;
+  file_size: number;
+  content_type: string;
+  analysis_status: string;
+  risk_score: number | null;
+  risk_level: RiskLevel | null;
+  metadata: DocumentMetadata | null;
+  text_analysis: any;
+  layout_analysis: any;
+  ela_analysis: any;
+  indicators: IndicatorDetail[] | null;
+  explanation: string[] | null;
+  analysis_warnings: string[] | null;
+  message: string | null;
+}
+
+// PhishShield URL Analysis Types
+export interface TriggeredRule {
+  rule: string;
+  score: number;
+  detail: string;
+}
+
+export interface DomainSimilarityMatch {
+  bank: string;
+  similarity: number;
+}
+
+export interface PhishingCheckResponse {
+  url: string;
+  normalized_url: string;
+  domain: string;
+  risk_score: number;
+  risk_level: RiskLevel;
+  triggered_rules: TriggeredRule[];
+  domain_similarity_matches: DomainSimilarityMatch[];
+  phishing_fingerprint: RecentEvent | null;
+  message: string;
+}
+
+export interface PhishingExplainResponse {
+  risk_score: number;
+  risk_level: RiskLevel;
+  model_confidence: string;
+  explanation: string;
+  recommendation: string;
+}
+
+// Fraud DNA Clustering Types
+export interface Campaign {
+  campaign_id: string;
+  name: string;
+  threat_actor_hint: string;
+  common_indicators: string[];
+  common_keywords: string[];
+  associated_domains: string[];
+  associated_file_hashes: string[];
+  event_ids: string[];
+  risk_score: number;
+  risk_level: RiskLevel;
+  created_at: string;
+  description: string;
+}
+
+export interface CampaignsResponse {
+  campaigns: Campaign[];
+  total_campaigns: number;
+}
+
+export interface GraphNode {
+  id: string;
+  label: string;
+  type: "event" | "campaign" | "indicator" | "domain" | "hash";
+  risk_score: number;
+  risk_level: RiskLevel;
+  details?: string;
+}
+
+export interface GraphEdge {
+  source: string;
+  target: string;
+  type: string;
+}
+
+export interface GraphResponse {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
+
+export interface ThreatSummaryResponse {
+  total_events: number;
+  threat_level: RiskLevel;
+  summary: string;
+  top_risks: { indicator: string; frequency: number }[];
+  high_risk_count: number;
+  suspicious_count: number;
+}
