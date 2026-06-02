@@ -1,9 +1,9 @@
 import { apiRequest, getMockCampaigns, getMockGraph, getMockThreatSummary } from "@/lib/api-client";
-import { CampaignsResponse, GraphResponse, ThreatSummaryResponse } from "@/types";
+import { CampaignsResponse, GraphResponse, ThreatSummaryResponse, FraudDNAFingerprint } from "@/types";
 
 export const fraudDNAService = {
-  getFingerprints: async (): Promise<{ total: number; fingerprints: any[] }> => {
-    return apiRequest<{ total: number; fingerprints: any[] }>(
+  getFingerprints: async (): Promise<{ total: number; fingerprints: FraudDNAFingerprint[] }> => {
+    return apiRequest<{ total: number; fingerprints: FraudDNAFingerprint[] }>(
       "/api/fraud-dna/fingerprints",
       { method: "GET" },
       () => {

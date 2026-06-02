@@ -13,8 +13,7 @@ import {
   Terminal, 
   ShieldCheck, 
   ChevronDown, 
-  ChevronUp,
-  Activity
+  ChevronUp
 } from "lucide-react";
 import GlassCard from "@/components/ui/GlassCard";
 import RiskBadge from "@/components/ui/RiskBadge";
@@ -110,7 +109,7 @@ export default function ThreatEventsPage() {
           {/* Type dropdown */}
           <select
             value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value as any)}
+            onChange={(e) => setTypeFilter(e.target.value as "ALL" | "DOCUMENT" | "URL")}
             className="px-3 py-2 bg-surface hover:bg-white border border-border rounded-xl text-xs font-bold text-text-primary focus:outline-none focus:border-accent-blue cursor-pointer transition-colors"
           >
             <option value="ALL">All Asset Types</option>
@@ -121,7 +120,7 @@ export default function ThreatEventsPage() {
           {/* Severity dropdown */}
           <select
             value={riskFilter}
-            onChange={(e) => setRiskFilter(e.target.value as any)}
+            onChange={(e) => setRiskFilter(e.target.value as "ALL" | "CLEAN" | "SUSPICIOUS" | "HIGH")}
             className="px-3 py-2 bg-surface hover:bg-white border border-border rounded-xl text-xs font-bold text-text-primary focus:outline-none focus:border-accent-blue cursor-pointer transition-colors"
           >
             <option value="ALL">All Risk Levels</option>

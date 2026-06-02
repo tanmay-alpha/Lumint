@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import phishingApi from "@/lib/api/phishing";
-import { PhishingAnalysisResult } from "@/lib/types";
+import { PhishingAnalysisResult, PhishingAIResult } from "@/lib/types";
+import aiApi from "@/lib/api/ai";
 import GlassCard from "@/components/ui/GlassCard";
 import RiskBadge from "@/components/ui/RiskBadge";
 import ScoreRing from "@/components/ui/ScoreRing";
@@ -11,11 +12,10 @@ import {
   AlertTriangle,
   Globe,
   CheckCircle,
-  ShieldCheck,
   Search,
-  ExternalLink,
   Target,
-  Sparkles
+  Sparkles,
+  Cpu
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -23,6 +23,8 @@ export default function PhishShieldPage() {
   const [urlInput, setUrlInput] = useState("");
   const [isScanning, setIsScanning] = useState(false);
   const [result, setResult] = useState<PhishingAnalysisResult | null>(null);
+  const [aiResult, setAiResult] = useState<PhishingAIResult | null>(null);
+  const [isAnalyzingAI, setIsAnalyzingAI] = useState(false);
 
   const handleScan = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,10 +32,22 @@ export default function PhishShieldPage() {
 
     setIsScanning(true);
     setResult(null);
+    setAiResult(null);
 
     try {
       const response = await phishingApi.checkUrl(urlInput);
       setResult(response);
+      
+      // Auto-trigger AI Analysis
+      setIsAnalyzingAI(true);
+      try {
+        const aiResponse = await aiApi.analyzePhishing(response);
+        setAiResult(aiResponse);
+      } catch (aiErr) {
+        console.error("PhishShield AI brief failure:", aiErr);
+      } finally {
+        setIsAnalyzingAI(false);
+      }
     } catch (err) {
       console.error("Phishing scan failed:", err);
     } finally {
@@ -166,7 +180,7 @@ export default function PhishShieldPage() {
                   <div className="flex flex-col items-center justify-center py-10 text-center text-text-secondary">
                     <CheckCircle className="h-10 w-10 text-risk-safe mb-3" />
                     <p className="font-bold text-sm">No threat vectors identified</p>
-                    <p className="text-xs mt-1 max-w-xs font-semibold">The URL doesn't contain spoofed signatures or brand keyword redirects.</p>
+                    <p className="text-xs mt-1 max-w-xs font-semibold">The URL doesn&apos;t contain spoofed signatures or brand keyword redirects.</p>
                   </div>
                 ) : (
                   <div className="space-y-4.5">
@@ -222,6 +236,107 @@ export default function PhishShieldPage() {
                   </div>
                 </GlassCard>
               )}
+            </div>
+
+            {/* AI Phishing Analyst Report */}
+            <div className="lg:col-span-3">
+              <GlassCard className="p-6 space-y-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/20 pb-5">
+                  <div className="space-y-1">
+                    <div className="text-[10px] font-bold text-text-secondary uppercase tracking-widest flex items-center gap-1.5 font-semibold">
+                      <Sparkles className="h-3.5 w-3.5 text-accent-teal" /> Lumint AI Analyst Brief
+                    </div>
+                    <h3 className="text-lg font-bold text-text-primary">
+                      {isAnalyzingAI ? (
+                        <span className="flex items-center gap-2">
+                          <span className="h-4 w-4 rounded-full border-2 border-slate-100 border-t-accent-teal animate-spin shrink-0" />
+                          Consulting AI Oracle...
+                        </span>
+                      ) : aiResult ? (
+                        <>Inferred Threat Vector: <span className="font-mono text-xs bg-surface border border-border/60 px-2 py-0.5 rounded font-bold uppercase">{aiResult.attack_vector.replace('_', ' ')}</span></>
+                      ) : (
+                        "Awaiting AI Generation"
+                      )}
+                    </h3>
+                  </div>
+                  {aiResult && (
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <div className="text-[10px] font-bold text-text-secondary uppercase">Confidence</div>
+                        <div className="text-sm font-bold font-mono text-text-primary">{aiResult.confidence}%</div>
+                      </div>
+                      <span className={`h-8 px-3 rounded-lg flex items-center justify-center text-xs font-bold ${
+                        aiResult.verdict === "SAFE" 
+                          ? "bg-risk-safe/10 text-risk-safe border border-risk-safe/25" 
+                          : aiResult.verdict === "SUSPICIOUS"
+                          ? "bg-risk-medium/10 text-risk-medium border border-risk-medium/25"
+                          : "bg-risk-critical/10 text-risk-critical border border-risk-critical/25"
+                      }`}>
+                        {aiResult.verdict}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {isAnalyzingAI ? (
+                  <div className="py-8 flex flex-col items-center justify-center text-center">
+                    <span className="text-xs text-text-secondary font-semibold animate-pulse">Running domain lookup heuristics and generating threat intelligence vectors...</span>
+                  </div>
+                ) : aiResult ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="font-bold text-text-secondary uppercase tracking-widest mb-2">Analyst Executive Summary</h4>
+                        <p className="text-text-secondary leading-relaxed font-semibold">{aiResult.analyst_note}</p>
+                      </div>
+
+                      {aiResult.target_brand && (
+                        <div>
+                          <div className="text-[10px] font-bold text-text-secondary uppercase mb-1">Target Brand Impersonation</div>
+                          <span className="font-mono font-bold text-risk-high bg-risk-high/5 border border-risk-high/15 px-2 py-1 rounded inline-block">
+                            {aiResult.target_brand}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-4 md:border-l md:border-border/30 md:pl-6">
+                      <div>
+                        <h4 className="font-bold text-text-secondary uppercase tracking-widest mb-2">Indicators of Compromise (IOC) Summary</h4>
+                        <ul className="space-y-1.5">
+                          {aiResult.ioc_summary.map((ioc, idx) => (
+                            <li key={idx} className="text-text-primary font-semibold flex items-start gap-2">
+                              <span className="h-1.5 w-1.5 rounded-full bg-accent-teal mt-1.5 shrink-0" />
+                              <span>{ioc}</span>
+                            </li>
+                          ))}
+                          {aiResult.ioc_summary.length === 0 && (
+                            <li className="text-text-secondary italic font-semibold">No critical indicators of compromise flagged.</li>
+                          )}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-4 text-center text-text-secondary italic font-semibold">
+                    No active link scan completed.
+                  </div>
+                )}
+
+                {aiResult && (
+                  <div className="flex items-center justify-between border-t border-border/20 pt-4 text-[10px] font-semibold text-text-secondary">
+                    <div className="flex items-center gap-1.5">
+                      <Cpu className="h-3 w-3 text-accent-teal" />
+                      <span>Model: <span className="font-mono text-text-primary">{aiResult.model_used}</span></span>
+                    </div>
+                    {aiResult.latency_ms > 0 && (
+                      <div>
+                        Latency: <span className="font-mono text-text-primary">{aiResult.latency_ms}ms</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </GlassCard>
             </div>
           </motion.div>
         ) : (

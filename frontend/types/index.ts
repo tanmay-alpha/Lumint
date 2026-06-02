@@ -78,6 +78,24 @@ export interface DocumentMetadata {
   file_size: number;
 }
 
+export interface ELAAnalysis {
+  ela_discrepancy_score?: number;
+  ela_score?: number;
+  tampering_detected?: boolean;
+  pages_analyzed?: number;
+  [key: string]: unknown;
+}
+
+export interface LayoutAnalysis {
+  font_discrepancies?: string[];
+  layout_warnings?: string[];
+  [key: string]: unknown;
+}
+
+export interface TextAnalysis {
+  [key: string]: unknown;
+}
+
 export interface DocumentAnalysisResponse {
   doc_id: string;
   original_filename: string;
@@ -89,9 +107,9 @@ export interface DocumentAnalysisResponse {
   risk_score: number | null;
   risk_level: RiskLevel | null;
   metadata: DocumentMetadata | null;
-  text_analysis: any;
-  layout_analysis: any;
-  ela_analysis: any;
+  text_analysis: TextAnalysis | null;
+  layout_analysis: LayoutAnalysis | null;
+  ela_analysis: ELAAnalysis | null;
   indicators: IndicatorDetail[] | null;
   explanation: string[] | null;
   analysis_warnings: string[] | null;
@@ -178,4 +196,24 @@ export interface ThreatSummaryResponse {
   top_risks: { indicator: string; frequency: number }[];
   high_risk_count: number;
   suspicious_count: number;
+}
+
+export interface FraudDNAFingerprint {
+  event_id: string;
+  doc_id: string | null;
+  source_type: string;
+  original_filename: string | null;
+  saved_filename: string | null;
+  file_hash: string | null;
+  metadata_hash: string | null;
+  editor_tool: string | null;
+  producer: string | null;
+  creator: string | null;
+  source_domain: string | null;
+  top_keywords: string[];
+  risk_indicators: string[];
+  risk_score: number;
+  risk_level: string;
+  document_type_hint: string | null;
+  created_at: string;
 }

@@ -71,6 +71,24 @@ export interface DocumentMetadata {
   file_size: number;
 }
 
+export interface ELAAnalysis {
+  ela_discrepancy_score?: number;
+  ela_score?: number;
+  tampering_detected?: boolean;
+  pages_analyzed?: number;
+  [key: string]: unknown;
+}
+
+export interface LayoutAnalysis {
+  font_discrepancies?: string[];
+  layout_warnings?: string[];
+  [key: string]: unknown;
+}
+
+export interface TextAnalysis {
+  [key: string]: unknown;
+}
+
 export interface DocumentAnalysisResult {
   doc_id: string;
   original_filename: string;
@@ -82,9 +100,9 @@ export interface DocumentAnalysisResult {
   risk_score: number | null;
   risk_level: RiskLevel | null;
   metadata: DocumentMetadata | null;
-  text_analysis: Record<string, any>;
-  layout_analysis: Record<string, any>;
-  ela_analysis: Record<string, any>;
+  text_analysis: TextAnalysis | null;
+  layout_analysis: LayoutAnalysis | null;
+  ela_analysis: ELAAnalysis | null;
   indicators: IndicatorDetail[] | null;
   explanation: string[] | null;
   analysis_warnings: string[] | null;
@@ -226,4 +244,38 @@ export interface HealthResponse {
   status: string;
   timestamp: string;
   version: string;
+}
+
+export interface DocumentAIResult {
+  verdict: "GENUINE" | "SUSPICIOUS" | "FRAUDULENT";
+  confidence: number;
+  anomalies: string[];
+  attack_type: string;
+  analyst_note: string;
+  recommended_action: string;
+  model_used: string;
+  latency_ms: number;
+}
+
+export interface PhishingAIResult {
+  verdict: "SAFE" | "SUSPICIOUS" | "PHISHING";
+  target_brand: string | null;
+  attack_vector: "credential_harvest" | "malware_delivery" | "financial_scam" | "account_takeover" | "brand_impersonation" | "unknown";
+  confidence: number;
+  analyst_note: string;
+  ioc_summary: string[];
+  model_used: string;
+  latency_ms: number;
+}
+
+export interface CampaignAIResult {
+  campaign_name: string;
+  threat_level: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  pattern_summary: string;
+  estimated_scale: string;
+  analyst_brief: string;
+  recommended_actions: string[];
+  ttps: string[];
+  model_used: string;
+  latency_ms: number;
 }

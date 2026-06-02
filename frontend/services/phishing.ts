@@ -1,5 +1,5 @@
 import { apiRequest } from "@/lib/api-client";
-import { PhishingCheckResponse, PhishingExplainResponse } from "@/types";
+import { PhishingCheckResponse, PhishingExplainResponse, TriggeredRule, DomainSimilarityMatch } from "@/types";
 
 export const phishingService = {
   check: async (url: string): Promise<PhishingCheckResponse> => {
@@ -23,8 +23,8 @@ export const phishingService = {
           domain = cleanUrl;
         }
 
-        const triggeredRules: any[] = [];
-        const domainSimilarity: any[] = [];
+        const triggeredRules: TriggeredRule[] = [];
+        const domainSimilarity: DomainSimilarityMatch[] = [];
         const keywords: string[] = [];
 
         if (domain.includes("chase") && !domain.endsWith("chase.com")) {
@@ -74,8 +74,8 @@ export const phishingService = {
     );
   },
 
-  checkBatch: async (urls: string[]): Promise<{ total: number; results: any[] }> => {
-    return apiRequest<{ total: number; results: any[] }>(
+  checkBatch: async (urls: string[]): Promise<{ total: number; results: PhishingCheckResponse[] }> => {
+    return apiRequest<{ total: number; results: PhishingCheckResponse[] }>(
       "/api/phishing/check/batch",
       {
         method: "POST",
@@ -84,22 +84,30 @@ export const phishingService = {
       },
       () => {
         // Fallback batch scan
-        const results = urls.map((url) => {
+        const results: PhishingCheckResponse[] = urls.map((url) => {
           if (url.includes("chase") || url.includes("paypal")) {
             return {
               url,
+              normalized_url: url,
               domain: url,
               risk_score: 85,
               risk_level: "HIGH",
-              error: null
+              triggered_rules: [],
+              domain_similarity_matches: [],
+              phishing_fingerprint: null,
+              message: "High risk url match"
             };
           }
           return {
             url,
+            normalized_url: url,
             domain: url,
             risk_score: 5,
             risk_level: "CLEAN",
-            error: null
+            triggered_rules: [],
+            domain_similarity_matches: [],
+            phishing_fingerprint: null,
+            message: "Clean url match"
           };
         });
         return {

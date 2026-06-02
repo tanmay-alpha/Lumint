@@ -14,29 +14,45 @@ import {
   Info,
   Calendar,
   Layers,
-  Fingerprint,
-  ExternalLink,
-  Code,
-  Terminal
+  Terminal,
+  Sparkles,
+  Brain,
+  Cpu,
+  ShieldAlert
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import aiApi from "@/lib/api/ai";
+import { DocumentAIResult } from "@/lib/types";
 
-type TabID = "metadata" | "indicators" | "explanation" | "tampering";
+type TabID = "metadata" | "indicators" | "explanation" | "tampering" | "ai_report";
 
 export default function DocShieldPage() {
-  const [file, setFile] = useState<File | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<DocumentAnalysisResult | null>(null);
   const [activeTab, setActiveTab] = useState<TabID>("metadata");
+  
+  const [isAnalyzingAI, setIsAnalyzingAI] = useState(false);
+  const [aiResult, setAiResult] = useState<DocumentAIResult | null>(null);
 
   const handleFileAccepted = async (acceptedFile: File) => {
-    setFile(acceptedFile);
     setIsAnalyzing(true);
     setResult(null);
+    setAiResult(null);
 
     try {
       const response = await documentApi.analyzeDocument(acceptedFile);
       setResult(response);
+      
+      // Auto-trigger AI Analysis
+      setIsAnalyzingAI(true);
+      try {
+        const aiResponse = await aiApi.analyzeDocument(response);
+        setAiResult(aiResponse);
+      } catch (aiErr) {
+        console.error("DocShield AI report failure:", aiErr);
+      } finally {
+        setIsAnalyzingAI(false);
+      }
     } catch (err) {
       console.error("Document analysis failed:", err);
     } finally {
@@ -64,6 +80,7 @@ export default function DocShieldPage() {
     { id: "indicators", label: "Forensic Rules" },
     { id: "explanation", label: "Forensic Reasoning" },
     { id: "tampering", label: "Image Tampering (ELA)" },
+    { id: "ai_report", label: "AI Forensic Report" },
   ];
 
   return (
@@ -348,7 +365,13 @@ export default function DocShieldPage() {
                               </div>
                               <div className="flex items-baseline gap-2 font-mono">
                                 <span className="text-2xl font-bold text-text-primary">
-                                  {result.ela_analysis ? (result.ela_analysis.ela_discrepancy_score * 100).toFixed(0) : 0}%
+                                  {result.ela_analysis ? (
+                                    typeof result.ela_analysis.ela_discrepancy_score === "number"
+                                      ? (result.ela_analysis.ela_discrepancy_score * 100).toFixed(0)
+                                      : typeof result.ela_analysis.ela_score === "number"
+                                      ? result.ela_analysis.ela_score.toFixed(0)
+                                      : "0"
+                                  ) : "0"}%
                                 </span>
                                 <span className="text-xs text-text-secondary">discrepancy</span>
                               </div>
@@ -357,8 +380,18 @@ export default function DocShieldPage() {
                             <div className="space-y-3 font-semibold text-xs text-text-primary">
                               <div className="flex justify-between py-1 border-b border-border/20">
                                 <span className="text-text-secondary">Tampering Flagged</span>
-                                <span className={result.ela_analysis?.tampering_detected ? "text-risk-critical" : "text-risk-safe"}>
-                                  {result.ela_analysis?.tampering_detected ? "TAMPERING SIGNATURE FOUND" : "CLEAN STRUCTURE"}
+                                <span className={
+                                  result.ela_analysis?.tampering_detected || 
+                                  (Array.isArray(result.ela_analysis?.suspicious_pages) && result.ela_analysis.suspicious_pages.length > 0) ||
+                                  ((result.ela_analysis?.ela_score ?? 0) > 0)
+                                    ? "text-risk-critical" 
+                                    : "text-risk-safe"
+                                }>
+                                  {result.ela_analysis?.tampering_detected || 
+                                  (Array.isArray(result.ela_analysis?.suspicious_pages) && result.ela_analysis.suspicious_pages.length > 0) ||
+                                  ((result.ela_analysis?.ela_score ?? 0) > 0)
+                                    ? "TAMPERING SIGNATURE FOUND" 
+                                    : "CLEAN STRUCTURE"}
                                 </span>
                               </div>
                               <div className="flex justify-between py-1">
@@ -366,7 +399,9 @@ export default function DocShieldPage() {
                                 <span>
                                   {result.layout_analysis?.font_discrepancies && result.layout_analysis.font_discrepancies.length > 0
                                     ? result.layout_analysis.font_discrepancies.join(", ")
-                                    : "Standard Fonts Used"}
+                                    : result.layout_analysis?.layout_warnings && result.layout_analysis.layout_warnings.length > 0
+                                    ? result.layout_analysis.layout_warnings.join(", ")
+                                    : "Standard Fonts / Layout"}
                                 </span>
                               </div>
                             </div>
@@ -380,6 +415,126 @@ export default function DocShieldPage() {
                           </div>
                         </div>
                       </GlassCard>
+                    </motion.div>
+                  )}
+
+                  {activeTab === "ai_report" && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="space-y-4"
+                    >
+                      {isAnalyzingAI ? (
+                        <div className="min-h-[250px] flex flex-col items-center justify-center text-center p-8 bg-surface/10 rounded-2xl border border-border/40">
+                          <div className="h-10 w-10 rounded-full border-4 border-slate-100 border-t-accent-blue animate-spin mb-4" />
+                          <h4 className="text-xs font-bold text-text-primary uppercase tracking-widest flex items-center gap-1.5 mb-2 justify-center">
+                            <Sparkles className="h-4 w-4 animate-pulse text-accent-blue" /> Consulting AI Forensics Engine
+                          </h4>
+                          <p className="text-xs text-text-secondary max-w-sm leading-relaxed font-semibold">
+                            Lumint LLM parser is analyzing layout geometries, looking for hidden document modifications, and assembling the analyst brief...
+                          </p>
+                        </div>
+                      ) : aiResult ? (
+                        <GlassCard className="p-6 space-y-6">
+                          {/* Top Verdict Panel */}
+                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/20 pb-5">
+                            <div className="space-y-1.5">
+                              <div className="text-[10px] font-bold text-text-secondary uppercase tracking-widest flex items-center gap-1 font-semibold">
+                                <Brain className="h-3.5 w-3.5 text-accent-blue" /> Lumint AI Audit Verdict
+                              </div>
+                              <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
+                                {aiResult.verdict === "GENUINE" ? (
+                                  <span className="text-risk-safe">Genuine Structure Verified</span>
+                                ) : aiResult.verdict === "SUSPICIOUS" ? (
+                                  <span className="text-risk-medium">Suspicious Alterations Detected</span>
+                                ) : (
+                                  <span className="text-risk-critical">Fraudulent Modification Signature</span>
+                                )}
+                              </h3>
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <div className="text-right">
+                                <div className="text-[10px] font-bold text-text-secondary uppercase">Confidence Score</div>
+                                <div className="text-sm font-bold font-mono text-text-primary">{aiResult.confidence}%</div>
+                              </div>
+                              <span className={`h-8 px-3 rounded-lg flex items-center justify-center text-xs font-bold ${
+                                aiResult.verdict === "GENUINE" 
+                                  ? "bg-risk-safe/10 text-risk-safe border border-risk-safe/25" 
+                                  : aiResult.verdict === "SUSPICIOUS"
+                                  ? "bg-risk-medium/10 text-risk-medium border border-risk-medium/25"
+                                  : "bg-risk-critical/10 text-risk-critical border border-risk-critical/25"
+                              }`}>
+                                {aiResult.verdict}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Analysis Breakdown */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-4">
+                              <div>
+                                <h4 className="text-xs font-bold text-text-secondary uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                                  <ShieldAlert className="h-3.5 w-3.5 text-risk-high" /> Detected Threat Vectors & Anomalies
+                                </h4>
+                                <ul className="space-y-1.5">
+                                  {aiResult.anomalies.map((anomaly, idx) => (
+                                    <li key={idx} className="text-xs text-text-primary font-semibold flex items-start gap-2">
+                                      <span className="h-1.5 w-1.5 rounded-full bg-risk-critical mt-1.5 shrink-0" />
+                                      <span>{anomaly}</span>
+                                    </li>
+                                  ))}
+                                  {aiResult.anomalies.length === 0 && (
+                                    <li className="text-xs text-text-secondary italic font-semibold">No core structural anomalies found.</li>
+                                  )}
+                                </ul>
+                              </div>
+
+                              <div className="pt-2">
+                                <div className="text-[10px] font-bold text-text-secondary uppercase mb-1">Inferred Attack Type</div>
+                                <div className="text-xs font-bold text-text-primary bg-bg-base px-3 py-2 rounded-xl border border-border/40 inline-block">
+                                  {aiResult.attack_type || "None Identified"}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="space-y-4 md:border-l md:border-border/30 md:pl-6">
+                              <div>
+                                <h4 className="text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">
+                                  AI Analyst Brief
+                                </h4>
+                                <p className="text-xs text-text-secondary leading-relaxed font-semibold">
+                                  {aiResult.analyst_note}
+                                </p>
+                              </div>
+
+                              <div className="p-4 rounded-xl bg-bg-base/40 border border-border/50 space-y-1.5">
+                                <div className="text-[10px] font-bold text-text-secondary uppercase">Recommended Action</div>
+                                <p className="text-xs font-bold text-text-primary leading-normal">
+                                  {aiResult.recommended_action}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Footer Engine Details */}
+                          <div className="flex items-center justify-between border-t border-border/20 pt-4 text-[10px] font-semibold text-text-secondary">
+                            <div className="flex items-center gap-1.5">
+                              <Cpu className="h-3 w-3 text-accent-blue" />
+                              <span>Model: <span className="font-mono text-text-primary">{aiResult.model_used}</span></span>
+                            </div>
+                            {aiResult.latency_ms > 0 && (
+                              <div>
+                                Latency: <span className="font-mono text-text-primary">{aiResult.latency_ms}ms</span>
+                              </div>
+                            )}
+                          </div>
+                        </GlassCard>
+                      ) : (
+                        <div className="min-h-[250px] flex flex-col items-center justify-center text-center p-8 bg-surface/10 rounded-2xl border border-border/40">
+                          <Brain className="h-8 w-8 text-text-secondary/60 mb-3" />
+                          <p className="text-xs text-text-secondary font-semibold">AI report is only available after a forensic scan runs.</p>
+                        </div>
+                      )}
                     </motion.div>
                   )}
                 </div>

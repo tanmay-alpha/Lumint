@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import client from "@/lib/api/client";
-import { DashboardStats, RecentEvent, RiskDistribution, IndicatorSummary } from "@/lib/types";
+import { DashboardStats, RecentEvent } from "@/lib/types";
 import StatCard from "@/components/ui/StatCard";
 import GlassCard from "@/components/ui/GlassCard";
 import RiskBadge from "@/components/ui/RiskBadge";
@@ -12,20 +12,17 @@ import {
   Clock,
   ShieldCheck,
   AlertTriangle,
-  AlertCircle,
   FileSpreadsheet,
   Link,
   ChevronDown,
   ChevronUp,
-  Fingerprint,
-  TrendingUp
+  Fingerprint
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function DashboardOverviewPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [events, setEvents] = useState<RecentEvent[]>([]);
-  const [riskDist, setRiskDist] = useState<RiskDistribution | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
@@ -35,15 +32,13 @@ export default function DashboardOverviewPage() {
     else setIsLoading(true);
 
     try {
-      const [statsData, eventsData, distData] = await Promise.all([
+      const [statsData, eventsData] = await Promise.all([
         client.getStats(),
-        client.getRecentEvents(25),
-        client.getRiskDistribution()
+        client.getRecentEvents(25)
       ]);
       
       setStats(statsData);
       setEvents(eventsData);
-      setRiskDist(distData);
     } catch (err) {
       console.error("Error loading dashboard metrics:", err);
     } finally {
@@ -53,6 +48,7 @@ export default function DashboardOverviewPage() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchDashboardData();
   }, []);
 
@@ -88,10 +84,10 @@ export default function DashboardOverviewPage() {
   }
 
   // Calculate risk percentages
-  const totalRiskCount = stats?.clean_count! + stats?.suspicious_count! + stats?.high_risk_count!;
-  const cleanPercentage = totalRiskCount ? Math.round((stats?.clean_count! / totalRiskCount) * 100) : 0;
-  const suspiciousPercentage = totalRiskCount ? Math.round((stats?.suspicious_count! / totalRiskCount) * 100) : 0;
-  const highRiskPercentage = totalRiskCount ? Math.round((stats?.high_risk_count! / totalRiskCount) * 100) : 0;
+  const totalRiskCount = (stats?.clean_count ?? 0) + (stats?.suspicious_count ?? 0) + (stats?.high_risk_count ?? 0);
+  const cleanPercentage = totalRiskCount ? Math.round(((stats?.clean_count ?? 0) / totalRiskCount) * 100) : 0;
+  const suspiciousPercentage = totalRiskCount ? Math.round(((stats?.suspicious_count ?? 0) / totalRiskCount) * 100) : 0;
+  const highRiskPercentage = totalRiskCount ? Math.round(((stats?.high_risk_count ?? 0) / totalRiskCount) * 100) : 0;
 
   return (
     <div className="space-y-8">

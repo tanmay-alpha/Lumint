@@ -2,23 +2,20 @@
 
 import React, { useEffect, useState } from "react";
 import fraudDnaApi from "@/lib/api/fraud-dna";
-import { CampaignsResponse, GraphResponse, ThreatSummary, GraphNode } from "@/lib/types";
+import { CampaignsResponse, GraphResponse, ThreatSummary, GraphNode, CampaignAIResult, FraudCampaignDetail } from "@/lib/types";
+import aiApi from "@/lib/api/ai";
 import GlassCard from "@/components/ui/GlassCard";
 import RiskBadge from "@/components/ui/RiskBadge";
 import SkeletonLoader from "@/components/ui/SkeletonLoader";
 import {
-  GitBranch,
   Fingerprint,
   RefreshCw,
-  TrendingUp,
-  AlertTriangle,
   Info,
-  Calendar,
-  Layers,
   ChevronDown,
   ChevronUp,
-  Zap,
-  Network
+  Network,
+  Sparkles,
+  Cpu
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -30,6 +27,31 @@ export default function FraudDnaPage() {
   const [isReclustering, setIsReclustering] = useState(false);
   const [expandedCampaignId, setExpandedCampaignId] = useState<string | null>(null);
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
+
+  const [aiCampaigns, setAiCampaigns] = useState<Record<string, CampaignAIResult>>({});
+  const [loadingAiCampaigns, setLoadingAiCampaigns] = useState<Record<string, boolean>>({});
+
+  const fetchCampaignAI = async (campaign: FraudCampaignDetail) => {
+    if (aiCampaigns[campaign.campaign_id] || loadingAiCampaigns[campaign.campaign_id]) return;
+    
+    setLoadingAiCampaigns(prev => ({ ...prev, [campaign.campaign_id]: true }));
+    try {
+      const res = await aiApi.analyzeCampaign(campaign);
+      setAiCampaigns(prev => ({ ...prev, [campaign.campaign_id]: res }));
+    } catch (err) {
+      console.error("AI campaign metrics load error:", err);
+    } finally {
+      setLoadingAiCampaigns(prev => ({ ...prev, [campaign.campaign_id]: false }));
+    }
+  };
+
+  const toggleCampaignExpand = (camp: FraudCampaignDetail) => {
+    const isExpanding = expandedCampaignId !== camp.campaign_id;
+    setExpandedCampaignId(isExpanding ? camp.campaign_id : null);
+    if (isExpanding) {
+      fetchCampaignAI(camp);
+    }
+  };
 
   const fetchDnaData = async (reclustering = false) => {
     if (reclustering) setIsReclustering(true);
@@ -57,6 +79,7 @@ export default function FraudDnaPage() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchDnaData();
   }, []);
 
@@ -174,7 +197,7 @@ export default function FraudDnaPage() {
                       >
                         {/* Header bar */}
                         <div
-                          onClick={() => setExpandedCampaignId(isExpanded ? null : camp.campaign_id)}
+                          onClick={() => toggleCampaignExpand(camp)}
                           className="flex items-center justify-between p-4 cursor-pointer hover:bg-bg-base/60 transition-colors"
                         >
                           <div className="flex items-center gap-3">
@@ -256,6 +279,98 @@ export default function FraudDnaPage() {
                                     </div>
                                   ))}
                                 </div>
+                              </div>
+
+                              {/* AI Campaign Intelligence Layer */}
+                              <div className="border-t border-border/20 pt-4 mt-4">
+                                <div className="text-[10px] font-bold text-text-secondary uppercase tracking-widest flex items-center gap-1 mb-2 font-semibold">
+                                  <Sparkles className="h-3.5 w-3.5 text-accent-blue" /> Lumint AI Campaign Insight
+                                </div>
+                                
+                                {loadingAiCampaigns[camp.campaign_id] ? (
+                                  <div className="py-4 flex items-center gap-2 text-text-secondary font-semibold">
+                                    <span className="h-3.5 w-3.5 rounded-full border-2 border-slate-100 border-t-accent-blue animate-spin shrink-0" />
+                                    <span>Reconstructing campaign patterns with AI...</span>
+                                  </div>
+                                ) : aiCampaigns[camp.campaign_id] ? (
+                                  <div className="bg-bg-base/40 rounded-xl border border-border/40 p-4 space-y-4">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/20 pb-3">
+                                      <div>
+                                        <div className="text-[10px] font-bold text-text-secondary uppercase">Campaign Name</div>
+                                        <div className="text-sm font-bold text-text-primary font-mono">{aiCampaigns[camp.campaign_id].campaign_name}</div>
+                                      </div>
+                                      <div className="flex items-center gap-4 text-right">
+                                        <div>
+                                          <div className="text-[9px] font-bold text-text-secondary uppercase">Threat Level</div>
+                                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                                            aiCampaigns[camp.campaign_id].threat_level === "CRITICAL"
+                                              ? "bg-risk-critical/10 text-risk-critical border border-risk-critical/25"
+                                              : aiCampaigns[camp.campaign_id].threat_level === "HIGH"
+                                              ? "bg-risk-high/10 text-risk-high border border-risk-high/25"
+                                              : "bg-risk-medium/10 text-risk-medium border border-risk-medium/25"
+                                          }`}>
+                                            {aiCampaigns[camp.campaign_id].threat_level}
+                                          </span>
+                                        </div>
+                                        <div>
+                                          <div className="text-[9px] font-bold text-text-secondary uppercase">Scale</div>
+                                          <div className="text-xs font-bold text-text-primary font-semibold">{aiCampaigns[camp.campaign_id].estimated_scale}</div>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-semibold">
+                                      <div className="space-y-3">
+                                        <div>
+                                          <div className="text-[9px] font-bold text-text-secondary uppercase mb-1">Analyst Brief</div>
+                                          <p className="text-text-secondary font-semibold leading-relaxed">{aiCampaigns[camp.campaign_id].analyst_brief}</p>
+                                        </div>
+                                        <div>
+                                          <div className="text-[9px] font-bold text-text-secondary uppercase mb-1">Pattern Summary</div>
+                                          <p className="text-text-secondary font-semibold leading-relaxed">{aiCampaigns[camp.campaign_id].pattern_summary}</p>
+                                        </div>
+                                      </div>
+
+                                      <div className="space-y-3 md:border-l md:border-border/30 md:pl-4">
+                                        <div>
+                                          <div className="text-[9px] font-bold text-text-secondary uppercase mb-1">MITRE ATT&CK TTPs</div>
+                                          <div className="flex flex-wrap gap-1">
+                                            {aiCampaigns[camp.campaign_id].ttps.map((ttp, idx) => (
+                                              <span key={idx} className="bg-bg-base border border-border/50 text-[10px] text-text-primary px-1.5 py-0.5 rounded font-mono font-semibold">
+                                                {ttp}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        </div>
+                                        <div>
+                                          <div className="text-[9px] font-bold text-text-secondary uppercase mb-1">Recommended Mitigations</div>
+                                          <ul className="space-y-1">
+                                            {aiCampaigns[camp.campaign_id].recommended_actions.map((act, idx) => (
+                                              <li key={idx} className="text-text-primary font-semibold flex items-start gap-1.5">
+                                                <span className="h-1 w-1 rounded-full bg-accent-blue mt-1.5 shrink-0" />
+                                                <span>{act}</span>
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    
+                                    <div className="flex items-center justify-between border-t border-border/20 pt-3 text-[9px] font-semibold text-text-secondary font-semibold">
+                                      <div className="flex items-center gap-1">
+                                        <Cpu className="h-3 w-3 text-accent-blue" />
+                                        <span>Model: <span className="font-mono text-text-primary">{aiCampaigns[camp.campaign_id].model_used}</span></span>
+                                      </div>
+                                      {aiCampaigns[camp.campaign_id].latency_ms > 0 && (
+                                        <div>
+                                          Latency: <span className="font-mono text-text-primary">{aiCampaigns[camp.campaign_id].latency_ms}ms</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="text-text-secondary italic text-[11px] font-semibold">AI report unavailable.</div>
+                                )}
                               </div>
                             </motion.div>
                           )}
