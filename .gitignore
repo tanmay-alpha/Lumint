@@ -59,5 +59,11 @@ Thumbs.db
 *.temp
 
 # Research Outputs
-backend/research_outputs/*
-!backend/research_outputs/.gitkeep
+backend/research_outputs/
+backend/real_datasets/
+datasets/
+data/raw/
+data/private/
+paper/tables/generated_*.json
+paper/tables/generated_*.csv
+paper/figures/generated_*.png

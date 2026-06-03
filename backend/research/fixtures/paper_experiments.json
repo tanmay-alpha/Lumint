@@ -1,0 +1,95 @@
+{
+  "version": "1.0.0",
+  "experiments": [
+    {
+      "experiment_id": "url_detection_synthetic",
+      "title": "URL Phishing Detection Synthetic Benchmark",
+      "module": "PhishShield",
+      "manifest_path": "research/fixtures/url_benchmark_manifest.json",
+      "output_dir": "research_outputs/url_detection_synthetic",
+      "table_target": "tables/generated_url_synthetic.csv",
+      "status": "synthetic_done",
+      "notes": "Synthetic testing for URL phishing detection heuristics."
+    },
+    {
+      "experiment_id": "upi_forensics_synthetic",
+      "title": "UPI Screenshot Forensics Synthetic Benchmark",
+      "module": "UPIShield",
+      "manifest_path": "research/fixtures/upi_benchmark_manifest.json",
+      "output_dir": "research_outputs/upi_forensics_synthetic",
+      "table_target": "tables/generated_upi_synthetic.csv",
+      "status": "synthetic_done",
+      "notes": "Synthetic testing for ELA, font consistency, and UTR validation."
+    },
+    {
+      "experiment_id": "document_forensics_synthetic",
+      "title": "Document Forensics Synthetic Benchmark",
+      "module": "DocShield",
+      "manifest_path": "research/fixtures/document_benchmark_manifest.json",
+      "output_dir": "research_outputs/document_forensics_synthetic",
+      "table_target": "tables/generated_document_synthetic.csv",
+      "status": "synthetic_done",
+      "notes": "Synthetic testing for document structure analysis."
+    },
+    {
+      "experiment_id": "fusion_synthetic",
+      "title": "Cross-Modal Risk Fusion Synthetic Benchmark",
+      "module": "Fusion",
+      "manifest_path": "research/fixtures/fusion_benchmark_manifest.json",
+      "output_dir": "research_outputs/fusion_synthetic",
+      "table_target": "tables/generated_fusion_synthetic.csv",
+      "status": "synthetic_done",
+      "notes": "Evaluating dynamic weighting and correlation scaling."
+    },
+    {
+      "experiment_id": "consensus_agreement_synthetic",
+      "title": "External Consensus Agreement Synthetic Benchmark",
+      "module": "Agreement",
+      "manifest_path": "research/fixtures/all_benchmark_manifest.json",
+      "output_dir": "research_outputs/consensus_agreement_synthetic",
+      "table_target": "tables/generated_consensus_synthetic.csv",
+      "status": "synthetic_done",
+      "notes": "Agreement scoring and Kappa calculation against external stubs."
+    },
+    {
+      "experiment_id": "ablation_synthetic",
+      "title": "Multimodal Ablation Study Synthetic Benchmark",
+      "module": "Ablation",
+      "manifest_path": "research/fixtures/all_benchmark_manifest.json",
+      "output_dir": "research_outputs/ablation_synthetic",
+      "table_target": "tables/generated_ablation_synthetic.csv",
+      "status": "synthetic_done",
+      "notes": "Measuring performance degradation when removing individual modalities."
+    },
+    {
+      "experiment_id": "url_real_dataset_pending",
+      "title": "URL Phishing Detection Real-World Benchmark",
+      "module": "PhishShield",
+      "manifest_path": "real_datasets/url_real_manifest.json",
+      "output_dir": "research_outputs/url_real",
+      "table_target": "tables/generated_url_real.csv",
+      "status": "real_data_pending",
+      "notes": "Evaluation on real-world phishing feeds."
+    },
+    {
+      "experiment_id": "upi_real_dataset_pending",
+      "title": "UPI Screenshot Forensics Real-World Benchmark",
+      "module": "UPIShield",
+      "manifest_path": "real_datasets/upi_real_manifest.json",
+      "output_dir": "research_outputs/upi_real",
+      "table_target": "tables/generated_upi_real.csv",
+      "status": "real_data_pending",
+      "notes": "Evaluation on crowd-sourced forged screenshots."
+    },
+    {
+      "experiment_id": "external_consensus_pending",
+      "title": "External Consensus Real-World Benchmark",
+      "module": "Agreement",
+      "manifest_path": "real_datasets/all_real_manifest.json",
+      "output_dir": "research_outputs/consensus_real",
+      "table_target": "tables/generated_consensus_real.csv",
+      "status": "real_data_pending",
+      "notes": "Fleiss Kappa and bootstrap CI evaluation on real consensus data."
+    }
+  ]
+}
