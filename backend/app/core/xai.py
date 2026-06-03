@@ -1,6 +1,7 @@
 import logging
 from enum import Enum
 from typing import Optional, Union, List, Dict, Any
+import numpy as np
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
@@ -152,32 +153,158 @@ def contributions_from_feature_map(feature_map: Dict[str, Any], weights: Optiona
 
 def get_feature_contributions(
     model: Optional[Any] = None, 
-    features: Optional[Dict[str, Any]] = None, 
+    features: Optional[Union[Dict[str, Any], np.ndarray, List[float]]] = None, 
+    feature_names: Optional[List[str]] = None,
     indicators: Optional[List[Any]] = None, 
     feature_weights: Optional[Dict[str, float]] = None
 ) -> List[Dict[str, Any]]:
     """
-    Main XAI interface with SHAP fallback.
+    Main XAI interface with SHAP explainer and robust fallback logic.
     """
     # Guarded SHAP path
-    if model is not None:
+    if model is not None and features is not None:
         try:
             import shap
-            # Simulate/Execute SHAP if package is installed and model is fit
-            # If not fit or incompatible, will raise exception and fallback
-            if hasattr(model, "predict") and features is not None:
-                # Mock shap-compatible explanation from actual SHAP
-                explainer = shap.Explainer(model)
-                shap_values = explainer(list(features.values()))
-                # Convert shap values to contributions
-                # (For reproducibility and safety, standard implementation falls back if SHAP fails)
-                pass
+            import numpy as np
+
+            # Unwrap CalibratedClassifierCV if needed
+            base_model = model
+            if hasattr(model, "estimator"):
+                base_model = model.estimator
+            elif hasattr(model, "calibrated_classifiers_"):
+                base_model = model.calibrated_classifiers_[0].estimator
+
+            # Convert features to 2D numpy array and extract names
+            if isinstance(features, dict):
+                X_val = np.array([list(features.values())], dtype=np.float64)
+                names = list(features.keys())
+            elif isinstance(features, np.ndarray):
+                X_val = features.reshape(1, -1) if features.ndim == 1 else features
+                names = feature_names or [f"feature_{i}" for i in range(X_val.shape[1])]
+            elif isinstance(features, list):
+                X_val = np.array([features], dtype=np.float64)
+                names = feature_names or [f"feature_{i}" for i in range(X_val.shape[1])]
+            else:
+                raise ValueError("Unsupported features format")
+
+            # Try to build SHAP explainer
+            from sklearn.linear_model import LogisticRegression
+            from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+
+            explainer = None
+            if isinstance(base_model, LogisticRegression):
+                explainer = shap.Explainer(base_model, X_val, feature_names=names)
+            elif isinstance(base_model, (RandomForestClassifier, GradientBoostingClassifier)):
+                explainer = shap.TreeExplainer(base_model, feature_names=names)
+            else:
+                explainer = shap.Explainer(base_model, feature_names=names)
+
+            shap_values = explainer(X_val)
+
+            # Extract SHAP values
+            val = shap_values.values
+            if val.ndim == 3:
+                val = val[0, :, 1]
+            elif val.ndim == 2:
+                val = val[0]
+            else:
+                val = val.flatten()
+
+            # Now build the raw contributions
+            raw_contributions = []
+            for i, score in enumerate(val):
+                if i >= len(names):
+                    break
+                name = names[i]
+                cleaned_name = clean_feature_name(name)
+                if abs(score) < 1e-9:
+                    continue
+
+                if score > 0:
+                    direction = ContributionDirection.RISK_INCREASING
+                elif score < 0:
+                    direction = ContributionDirection.RISK_DECREASING
+                else:
+                    direction = ContributionDirection.NEUTRAL
+
+                raw_contributions.append({
+                    "name": cleaned_name,
+                    "value": float(X_val[0, i]),
+                    "raw_score": float(score),
+                    "direction": direction.value,
+                    "evidence": f"SHAP value: {score:.4f}"
+                })
+
+            if raw_contributions:
+                return normalize_contributions(raw_contributions)
+
         except Exception as e:
-            logger.warning(f"SHAP extraction failed, falling back to rule attribution: {str(e)}")
+            logger.warning(f"SHAP extraction failed, falling back to heuristic/importance: {str(e)}")
+
+        # Fallback to feature importance / coefficients if SHAP fails
+        try:
+            import numpy as np
+            base_model = model
+            if hasattr(model, "estimator"):
+                base_model = model.estimator
+            elif hasattr(model, "calibrated_classifiers_"):
+                base_model = model.calibrated_classifiers_[0].estimator
+
+            if isinstance(features, dict):
+                X_val = np.array([list(features.values())], dtype=np.float64)
+                names = list(features.keys())
+            elif isinstance(features, np.ndarray):
+                X_val = features.reshape(1, -1) if features.ndim == 1 else features
+                names = feature_names or [f"feature_{i}" for i in range(X_val.shape[1])]
+            elif isinstance(features, list):
+                X_val = np.array([features], dtype=np.float64)
+                names = feature_names or [f"feature_{i}" for i in range(X_val.shape[1])]
+            else:
+                raise ValueError("Unsupported features format")
+
+            importances = None
+            if hasattr(base_model, "feature_importances_"):
+                importances = base_model.feature_importances_
+            elif hasattr(base_model, "coef_"):
+                importances = base_model.coef_[0]
+
+            if importances is not None:
+                raw_contributions = []
+                for i, imp in enumerate(importances):
+                    if i >= len(names):
+                        break
+                    score = float(imp)
+                    name = names[i]
+                    cleaned_name = clean_feature_name(name)
+                    if abs(score) < 1e-9:
+                        continue
+
+                    feat_val = float(X_val[0, i])
+                    raw_score = score * (1.0 if feat_val > 0 else -1.0)
+
+                    if raw_score > 0:
+                        direction = ContributionDirection.RISK_INCREASING
+                    elif raw_score < 0:
+                        direction = ContributionDirection.RISK_DECREASING
+                    else:
+                        direction = ContributionDirection.NEUTRAL
+
+                    raw_contributions.append({
+                        "name": cleaned_name,
+                        "value": feat_val,
+                        "raw_score": raw_score,
+                        "direction": direction.value,
+                        "evidence": f"Feature Importance: {score:.4f}"
+                    })
+
+                if raw_contributions:
+                    return normalize_contributions(raw_contributions)
+        except Exception as ex:
+            logger.warning(f"Importance fallback failed: {str(ex)}")
 
     if indicators is not None:
         return contributions_from_indicators(indicators)
-    elif features is not None:
+    elif features is not None and isinstance(features, dict):
         return contributions_from_feature_map(features, feature_weights)
         
     return []

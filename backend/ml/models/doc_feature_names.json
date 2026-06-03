@@ -1,0 +1,15 @@
+[
+  "ela_mean",
+  "ela_std",
+  "ela_max",
+  "ela_high_pixel_ratio",
+  "metadata_anomaly_score",
+  "file_size_kb",
+  "page_count",
+  "font_count",
+  "image_count",
+  "creation_to_mod_delta_days",
+  "has_javascript",
+  "has_encryption",
+  "text_extraction_failed"
+]

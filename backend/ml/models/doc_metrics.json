@@ -1,0 +1,43 @@
+{
+  "module": "doc",
+  "best_model": "LogisticRegression",
+  "cv_results": {
+    "LogisticRegression": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "auc": 1.0,
+      "mcc": 1.0,
+      "logloss": 0.0006
+    },
+    "RandomForest": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "auc": 1.0,
+      "mcc": 1.0,
+      "logloss": 0.0
+    },
+    "GradientBoosting": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "auc": 1.0,
+      "mcc": 1.0,
+      "logloss": 0.0
+    }
+  },
+  "test_set": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "auc": 1.0,
+    "mcc": 1.0,
+    "logloss": 0.0
+  },
+  "n_train": 3000,
+  "n_test": 3000,
+  "n_features": 13,
+  "random_state": 42,
+  "timestamp": "2026-06-03T17:22:57.909681+00:00"
+}

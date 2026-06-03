@@ -176,14 +176,55 @@ def analyze_upi_screenshot(image_path: Path, custom_ocr_text: Optional[str] = No
     else:
         verdict = "GENUINE"
         
-    # 9. Compute XAI contributions if engine is registered/exists
+    # 9. Try using trained ML model if available
     feature_contributions = []
     try:
-        from app.core.xai import get_feature_contributions
-        feature_contributions = get_feature_contributions(indicators=indicators)
+        from ml.registry import get_registry
+        from ml.features.upi_features import extract_upi_features, get_feature_names
+
+        registry = get_registry()
+        if registry.is_available("upi"):
+            temp_result = {
+                "forgery_score": forgery_score,
+                "utr": primary_utr,
+                "ela": ela_result,
+                "font": font_result,
+                "color": color_result,
+                "ocr": ocr_result,
+                "app_detected": app_detected,
+            }
+            feats = extract_upi_features(temp_result)
+            prob = registry.predict_proba("upi", feats)
+            forgery_score = round(prob * 100)
+
+            # Update verdict
+            if forgery_score >= 60:
+                verdict = "LIKELY_FORGED"
+            elif forgery_score >= 30:
+                verdict = "SUSPICIOUS"
+            else:
+                verdict = "GENUINE"
+
+            # Use SHAP explanation for XAI contributions
+            from app.core.xai import get_feature_contributions
+            model_obj = registry._models["upi"]
+            feature_names = get_feature_names()
+            feature_contributions = get_feature_contributions(
+                model=model_obj,
+                features=feats,
+                feature_names=feature_names
+            )
+        else:
+            from app.core.xai import get_feature_contributions
+            feature_contributions = get_feature_contributions(indicators=indicators)
     except Exception as e:
-        logger.debug("Failed to calculate XAI contributions for UPI screenshot: %s", e)
-        
+        logger.warning(f"ML/SHAP UPI scoring failed: {e}")
+        try:
+            from app.core.xai import get_feature_contributions
+            feature_contributions = get_feature_contributions(indicators=indicators)
+        except Exception:
+            feature_contributions = []
+
     return {
         "analysis_status": "completed",
         "forgery_score": forgery_score,

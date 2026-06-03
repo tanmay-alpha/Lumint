@@ -45,6 +45,10 @@ build/
 *.pkl
 *.joblib
 ai/models/large_*
+backend/ml/models/*.joblib
+!backend/ml/models/*.joblib
+backend/data/raw/
+backend/reports/*.pdf
 
 # OS
 .DS_Store

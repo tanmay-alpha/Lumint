@@ -185,7 +185,8 @@ def compute_lumint_score(
     doc_result: Any = None, 
     phish_result: Any = None, 
     upi_result: Any = None, 
-    weights: Optional[Dict[str, float]] = None
+    weights: Optional[Dict[str, float]] = None,
+    use_ml: bool = False
 ) -> Dict[str, Any]:
     """
     Combines DocShield, PhishShield, and UPI Shield results into a unified fraud risk score.
@@ -229,12 +230,32 @@ def compute_lumint_score(
         }
         
     normalized_w = normalize_weights(active_modalities, weights)
+    is_meta_used = False
     
-    weighted_score = 0.0
-    for modality in active_modalities:
-        weighted_score += scores_by_modality[modality] * normalized_w[modality]
-        
-    unified_score = int(round(max(0.0, min(100.0, weighted_score))))
+    if use_ml and weights is None:
+        try:
+            from ml.registry import get_registry
+            import numpy as np
+
+            registry = get_registry()
+            if registry.is_available("fusion_meta"):
+                phish_p = (phish_score / 100.0) if phish_score is not None else 0.0
+                doc_p = (doc_score / 100.0) if doc_score is not None else 0.0
+                upi_p = (upi_score / 100.0) if upi_score is not None else 0.0
+
+                feats = np.array([phish_p, doc_p, upi_p], dtype=np.float64)
+                prob = registry.predict_proba("fusion_meta", feats)
+                unified_score = int(round(prob * 100))
+                is_meta_used = True
+        except Exception:
+            pass
+
+    if not is_meta_used:
+        weighted_score = 0.0
+        for modality in active_modalities:
+            weighted_score += scores_by_modality[modality] * normalized_w[modality]
+        unified_score = int(round(max(0.0, min(100.0, weighted_score))))
+
     risk_level = extract_level(unified_score)
     dom_signal = dominant_signal(scores_by_modality)
     
@@ -242,6 +263,8 @@ def compute_lumint_score(
     
     # Generate human readable explanation
     explanation = []
+    if is_meta_used:
+        explanation.append("Unified score computed using trained ML Meta-Learner.")
     for modality in active_modalities:
         explanation.append(
             f"Modality '{modality}' contributed score {scores_by_modality[modality]:.1f} (Weight: {normalized_w[modality]*100:.1f}%)."

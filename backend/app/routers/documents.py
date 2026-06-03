@@ -82,12 +82,44 @@ async def analyze_document(file: UploadFile = File(...)):
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
-    # Compute Feature Contributions for research (XAI)
+    # Try using trained ML model if available
     try:
-        from app.core.xai import get_feature_contributions
-        result["feature_contributions"] = get_feature_contributions(indicators=result.get("indicators"))
+        from ml.registry import get_registry
+        from ml.features.doc_features import extract_doc_features, get_feature_names
+
+        registry = get_registry()
+        if registry.is_available("doc"):
+            feats = extract_doc_features(result)
+            prob = registry.predict_proba("doc", feats)
+            risk_score = round(prob * 100)
+
+            risk_level = "CLEAN"
+            if 31 <= risk_score <= 60:
+                risk_level = "SUSPICIOUS"
+            elif risk_score >= 61:
+                risk_level = "HIGH"
+
+            result["risk_score"] = risk_score
+            result["risk_level"] = risk_level
+
+            # Use SHAP explanation for XAI contributions
+            from app.core.xai import get_feature_contributions
+            model_obj = registry._models["doc"]
+            feature_names = get_feature_names()
+            result["feature_contributions"] = get_feature_contributions(
+                model=model_obj,
+                features=feats,
+                feature_names=feature_names
+            )
+        else:
+            from app.core.xai import get_feature_contributions
+            result["feature_contributions"] = get_feature_contributions(indicators=result.get("indicators"))
     except Exception as e:
-        result["feature_contributions"] = []
+        try:
+            from app.core.xai import get_feature_contributions
+            result["feature_contributions"] = get_feature_contributions(indicators=result.get("indicators"))
+        except Exception:
+            result["feature_contributions"] = []
 
     # Store Fraud DNA fingerprint silently
     try:

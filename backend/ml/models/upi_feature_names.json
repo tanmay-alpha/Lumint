@@ -1,0 +1,10 @@
+[
+  "forgery_score_heuristic",
+  "utr_valid",
+  "utr_length",
+  "ela_tamper_regions",
+  "font_consistent",
+  "color_authentic",
+  "ocr_confidence",
+  "app_detected_encoded"
+]

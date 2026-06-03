@@ -26,7 +26,46 @@ def _analyze_single(raw: str) -> PhishingCheckResponse:
     if not raw:
         raise HTTPException(status_code=400, detail="URL must not be empty.")
     analysis = analyze_url(raw)
-    scoring = score_url(analysis["triggered_rules"])
+
+    # Try using trained ML model if available
+    try:
+        from ml.registry import get_registry
+        from ml.features.url_features import extract_full_features, get_feature_names
+
+        registry = get_registry()
+        if registry.is_available("phish"):
+            vectorizer = registry.get_tfidf("phish")
+            feats = extract_full_features(raw, vectorizer)
+            prob = registry.predict_proba("phish", feats)
+            risk_score = round(prob * 100)
+
+            risk_level = "CLEAN"
+            if 31 <= risk_score <= 60:
+                risk_level = "SUSPICIOUS"
+            elif risk_score >= 61:
+                risk_level = "HIGH"
+            scoring = {"risk_score": risk_score, "risk_level": risk_level}
+
+            # Use SHAP explanation for XAI contributions
+            from app.core.xai import get_feature_contributions
+            model_obj = registry._models["phish"]
+            feature_names = get_feature_names(vectorizer)
+            feature_contributions = get_feature_contributions(
+                model=model_obj,
+                features=feats,
+                feature_names=feature_names
+            )
+        else:
+            scoring = score_url(analysis["triggered_rules"])
+            from app.core.xai import get_feature_contributions
+            feature_contributions = get_feature_contributions(indicators=analysis["triggered_rules"])
+    except Exception as e:
+        scoring = score_url(analysis["triggered_rules"])
+        try:
+            from app.core.xai import get_feature_contributions
+            feature_contributions = get_feature_contributions(indicators=analysis["triggered_rules"])
+        except Exception:
+            feature_contributions = []
 
     fingerprint = None
     if scoring["risk_score"] >= 31:
@@ -56,13 +95,6 @@ def _analyze_single(raw: str) -> PhishingCheckResponse:
             save_fingerprint(fingerprint)
         except Exception:
             pass
-
-    # Calculate feature contributions for research (XAI)
-    try:
-        from app.core.xai import get_feature_contributions
-        feature_contributions = get_feature_contributions(indicators=analysis["triggered_rules"])
-    except Exception:
-        feature_contributions = []
 
     return PhishingCheckResponse(
         url=raw,

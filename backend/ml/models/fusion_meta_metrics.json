@@ -1,0 +1,20 @@
+{
+  "module": "fusion_meta",
+  "best_model": "LogisticRegression",
+  "coefficients": {
+    "phish_prob": 3.3049,
+    "doc_prob": 3.0027,
+    "upi_prob": 2.9931
+  },
+  "test_set": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "auc": 1.0,
+    "mcc": 1.0,
+    "logloss": 0.0
+  },
+  "n_train": 2000,
+  "random_state": 42,
+  "timestamp": "2026-06-03T17:23:00.291981+00:00"
+}

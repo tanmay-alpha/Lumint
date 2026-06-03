@@ -15,7 +15,8 @@ def get_fusion_score(body: FusionRequest):
             doc_result=body.document_result,
             phish_result=body.phishing_result,
             upi_result=body.upi_result,
-            weights=body.weights
+            weights=body.weights,
+            use_ml=True
         )
         return score_details
     except Exception as e:
