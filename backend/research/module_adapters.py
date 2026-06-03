@@ -189,11 +189,13 @@ def run_fusion_record(record: DatasetRecord) -> PredictionResult:
         doc_res = record.metadata.get("document_result")
         phish_res = record.metadata.get("phishing_result")
         upi_res = record.metadata.get("upi_result")
+        weights = record.metadata.get("weights_override")
         
         analysis = compute_lumint_score(
             doc_result=doc_res,
             phish_result=phish_res,
-            upi_result=upi_res
+            upi_result=upi_res,
+            weights=weights
         )
         score = float(analysis.get("unified_score", 0.0))
         label = analysis.get("risk_level", normalize_label_from_score(score))
@@ -227,7 +229,13 @@ def run_fusion_record(record: DatasetRecord) -> PredictionResult:
             error=str(e)
         )
 
-def run_record(record: DatasetRecord) -> PredictionResult:
+def run_record(record: DatasetRecord, module: Optional[str] = None) -> PredictionResult:
+    meta = record.metadata or {}
+    is_fusion_rec = "document_result" in meta or "phishing_result" in meta or "upi_result" in meta
+    
+    if module == "fusion" or (module is None and is_fusion_rec):
+        return run_fusion_record(record)
+        
     dtype = record.dataset_type
     if dtype == DatasetType.URL:
         return run_url_record(record)

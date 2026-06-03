@@ -45,6 +45,10 @@ class ExperimentResult(BaseModel):
     # Extended fields for R5
     agreement: Optional[AgreementResult] = None
     consensus_metrics: Optional[Dict[str, Any]] = None
+    # Extended fields for R6
+    ablation_study: Optional[Any] = None
+    confidence_intervals: Optional[Dict[str, Any]] = None
+    error_summary: Optional[Dict[str, Any]] = None
 
 def create_experiment_id() -> str:
     now = datetime.now(timezone.utc)
@@ -129,7 +133,7 @@ def run_lumint_experiment(manifest: DatasetManifest, module_name: str, config: O
     results = []
     
     for record in manifest.records:
-        pred = run_record(record)
+        pred = run_record(record, module=module_name)
         
         y_true.append(record.label)
         y_pred.append(pred.predicted_label)

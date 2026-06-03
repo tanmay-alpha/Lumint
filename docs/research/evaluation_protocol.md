@@ -52,3 +52,27 @@ To ensure research-grade evaluation rigour, predictions are compared with an **E
   * *Agreement Confusion Matrix*: Binary metrics mapping predictions against normalized consensus.
 * **Disagreement Analysis**: All records with label mismatches are exported into a structured disagreement report to isolate false-positive edge-cases or identify superior engine coverage.
 
+---
+
+## 5. Ablation Studies, Statistical Confidence, and Error Taxonomy (R6)
+
+To quantify evaluation certainty and analyze system robustness, the research protocol integrates statistical confidence estimation and error categorization:
+
+### A. Systematic Ablation Studies
+* **Modality Ablation**: Disable individual inputs (e.g., document, url, upi) to measure their direct effect on classification performance.
+* **Weight Override**: Adjust weights in the weighted fusion algorithm to evaluate the sensitivity of the overall fusion model.
+* **Selection Criteria**: Select the best-performing variant based on highest F1-score with latency as a tie-breaker.
+
+### B. Statistical Bootstrap Confidence Intervals
+* **Methodology**: Apply non-parametric bootstrapping (default `n=1000` resamples) to predictions and latencies.
+* **Reporting**: Produce 95% confidence intervals (lower bound, point estimate, upper bound) for accuracy, precision, recall, F1, and mean processing latency.
+
+### C. Error Taxonomy Analysis
+All prediction errors (false negatives and false positives) are heuristically categorized to identify architectural limitations:
+* `NO_ACTIVE_SIGNALS`: No indicators matched the sample.
+* `CORRELATION_MISS`: Multi-modal indicators were present, but final score calculation did not cross the threshold.
+* `FORENSICS_FAILURE`: Signatures failed to trigger, or false positive triggered on clean input.
+* `OVER_SENSITIVE`: Borderline scores incorrectly crossed the verdict threshold.
+* `API_ERROR`: Underlying adapter or consensus API call failed.
+* `OTHER`: Miscellaneous edge cases.
+

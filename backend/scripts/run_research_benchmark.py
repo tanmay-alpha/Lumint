@@ -47,6 +47,12 @@ def parse_args():
         action="store_true",
         help="Enable external consensus analysis mapping if fixture is provided"
     )
+    parser.add_argument(
+        "--bootstrap-resamples",
+        type=int,
+        default=100,
+        help="Number of resamples for statistical confidence bootstrapping (default: 100)"
+    )
     return parser.parse_args()
 
 def filter_records_for_module(manifest: DatasetManifest, module: str) -> DatasetManifest:
@@ -98,7 +104,8 @@ def run_single_module(
     module: str, 
     output_dir: str, 
     notes: str = None,
-    consensus_fixture: str = None
+    consensus_fixture: str = None,
+    bootstrap_resamples: int = 100
 ) -> ExperimentResult:
     config = ExperimentRunConfig(
         experiment_name=f"lumint_bench_{module}",
@@ -119,6 +126,43 @@ def run_single_module(
     print(f"Running benchmark for module: {module} ({len(filtered_manifest.records)} records)...")
     result = run_lumint_experiment(filtered_manifest, module, config)
     
+    # 1. Run Bootstrapping for confidence intervals
+    try:
+        from research.statistics import bootstrap_metric_ci, bootstrap_confidence_interval
+        y_true = [r.true_label for r in result.results]
+        y_pred = [r.predicted_label for r in result.results]
+        
+        ci_dict = {}
+        for metric_name in ["accuracy", "precision", "recall", "f1"]:
+            lower, mean_val, upper = bootstrap_metric_ci(y_true, y_pred, metric_name, n_resamples=bootstrap_resamples)
+            ci_dict[metric_name] = (lower, mean_val, upper)
+            
+        latencies = [r.latency_ms for r in result.results]
+        lower_l, mean_l, upper_l = bootstrap_confidence_interval(latencies, n_resamples=bootstrap_resamples)
+        ci_dict["mean"] = (lower_l, mean_l, upper_l)
+        
+        result.confidence_intervals = ci_dict
+    except Exception as e:
+        print(f"Warning: Could not compute statistical confidence intervals: {e}")
+        
+    # 2. Run Error Taxonomy
+    try:
+        from research.error_analysis import analyze_errors, summarize_top_errors
+        error_cases = analyze_errors(result.results, filtered_manifest)
+        result.error_summary = summarize_top_errors(error_cases)
+    except Exception as e:
+        print(f"Warning: Could not compute error taxonomy analysis: {e}")
+        
+    # 3. Run Ablation Study for fusion module
+    if module == "fusion":
+        try:
+            from research.ablation import run_ablation_study
+            study = run_ablation_study(filtered_manifest, module, consensus_fixture_path=consensus_fixture)
+            result.ablation_study = study
+        except Exception as e:
+            print(f"Warning: Could not compute ablation study: {e}")
+            
+    # Save the updated result outputs
     save_experiment_outputs(result, output_dir)
     print(f"Results saved to: {output_dir}")
     print(f"Experiment ID: {result.experiment_id}")
@@ -174,10 +218,24 @@ def main():
                 if default_p.exists():
                     mod_consensus = str(default_p)
                     
-            res = run_single_module(manifest, mod, args.output_dir, args.notes, mod_consensus)
+            res = run_single_module(
+                manifest=manifest,
+                module=mod,
+                output_dir=args.output_dir,
+                notes=args.notes,
+                consensus_fixture=mod_consensus,
+                bootstrap_resamples=args.bootstrap_resamples
+            )
             output_results.append(res)
     else:
-        res = run_single_module(manifest, args.module, args.output_dir, args.notes, consensus_path)
+        res = run_single_module(
+            manifest=manifest,
+            module=args.module,
+            output_dir=args.output_dir,
+            notes=args.notes,
+            consensus_fixture=consensus_path,
+            bootstrap_resamples=args.bootstrap_resamples
+        )
         output_results.append(res)
         
     print_result_table(output_results)

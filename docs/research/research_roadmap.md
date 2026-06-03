@@ -29,6 +29,22 @@ This document outlines the roadmap for transitioning the **Lumint** platform int
   * Cross-Modal Weighted Score Fusion & Renormalization (`app/core/fusion.py`).
   * Correlation flag engine mapping cross-modal heuristics.
   * Integration into DocShield and PhishShield API response schemas.
+* **Milestone R3 (UPI Shield Forensics Hardening & Benchmark Fixtures)**:
+  * Transaction hash correlation and metadata extraction.
+  * Rule-based UPI Receipt classifier engine.
+  * Standardized UPI benchmark dataset manifest fixtures.
+* **Milestone R4 (Benchmark Experiment Runner)**:
+  * Modular system adapters routing dataset records to core models.
+  * Multi-dataset evaluation orchestration (`research/experiment_runner.py`).
+  * Automatic markdown/JSON report writer (`research/report_writer.py`).
+* **Milestone R5 (External Consensus Agreements)**:
+  * Integration layer for external consensus providers (VirusTotal, Urlscan, AbuseIPDB).
+  * Automated mapping from predictions to agreement/disagreement metrics.
+* **Milestone R6 (Ablation, Confidence, and Error Taxonomy)**:
+  * Ablation Engine (`research/ablation.py`) to systematically disable individual signals.
+  * Bootstrapped confidence intervals for latencies and classification metrics (`research/statistics.py`).
+  * Error taxonomy heuristics to classify prediction errors (`research/error_analysis.py`).
+  * Automated LaTeX/CSV/Markdown paper table generator (`research/paper_tables.py`).
 
 ---
 
