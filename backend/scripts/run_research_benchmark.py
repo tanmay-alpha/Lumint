@@ -36,6 +36,17 @@ def parse_args():
         default=None,
         help="Optional notes to append to the run config"
     )
+    parser.add_argument(
+        "--consensus-fixture",
+        type=str,
+        default=None,
+        help="Path to the consensus fixture JSON file (optional)"
+    )
+    parser.add_argument(
+        "--with-consensus",
+        action="store_true",
+        help="Enable external consensus analysis mapping if fixture is provided"
+    )
     return parser.parse_args()
 
 def filter_records_for_module(manifest: DatasetManifest, module: str) -> DatasetManifest:
@@ -48,12 +59,10 @@ def filter_records_for_module(manifest: DatasetManifest, module: str) -> Dataset
         elif module == "document" and r.dataset_type == DatasetType.DOCUMENT:
             filtered_records.append(r)
         elif module == "fusion":
-            # Fusion can run on any record that has multi-modal metadata
             meta = r.metadata or {}
             if "document_result" in meta or "phishing_result" in meta or "upi_result" in meta:
                 filtered_records.append(r)
                 
-    # Create a copy with only the filtered records
     return DatasetManifest(
         name=f"{manifest.name}_{module}",
         version=manifest.version,
@@ -62,11 +71,11 @@ def filter_records_for_module(manifest: DatasetManifest, module: str) -> Dataset
     )
 
 def print_result_table(results: List[ExperimentResult]):
-    print("\n" + "="*80)
+    print("\n" + "="*98)
     print(" L U M I N T   B E N C H M A R K   S U M M A R Y")
-    print("="*80)
-    print(f"{'Module / Model':<20} | {'Records':<8} | {'Accuracy':<8} | {'F1-Score':<8} | {'Mean Latency':<12} | {'Errors':<6}")
-    print("-"*80)
+    print("="*98)
+    print(f"{'Module / Model':<20} | {'Records':<8} | {'Accuracy':<8} | {'F1-Score':<8} | {'Mean Latency':<12} | {'Errors':<6} | {'Consensus Agrmt':<18}")
+    print("-"*98)
     for res in results:
         metrics = res.metrics
         latency = res.latency
@@ -74,19 +83,33 @@ def print_result_table(results: List[ExperimentResult]):
         f1 = f"{metrics.get('f1', 0.0):.4f}"
         lat = f"{latency.get('mean', 0.0):.2f} ms"
         errs = str(res.errors_count)
-        print(f"{res.model_name:<20} | {res.record_count:<8} | {acc:<8} | {f1:<8} | {lat:<12} | {errs:<6}")
-    print("="*80 + "\n")
+        
+        agrmt_str = "-"
+        if res.agreement is not None:
+            pct = res.agreement.agreement_rate * 100.0
+            dis = res.agreement.disagreement_count
+            agrmt_str = f"{pct:.1f}% ({dis} dis)"
+            
+        print(f"{res.model_name:<20} | {res.record_count:<8} | {acc:<8} | {f1:<8} | {lat:<12} | {errs:<6} | {agrmt_str:<18}")
+    print("="*98 + "\n")
 
-def run_single_module(manifest: DatasetManifest, module: str, output_dir: str, notes: str = None) -> ExperimentResult:
+def run_single_module(
+    manifest: DatasetManifest, 
+    module: str, 
+    output_dir: str, 
+    notes: str = None,
+    consensus_fixture: str = None
+) -> ExperimentResult:
     config = ExperimentRunConfig(
         experiment_name=f"lumint_bench_{module}",
         module_name=module,
         manifest_path=None,
         output_dir=output_dir,
-        notes=notes
+        notes=notes,
+        consensus_fixture_path=consensus_fixture,
+        consensus_provider="fixture" if consensus_fixture else None
     )
     
-    # Filter the records specifically for this module
     filtered_manifest = filter_records_for_module(manifest, module)
     
     if not filtered_manifest.records:
@@ -99,6 +122,12 @@ def run_single_module(manifest: DatasetManifest, module: str, output_dir: str, n
     save_experiment_outputs(result, output_dir)
     print(f"Results saved to: {output_dir}")
     print(f"Experiment ID: {result.experiment_id}")
+    
+    # Inline consensus agreement printing
+    if result.agreement is not None:
+        pct = result.agreement.agreement_rate * 100.0
+        print(f"External Consensus Agreement Rate: {pct:.2f}% ({result.agreement.disagreement_count} disagreements)")
+        
     return result
 
 def main():
@@ -119,15 +148,36 @@ def main():
         print("Error: Manifest validation failed. Please check record IDs and paths.")
         sys.exit(1)
         
+    # Set up consensus fixture path if either arg or flag is set
+    consensus_path = args.consensus_fixture
+    if args.with_consensus and not consensus_path:
+        if args.module != "all":
+            default_p = Path("research/fixtures/consensus") / f"{args.module}_consensus_fixture.json"
+            if default_p.exists():
+                consensus_path = str(default_p)
+            
     output_results = []
     
     if args.module == "all":
         # Run sequentially on each known module type
         for mod in ["url", "upi", "document", "fusion"]:
-            res = run_single_module(manifest, mod, args.output_dir, args.notes)
+            mod_consensus = None
+            if consensus_path:
+                c_dir = Path(consensus_path).parent
+                specific_fixture = c_dir / f"{mod}_consensus_fixture.json"
+                if specific_fixture.exists():
+                    mod_consensus = str(specific_fixture)
+                else:
+                    mod_consensus = consensus_path
+            elif args.with_consensus:
+                default_p = Path("research/fixtures/consensus") / f"{mod}_consensus_fixture.json"
+                if default_p.exists():
+                    mod_consensus = str(default_p)
+                    
+            res = run_single_module(manifest, mod, args.output_dir, args.notes, mod_consensus)
             output_results.append(res)
     else:
-        res = run_single_module(manifest, args.module, args.output_dir, args.notes)
+        res = run_single_module(manifest, args.module, args.output_dir, args.notes, consensus_path)
         output_results.append(res)
         
     print_result_table(output_results)

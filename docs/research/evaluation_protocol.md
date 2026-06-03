@@ -40,3 +40,15 @@ This protocol defines the formal methodology for evaluating and benchmarking ind
 * All benchmark datasets must be registered via the `DatasetManifest` schema.
 * Experiments must be run using the `experiment_runner` to produce deterministic results.
 * Results must be exported as JSON (`ExperimentResult`) and human-readable Markdown (`write_markdown_report`) to support peer review.
+
+---
+
+## 4. Ground Truth Agreement & Consensus Layer (R5)
+To ensure research-grade evaluation rigour, predictions are compared with an **External Ground-Truth Consensus Layer** composed of multi-engine intelligence (e.g. VirusTotal, Urlscan.io, AbuseIPDB):
+* **Consensus Resolution**: External API labels are normalized (`CLEAN`, `SUSPICIOUS`, `HIGH`) to align with Lumint metrics, resolving discrepancies using majority voting or provider priority.
+* **Agreement Performance Metrics**:
+  * *Agreement Rate*: Match rate between predicted label and consensus label.
+  * *High-Risk Agreement Rate*: Agreement rate focused purely on critical positive cases (`HIGH`/`SUSPICIOUS`).
+  * *Agreement Confusion Matrix*: Binary metrics mapping predictions against normalized consensus.
+* **Disagreement Analysis**: All records with label mismatches are exported into a structured disagreement report to isolate false-positive edge-cases or identify superior engine coverage.
+

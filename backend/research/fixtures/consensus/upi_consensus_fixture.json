@@ -1,0 +1,65 @@
+{
+  "provider": "fixture",
+  "version": "r5-offline-v1",
+  "items": [
+    {
+      "record_id": "upi-1",
+      "target": "backend/research/fixtures/mock_files/phonepe_valid.png",
+      "consensus_label": "CLEAN",
+      "confidence": 0.95,
+      "raw_score": 0.0,
+      "evidence": ["Screenshot aligns with standard UI bounds", "No fonts anomalies found"],
+      "metadata": {
+        "provider": "fixture",
+        "analysis_type": "font_consistency"
+      }
+    },
+    {
+      "record_id": "upi-2",
+      "target": "backend/research/fixtures/mock_files/phonepe_invalid_utr.png",
+      "consensus_label": "HIGH",
+      "confidence": 0.90,
+      "raw_score": 85.0,
+      "evidence": ["UTR contains invalid alphanumeric sequences", "Inconsistent font rendering in verification number"],
+      "metadata": {
+        "provider": "fixture",
+        "utr_validation": "failed"
+      }
+    },
+    {
+      "record_id": "upi-3",
+      "target": "backend/research/fixtures/mock_files/gpay_suspicious.png",
+      "consensus_label": "SUSPICIOUS",
+      "confidence": 0.80,
+      "raw_score": 60.0,
+      "evidence": ["Non-standard Google Pay transaction sequence", "Suspected metadata modification timestamps"],
+      "metadata": {
+        "provider": "fixture",
+        "analysis_type": "metadata_timestamps"
+      }
+    },
+    {
+      "record_id": "upi-4",
+      "target": "backend/research/fixtures/mock_files/paytm_valid.png",
+      "consensus_label": "CLEAN",
+      "confidence": 0.94,
+      "raw_score": 0.0,
+      "evidence": ["Consistent UI elements and layout matching official app templates"],
+      "metadata": {
+        "provider": "fixture"
+      }
+    },
+    {
+      "record_id": "upi-5",
+      "target": "backend/research/fixtures/mock_files/fake_receipt.png",
+      "consensus_label": "HIGH",
+      "confidence": 0.99,
+      "raw_score": 100.0,
+      "evidence": ["Error Level Analysis indicates pixel manipulation", "Fake receipt generator metadata keywords found"],
+      "metadata": {
+        "provider": "fixture",
+        "ela_check": "forged"
+      }
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "provider": "fixture",
+  "version": "r5-offline-v1",
+  "items": [
+    {
+      "record_id": "url-1",
+      "target": "https://secure-login-chase-update.info/signin",
+      "consensus_label": "HIGH",
+      "confidence": 0.96,
+      "raw_score": 88.0,
+      "evidence": ["Typosquatting detected", "Reported phishing target in community feed"],
+      "metadata": {
+        "provider": "virustotal",
+        "malicious_votes": 12,
+        "harmless_votes": 0
+      }
+    },
+    {
+      "record_id": "url-2",
+      "target": "https://www.google.com",
+      "consensus_label": "CLEAN",
+      "confidence": 0.99,
+      "raw_score": 0.0,
+      "evidence": ["Highly verified global domain"],
+      "metadata": {
+        "provider": "virustotal",
+        "malicious_votes": 0,
+        "harmless_votes": 75
+      }
+    },
+    {
+      "record_id": "url-3",
+      "target": "https://paypal-verif-account.com/login",
+      "consensus_label": "HIGH",
+      "confidence": 0.98,
+      "raw_score": 95.0,
+      "evidence": ["Phishing threat detected by urlscan.io scanner"],
+      "metadata": {
+        "provider": "urlscan",
+        "verdict": "phishing"
+      }
+    },
+    {
+      "record_id": "url-4",
+      "target": "https://this-is-an-extremely-long-domain-name-that-is-suspicious.com",
+      "consensus_label": "SUSPICIOUS",
+      "confidence": 0.70,
+      "raw_score": 45.0,
+      "evidence": ["Suspiciously long domain name patterns"],
+      "metadata": {
+        "provider": "urlscan",
+        "verdict": "suspicious"
+      }
+    },
+    {
+      "record_id": "url-5",
+      "target": "https://github.com",
+      "consensus_label": "CLEAN",
+      "confidence": 0.99,
+      "raw_score": 0.0,
+      "evidence": ["Known secure collaborative platform"],
+      "metadata": {
+        "provider": "virustotal",
+        "malicious_votes": 0
+      }
+    }
+  ]
+}

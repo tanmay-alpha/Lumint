@@ -32,6 +32,46 @@ def write_markdown_report(result: ExperimentResult, output_path: str) -> None:
         
     records_table = "\n".join(records_table_rows)
 
+    # consensus section
+    consensus_section = ""
+    if result.agreement is not None:
+        agr = result.agreement
+        c_metrics = result.consensus_metrics or {}
+        
+        disagreement_rows = []
+        for d in agr.disagreements:
+            evidence_str = "; ".join(d.get("evidence", [])) or "None"
+            disagreement_rows.append(
+                f"| `{d['record_id']}` | `{d['predicted_label']}` | `{d['consensus_label']}` | `{d['provider']}` | {evidence_str} |"
+            )
+        disagreement_table = "\n".join(disagreement_rows) if disagreement_rows else "| - | - | - | - | - |"
+        
+        consensus_section = f"""
+## External Consensus Agreement
+| Metric | Value | Description |
+| :--- | :---: | :--- |
+| **Total Records** | {agr.total_records} | Total evaluated benchmark records |
+| **Comparable Records** | {agr.comparable_records} | Records with valid external consensus labels |
+| **Agreement Count** | {agr.agreement_count} | Records where prediction matches consensus |
+| **Disagreement Count** | {agr.disagreement_count} | Records where prediction differs from consensus |
+| **Unknown/Missing Count** | {agr.unknown_count} | Records without external consensus labels |
+| **Agreement Rate** | {agr.agreement_rate:.4f} | Percentage agreement of comparable records |
+| **High-Risk Agreement Rate** | {agr.high_risk_agreement_rate:.4f} | Agreement rate on HIGH/SUSPICIOUS cases |
+
+### Consensus Confusion Matrix
+* **Accuracy vs Consensus**: `{c_metrics.get("accuracy", 0.0):.4f}`
+* **F1-Score vs Consensus**: `{c_metrics.get("f1", 0.0):.4f}`
+* **True Positives (TP)**: `{c_metrics.get("TP", 0)}`
+* **False Positives (FP)**: `{c_metrics.get("FP", 0)}`
+* **True Negatives (TN)**: `{c_metrics.get("TN", 0)}`
+* **False Negatives (FN)**: `{c_metrics.get("FN", 0)}`
+
+## Disagreement Analysis
+| Record ID | Lumint Prediction | Consensus Label | Provider | Evidence |
+| :--- | :--- | :--- | :--- | :--- |
+{disagreement_table}
+"""
+
     report_content = f"""# Lumint Benchmark Report
 
 ## Experiment Metadata
@@ -75,11 +115,12 @@ def write_markdown_report(result: ExperimentResult, output_path: str) -> None:
 | Record ID | True Label | Predicted Label | Score | Latency | Error |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 {records_table}
-
+{consensus_section}
 ## Limitations
 1. **Deterministic Local Benchmark**: The current execution environment utilizes synthetic fixtures and rules engines, omitting real-time networking and database constraints.
-2. **No External Consensus Yet**: The report represents standalone model classification without cross-reference or voting/consensus systems.
-3. **No Production Dataset Yet**: Benchmark is run on mock/curated records, not active production streams.
+2. **Offline Fixture Consensus**: The current milestone consensus verification operates using static, offline validation fixtures. Live external api queries are pending integration and not run automatically during local runs.
+3. **API Key Integration**: External API providers (VirusTotal, Urlscan, AbuseIPDB) require env configuration and keys are not committed.
+4. **Consensus is Not Ground Truth**: Discrepancies between Lumint and external providers represent divergence in indicator weighting rather than definite correctness errors.
 """
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(report_content)
