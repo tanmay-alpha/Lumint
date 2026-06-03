@@ -4,7 +4,8 @@ Evaluating the degradation of F1-Score when individual modal signals are ablated
 
 | Variant Name | Description | Record Count | Accuracy | F1 Score | Mean Latency (ms) |
 |---|---|---|---|---|---|
-| *Pending* | Run ablation_synthetic to populate | - | - | - | - |
-
-> [!WARNING]
-> Ablation study outputs not found. Run command: `python scripts/run_paper_experiments.py --synthetic-only` to run ablation benchmarks.
+| **full_lumint** | Full multi-modal integration using all DocShield, PhishShield, and UPI Shield signals. | 16 | 0.5000 | **0.3333** | 0.00 |
+| **no_document_signal** (Best) | Ablates the DocShield document forensics score, relying on phishing and payment layers. | 16 | 0.5000 | **0.3333** | 0.00 |
+| **no_phishing_signal** | Ablates the PhishShield URL risk score, relying on document forensics and payment layers. | 16 | 0.5000 | **0.3333** | 0.00 |
+| **no_upi_signal** | Ablates the UPI Shield layout check forensics, relying on document and URL checks. | 16 | 0.5000 | **0.3333** | 0.00 |
+| **equal_weights** | Equal weights assigned to all active modalities instead of standard dynamic priority weighting. | 16 | 0.5000 | **0.3333** | 0.00 |

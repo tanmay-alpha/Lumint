@@ -4,7 +4,6 @@ Kappa metrics and agreement rates of Lumint risk labels against ground truth con
 
 | Agreement Indicator | Value / Rate | Interpretation |
 |---|---|---|
-| *Pending* | Run consensus_agreement_synthetic to populate | - |
-
-> [!WARNING]
-> Consensus agreement metrics not found. Run command: `python scripts/run_paper_experiments.py --synthetic-only` to run consensus benchmarks.
+| Cohen's Kappa | N/A | Inter-annotator agreement strength against consensus |
+| Overall Agreement Rate | 100.00% | Raw percentage of matching classifications |
+| Total Records Checked | 16 | Total overlap support |
