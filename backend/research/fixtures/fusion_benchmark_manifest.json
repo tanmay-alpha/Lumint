@@ -1,0 +1,71 @@
+{
+  "name": "fusion_benchmark",
+  "version": "1.0.0",
+  "records": [
+    {
+      "id": "fusion-1",
+      "dataset_type": "URL",
+      "path_or_value": "https://suspicious-fusion-case-1.com",
+      "label": "HIGH",
+      "split": "BENCHMARK",
+      "source": "Fusion_Synthetic",
+      "metadata": {
+        "document_result": {
+          "risk_score": 85,
+          "risk_level": "HIGH",
+          "indicators": [{"rule": "metadata_photoshop", "severity": "high"}]
+        },
+        "phishing_result": {
+          "risk_score": 90,
+          "risk_level": "HIGH",
+          "triggered_rules": [{"rule": "unicode_homoglyph", "score": 60}]
+        },
+        "upi_result": {
+          "forgery_score": 80,
+          "verdict": "LIKELY_FORGED"
+        }
+      }
+    },
+    {
+      "id": "fusion-2",
+      "dataset_type": "URL",
+      "path_or_value": "https://secure-fusion-case-2.com",
+      "label": "CLEAN",
+      "split": "BENCHMARK",
+      "source": "Fusion_Synthetic",
+      "metadata": {
+        "document_result": {
+          "risk_score": 10,
+          "risk_level": "CLEAN"
+        },
+        "phishing_result": {
+          "risk_score": 5,
+          "risk_level": "CLEAN"
+        },
+        "upi_result": {
+          "forgery_score": 5,
+          "verdict": "GENUINE"
+        }
+      }
+    },
+    {
+      "id": "fusion-3",
+      "dataset_type": "URL",
+      "path_or_value": "https://correlated-payment-phish-case.com",
+      "label": "HIGH",
+      "split": "BENCHMARK",
+      "source": "Fusion_Synthetic",
+      "metadata": {
+        "phishing_result": {
+          "risk_score": 75,
+          "risk_level": "HIGH"
+        },
+        "upi_result": {
+          "forgery_score": 85,
+          "verdict": "LIKELY_FORGED"
+        }
+      }
+    }
+  ],
+  "notes": "Synthetic multi-modal fusion benchmark dataset."
+}

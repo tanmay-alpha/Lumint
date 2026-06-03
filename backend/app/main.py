@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import engine, Base
 from app.models.models import UPIShieldEvent, Case, ThreatFeedAlert  # Ensure models are imported for metadata registration
-from app.routers import health, documents, fraud_dna, phishing, dashboard, ai, upi, cases, threats
+from app.routers import health, documents, fraud_dna, phishing, dashboard, ai, upi, cases, threats, fusion
 
 # Automatic database initialization
 Base.metadata.create_all(bind=engine)
@@ -34,9 +34,11 @@ for router in (
     ai.router,
     upi.router,
     cases.router,
-    threats.router
+    threats.router,
+    fusion.router
 ):
     app.include_router(router)
+
 
 
 @app.get("/")

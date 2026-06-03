@@ -1,0 +1,43 @@
+{
+  "provider": "fixture",
+  "version": "r5-offline-v1",
+  "items": [
+    {
+      "record_id": "fusion-1",
+      "target": "https://suspicious-fusion-case-1.com",
+      "consensus_label": "HIGH",
+      "confidence": 0.98,
+      "raw_score": 90.0,
+      "evidence": ["Phishing threat detected", "Simulated forensic alterations on associated screenshot"],
+      "metadata": {
+        "provider": "fixture",
+        "docshield": "forgery",
+        "phishshield": "phishing"
+      }
+    },
+    {
+      "record_id": "fusion-2",
+      "target": "https://secure-fusion-case-2.com",
+      "consensus_label": "CLEAN",
+      "confidence": 0.97,
+      "raw_score": 0.0,
+      "evidence": ["All component modalities marked as secure/clean"],
+      "metadata": {
+        "provider": "fixture",
+        "status": "clean"
+      }
+    },
+    {
+      "record_id": "fusion-3",
+      "target": "https://correlated-payment-phish-case.com",
+      "consensus_label": "HIGH",
+      "confidence": 0.92,
+      "raw_score": 80.0,
+      "evidence": ["Flagged phishing target matching invalid payment screenshot transaction UTR"],
+      "metadata": {
+        "provider": "fixture",
+        "correlated_anomaly": true
+      }
+    }
+  ]
+}

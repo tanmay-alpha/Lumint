@@ -57,6 +57,13 @@ def _analyze_single(raw: str) -> PhishingCheckResponse:
         except Exception:
             pass
 
+    # Calculate feature contributions for research (XAI)
+    try:
+        from app.core.xai import get_feature_contributions
+        feature_contributions = get_feature_contributions(indicators=analysis["triggered_rules"])
+    except Exception:
+        feature_contributions = []
+
     return PhishingCheckResponse(
         url=raw,
         normalized_url=analysis["normalized_url"],
@@ -66,8 +73,10 @@ def _analyze_single(raw: str) -> PhishingCheckResponse:
         triggered_rules=analysis["triggered_rules"],
         domain_similarity_matches=analysis["domain_similarity_matches"],
         phishing_fingerprint=fingerprint,
+        feature_contributions=feature_contributions,
         message="URL analyzed successfully",
     )
+
 
 
 @router.post("/check", response_model=PhishingCheckResponse)

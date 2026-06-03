@@ -1,0 +1,62 @@
+{
+  "name": "url_benchmark",
+  "version": "1.0.0",
+  "records": [
+    {
+      "id": "url-1",
+      "dataset_type": "URL",
+      "path_or_value": "https://secure-login-chase-update.info/signin",
+      "label": "HIGH",
+      "split": "BENCHMARK",
+      "source": "PhishShield_Synthetic",
+      "metadata": {
+        "domain": "secure-login-chase-update.info"
+      }
+    },
+    {
+      "id": "url-2",
+      "dataset_type": "URL",
+      "path_or_value": "https://www.google.com",
+      "label": "CLEAN",
+      "split": "BENCHMARK",
+      "source": "PhishShield_Synthetic",
+      "metadata": {
+        "domain": "google.com"
+      }
+    },
+    {
+      "id": "url-3",
+      "dataset_type": "URL",
+      "path_or_value": "https://paypal-verif-account.com/login",
+      "label": "HIGH",
+      "split": "BENCHMARK",
+      "source": "PhishShield_Synthetic",
+      "metadata": {
+        "domain": "paypal-verif-account.com"
+      }
+    },
+    {
+      "id": "url-4",
+      "dataset_type": "URL",
+      "path_or_value": "https://this-is-an-extremely-long-domain-name-that-is-suspicious.com",
+      "label": "HIGH",
+      "split": "BENCHMARK",
+      "source": "PhishShield_Synthetic",
+      "metadata": {
+        "domain": "this-is-an-extremely-long-domain-name-that-is-suspicious.com"
+      }
+    },
+    {
+      "id": "url-5",
+      "dataset_type": "URL",
+      "path_or_value": "https://github.com",
+      "label": "CLEAN",
+      "split": "BENCHMARK",
+      "source": "PhishShield_Synthetic",
+      "metadata": {
+        "domain": "github.com"
+      }
+    }
+  ],
+  "notes": "Synthetic URL benchmark dataset."
+}

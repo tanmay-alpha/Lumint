@@ -14,6 +14,9 @@ jobs:
   python-backend-checks:
     name: Python backend checks
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
 
     steps:
       - name: Checkout repository
@@ -54,9 +57,11 @@ jobs:
 
       - name: Run tests if present
         shell: bash
+        env:
+          PYTHONPATH: .
         run: |
-          if [ -d "tests" ] || [ -d "backend/tests" ]; then
-            pytest -q
+          if [ -d "tests" ]; then
+            python -m pytest -q
           else
             echo "No tests folder found. Skipping pytest."
           fi

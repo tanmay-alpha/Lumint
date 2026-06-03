@@ -1,0 +1,72 @@
+{
+  "name": "upi_benchmark",
+  "version": "1.0.0",
+  "records": [
+    {
+      "id": "upi-1",
+      "dataset_type": "UPI_SCREENSHOT",
+      "path_or_value": "backend/research/fixtures/mock_files/phonepe_valid.png",
+      "label": "CLEAN",
+      "split": "BENCHMARK",
+      "source": "UPIShield_Synthetic",
+      "metadata": {
+        "synthetic_text": "PhonePe Txn ID T2406031234567890123456 UTR: 312345678901 Amount: 500",
+        "ocr_text": "PhonePe Txn ID T2406031234567890123456 UTR: 312345678901 Amount: 500",
+        "utr": "312345678901"
+      }
+    },
+    {
+      "id": "upi-2",
+      "dataset_type": "UPI_SCREENSHOT",
+      "path_or_value": "backend/research/fixtures/mock_files/phonepe_invalid_utr.png",
+      "label": "HIGH",
+      "split": "BENCHMARK",
+      "source": "UPIShield_Synthetic",
+      "metadata": {
+        "synthetic_text": "PhonePe Txn ID T2406031234567890123456 UTR: ABC123XYZ Amount: 500",
+        "ocr_text": "PhonePe Txn ID T2406031234567890123456 UTR: ABC123XYZ Amount: 500",
+        "utr": "ABC123XYZ"
+      }
+    },
+    {
+      "id": "upi-3",
+      "dataset_type": "UPI_SCREENSHOT",
+      "path_or_value": "backend/research/fixtures/mock_files/gpay_suspicious.png",
+      "label": "HIGH",
+      "split": "BENCHMARK",
+      "source": "UPIShield_Synthetic",
+      "metadata": {
+        "synthetic_text": "Google Pay Transaction ID CICAgICw_K_uDw UTR: 12345 Amount: 1000",
+        "ocr_text": "Google Pay Transaction ID CICAgICw_K_uDw UTR: 12345 Amount: 1000",
+        "utr": "12345"
+      }
+    },
+    {
+      "id": "upi-4",
+      "dataset_type": "UPI_SCREENSHOT",
+      "path_or_value": "backend/research/fixtures/mock_files/paytm_valid.png",
+      "label": "CLEAN",
+      "split": "BENCHMARK",
+      "source": "UPIShield_Synthetic",
+      "metadata": {
+        "synthetic_text": "Paytm Wallet Txn ID 3456789012 UTR: 301234567890 Amount: 150",
+        "ocr_text": "Paytm Wallet Txn ID 3456789012 UTR: 301234567890 Amount: 150",
+        "utr": "301234567890"
+      }
+    },
+    {
+      "id": "upi-5",
+      "dataset_type": "UPI_SCREENSHOT",
+      "path_or_value": "backend/research/fixtures/mock_files/fake_receipt.png",
+      "label": "HIGH",
+      "split": "BENCHMARK",
+      "source": "UPIShield_Synthetic",
+      "metadata": {
+        "synthetic_text": "Receipt from Fake App UTR: 000000000000 Amount: 9999",
+        "ocr_text": "Receipt from Fake App UTR: 000000000000 Amount: 9999",
+        "utr": "000000000000"
+      }
+    }
+  ],
+  "notes": "Synthetic UPI screenshot benchmark dataset."
+}

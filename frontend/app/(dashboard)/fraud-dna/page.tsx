@@ -102,25 +102,89 @@ export default function FraudDnaPage() {
 
   // Node position map for mock nodes to render SVG connections
   const nodePositions: Record<string, { x: number; y: number }> = {
-    "evt-f89a23": { x: 80, y: 70 },
-    "evt-a78b45": { x: 50, y: 150 },
-    "evt-67d8f9": { x: 160, y: 160 },
-    "actor-invoice-spoofer": { x: 120, y: 110 },
+    "evt-f89a23": { x: 20, y: 70 },
+    "evt-a78b45": { x: 25, y: 150 },
+    "evt-67d8f9": { x: 15, y: 160 },
+    "actor-invoice-spoofer": { x: 20, y: 110 },
     
-    "evt-87f12e": { x: 300, y: 80 },
-    "evt-45b678": { x: 260, y: 170 },
-    "actor-id-forge": { x: 330, y: 140 }
+    "evt-87f12e": { x: 80, y: 80 },
+    "evt-45b678": { x: 75, y: 170 },
+    "actor-id-forge": { x: 85, y: 140 }
   };
+
+  // Compute campaign cluster centers and layout nodes dynamically
+  const computedPositions = React.useMemo(() => {
+    if (!graphData || !graphData.nodes || !campaigns) return {};
+
+    const positions: Record<string, { x: number; y: number }> = {};
+    
+    // Map event_id to campaign info
+    const eventToCampaign: Record<string, { campaignId: string; index: number; total: number }> = {};
+    const campaignCenters: Record<string, { x: number; y: number }> = {};
+
+    campaigns.campaigns.forEach((camp, campIdx) => {
+      // Place campaign centers in a circle/grid across the canvas
+      const angle = (campIdx / (campaigns.campaigns.length || 1)) * 2 * Math.PI;
+      campaignCenters[camp.campaign_id] = {
+        x: 50 + 28 * Math.cos(angle),
+        y: 250 + 110 * Math.sin(angle)
+      };
+
+      camp.events.forEach((evt, evtIdx) => {
+        eventToCampaign[evt.event_id] = {
+          campaignId: camp.campaign_id,
+          index: evtIdx,
+          total: camp.events.length
+        };
+      });
+    });
+
+    // Unclustered/noise node centers
+    let unclusteredCount = 0;
+    const unclusteredNodes = graphData.nodes.filter(n => !eventToCampaign[n.id]);
+    
+    graphData.nodes.forEach((node) => {
+      // Check if it's hardcoded first (like mock nodes)
+      if (nodePositions[node.id]) {
+        positions[node.id] = nodePositions[node.id];
+        return;
+      }
+
+      const campInfo = eventToCampaign[node.id];
+      if (campInfo) {
+        const center = campaignCenters[campInfo.campaignId];
+        const radiusX = campInfo.total > 1 ? 4 + Math.min(10, campInfo.total * 0.8) : 0;
+        const radiusY = campInfo.total > 1 ? 15 + Math.min(45, campInfo.total * 3) : 0;
+        const nodeAngle = (campInfo.index / campInfo.total) * 2 * Math.PI;
+        
+        positions[node.id] = {
+          x: Math.round(center.x + radiusX * Math.cos(nodeAngle)),
+          y: Math.round(center.y + radiusY * Math.sin(nodeAngle))
+        };
+      } else {
+        // Noise nodes - place around the outer border
+        const idx = unclusteredCount++;
+        const totalUnclustered = unclusteredNodes.length || 1;
+        const angle = (idx / totalUnclustered) * 2 * Math.PI;
+        positions[node.id] = {
+          x: Math.round(50 + 38 * Math.cos(angle)),
+          y: Math.round(250 + 160 * Math.sin(angle))
+        };
+      }
+    });
+
+    return positions;
+  }, [graphData, campaigns]);
 
   // Helper to determine node position dynamically if not in hardcoded positions
   const getNodePosition = (nodeId: string) => {
     if (nodePositions[nodeId]) return nodePositions[nodeId];
+    if (computedPositions[nodeId]) return computedPositions[nodeId];
     if (!graphData || !graphData.nodes) return { x: 50, y: 150 };
     const index = graphData.nodes.findIndex((n) => n.id === nodeId);
     if (index === -1) return { x: 50, y: 150 };
     const total = graphData.nodes.length || 1;
     const angle = (index / total) * 2 * Math.PI;
-    // Map dynamically to percentage-based layout (centered around 50% X and 200px Y)
     return {
       x: Math.round(50 + 35 * Math.cos(angle)),
       y: Math.round(200 + 120 * Math.sin(angle))
