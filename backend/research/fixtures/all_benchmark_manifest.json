@@ -1,0 +1,228 @@
+{
+  "name": "all_benchmark",
+  "version": "1.0.0",
+  "records": [
+    {
+      "id": "url-1",
+      "dataset_type": "URL",
+      "path_or_value": "https://secure-login-chase-update.info/signin",
+      "label": "HIGH",
+      "split": "BENCHMARK",
+      "source": "PhishShield_Synthetic",
+      "metadata": {
+        "domain": "secure-login-chase-update.info"
+      }
+    },
+    {
+      "id": "url-2",
+      "dataset_type": "URL",
+      "path_or_value": "https://www.google.com",
+      "label": "CLEAN",
+      "split": "BENCHMARK",
+      "source": "PhishShield_Synthetic",
+      "metadata": {
+        "domain": "google.com"
+      }
+    },
+    {
+      "id": "url-3",
+      "dataset_type": "URL",
+      "path_or_value": "https://paypal-verif-account.com/login",
+      "label": "HIGH",
+      "split": "BENCHMARK",
+      "source": "PhishShield_Synthetic",
+      "metadata": {
+        "domain": "paypal-verif-account.com"
+      }
+    },
+    {
+      "id": "url-4",
+      "dataset_type": "URL",
+      "path_or_value": "https://this-is-an-extremely-long-domain-name-that-is-suspicious.com",
+      "label": "HIGH",
+      "split": "BENCHMARK",
+      "source": "PhishShield_Synthetic",
+      "metadata": {
+        "domain": "this-is-an-extremely-long-domain-name-that-is-suspicious.com"
+      }
+    },
+    {
+      "id": "url-5",
+      "dataset_type": "URL",
+      "path_or_value": "https://github.com",
+      "label": "CLEAN",
+      "split": "BENCHMARK",
+      "source": "PhishShield_Synthetic",
+      "metadata": {
+        "domain": "github.com"
+      }
+    },
+    {
+      "id": "upi-1",
+      "dataset_type": "UPI_SCREENSHOT",
+      "path_or_value": "backend/research/fixtures/mock_files/phonepe_valid.png",
+      "label": "CLEAN",
+      "split": "BENCHMARK",
+      "source": "UPIShield_Synthetic",
+      "metadata": {
+        "synthetic_text": "PhonePe Txn ID T2406031234567890123456 UTR: 312345678901 Amount: 500",
+        "ocr_text": "PhonePe Txn ID T2406031234567890123456 UTR: 312345678901 Amount: 500",
+        "utr": "312345678901"
+      }
+    },
+    {
+      "id": "upi-2",
+      "dataset_type": "UPI_SCREENSHOT",
+      "path_or_value": "backend/research/fixtures/mock_files/phonepe_invalid_utr.png",
+      "label": "HIGH",
+      "split": "BENCHMARK",
+      "source": "UPIShield_Synthetic",
+      "metadata": {
+        "synthetic_text": "PhonePe Txn ID T2406031234567890123456 UTR: ABC123XYZ Amount: 500",
+        "ocr_text": "PhonePe Txn ID T2406031234567890123456 UTR: ABC123XYZ Amount: 500",
+        "utr": "ABC123XYZ"
+      }
+    },
+    {
+      "id": "upi-3",
+      "dataset_type": "UPI_SCREENSHOT",
+      "path_or_value": "backend/research/fixtures/mock_files/gpay_suspicious.png",
+      "label": "HIGH",
+      "split": "BENCHMARK",
+      "source": "UPIShield_Synthetic",
+      "metadata": {
+        "synthetic_text": "Google Pay Transaction ID CICAgICw_K_uDw UTR: 12345 Amount: 1000",
+        "ocr_text": "Google Pay Transaction ID CICAgICw_K_uDw UTR: 12345 Amount: 1000",
+        "utr": "12345"
+      }
+    },
+    {
+      "id": "upi-4",
+      "dataset_type": "UPI_SCREENSHOT",
+      "path_or_value": "backend/research/fixtures/mock_files/paytm_valid.png",
+      "label": "CLEAN",
+      "split": "BENCHMARK",
+      "source": "UPIShield_Synthetic",
+      "metadata": {
+        "synthetic_text": "Paytm Wallet Txn ID 3456789012 UTR: 301234567890 Amount: 150",
+        "ocr_text": "Paytm Wallet Txn ID 3456789012 UTR: 301234567890 Amount: 150",
+        "utr": "301234567890"
+      }
+    },
+    {
+      "id": "upi-5",
+      "dataset_type": "UPI_SCREENSHOT",
+      "path_or_value": "backend/research/fixtures/mock_files/fake_receipt.png",
+      "label": "HIGH",
+      "split": "BENCHMARK",
+      "source": "UPIShield_Synthetic",
+      "metadata": {
+        "synthetic_text": "Receipt from Fake App UTR: 000000000000 Amount: 9999",
+        "ocr_text": "Receipt from Fake App UTR: 000000000000 Amount: 9999",
+        "utr": "000000000000"
+      }
+    },
+    {
+      "id": "doc-1",
+      "dataset_type": "DOCUMENT",
+      "path_or_value": "backend/research/fixtures/mock_files/invoice.pdf",
+      "label": "HIGH",
+      "split": "BENCHMARK",
+      "source": "DocShield_Synthetic",
+      "metadata": {
+        "producer": "Adobe Photoshop CC",
+        "author": "Scammer",
+        "keywords": "invoice fake wire transfer"
+      }
+    },
+    {
+      "id": "doc-2",
+      "dataset_type": "DOCUMENT",
+      "path_or_value": "backend/research/fixtures/mock_files/receipt.png",
+      "label": "CLEAN",
+      "split": "BENCHMARK",
+      "source": "DocShield_Synthetic",
+      "metadata": {
+        "producer": "HP Scanner Software",
+        "author": "Accounts Department"
+      }
+    },
+    {
+      "id": "doc-3",
+      "dataset_type": "DOCUMENT",
+      "path_or_value": "backend/research/fixtures/mock_files/contract.pdf",
+      "label": "HIGH",
+      "split": "BENCHMARK",
+      "source": "DocShield_Synthetic",
+      "metadata": {
+        "producer": "Canva PDF Generator",
+        "editor_tool": "Photoshop Elements"
+      }
+    },
+    {
+      "id": "fusion-1",
+      "dataset_type": "URL",
+      "path_or_value": "https://suspicious-fusion-case-1.com",
+      "label": "HIGH",
+      "split": "BENCHMARK",
+      "source": "Fusion_Synthetic",
+      "metadata": {
+        "document_result": {
+          "risk_score": 85,
+          "risk_level": "HIGH",
+          "indicators": [{"rule": "metadata_photoshop", "severity": "high"}]
+        },
+        "phishing_result": {
+          "risk_score": 90,
+          "risk_level": "HIGH",
+          "triggered_rules": [{"rule": "unicode_homoglyph", "score": 60}]
+        },
+        "upi_result": {
+          "forgery_score": 80,
+          "verdict": "LIKELY_FORGED"
+        }
+      }
+    },
+    {
+      "id": "fusion-2",
+      "dataset_type": "URL",
+      "path_or_value": "https://secure-fusion-case-2.com",
+      "label": "CLEAN",
+      "split": "BENCHMARK",
+      "source": "Fusion_Synthetic",
+      "metadata": {
+        "document_result": {
+          "risk_score": 10,
+          "risk_level": "CLEAN"
+        },
+        "phishing_result": {
+          "risk_score": 5,
+          "risk_level": "CLEAN"
+        },
+        "upi_result": {
+          "forgery_score": 5,
+          "verdict": "GENUINE"
+        }
+      }
+    },
+    {
+      "id": "fusion-3",
+      "dataset_type": "URL",
+      "path_or_value": "https://correlated-payment-phish-case.com",
+      "label": "HIGH",
+      "split": "BENCHMARK",
+      "source": "Fusion_Synthetic",
+      "metadata": {
+        "phishing_result": {
+          "risk_score": 75,
+          "risk_level": "HIGH"
+        },
+        "upi_result": {
+          "forgery_score": 85,
+          "verdict": "LIKELY_FORGED"
+        }
+      }
+    }
+  ],
+  "notes": "Consolidated synthetic benchmark dataset."
+}

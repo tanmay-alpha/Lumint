@@ -1,12 +1,16 @@
 import re
+import tempfile
+import shutil
 from datetime import datetime, timezone
 from typing import Optional
+from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.models import UPIShieldEvent
 from app.schemas.upi import UPIAnalyzeResponse, UTRVerificationResponse, QRScanResponse
 from ai.upi_ai import analyze_upi_screenshot_ai
+from app.services.upi.analyzer import analyze_upi_screenshot
 
 router = APIRouter(prefix="/api/upi", tags=["upi-shield"])
 
@@ -41,55 +45,111 @@ def parse_upi_ocr(text: str) -> dict:
     }
 
 @router.post("/analyze-screenshot", response_model=UPIAnalyzeResponse)
+@router.post("/analyze", response_model=UPIAnalyzeResponse)
 async def analyze_screenshot(
     file: UploadFile = File(...),
     custom_ocr: Optional[str] = Form(None),
+    custom_ocr_text: Optional[str] = Form(None),
+    run_ai: bool = Form(False),
     db: Session = Depends(get_db)
 ):
     """
     Upload GPAY/PhonePe payment screenshot to run layout verification,
-    UTR mapping, and Groq LLaMA 3.3 analyst threat brief.
+    UTR mapping, ELA forensics, brand color checks, and optional AI threat briefs.
     """
-    # Mock OCR extraction / Simulating receipt text extraction
-    ocr_text = custom_ocr or (
-        f"PhonePe UPI Payment Successful. Txn ID: T24060212345. "
-        f"To: target.merchant@okaxis. From: user.sender@okhdfcbank. "
-        f"UTR Ref: 318273645192. Amount Rs. 15,200.00. Date: 2026-06-02 18:40."
-    )
+    # 1. Save uploaded file to a temporary file
+    suffix = Path(file.filename or "screenshot.png").suffix.lower()
+    if suffix not in (".png", ".jpg", ".jpeg"):
+        suffix = ".png" # default fallback
+        
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        shutil.copyfileobj(file.file, tmp)
+        tmp_path = Path(tmp.name)
+        
+    try:
+        # 2. Run UPI screenshot forensics analyzer pipeline
+        res = analyze_upi_screenshot(tmp_path, custom_ocr_text=custom_ocr or custom_ocr_text)
+    finally:
+        try:
+            tmp_path.unlink()
+        except Exception:
+            pass
+            
+    # 3. Parse fields for DB and response mapping
+    utr_val = res["utr"]["normalized"] if (res["utr"] and res["utr"]["normalized"]) else "000000000000"
+    is_valid_utr = res["utr"]["valid"] if res["utr"] else False
     
-    parsed = parse_upi_ocr(ocr_text)
-    
-    # Heuristics checking
-    utr_val = parsed["utr"] or "000000000000"
-    is_valid_utr = len(utr_val) == 12
-    font_anomalies = "edit" in ocr_text.lower() or "canvas" in ocr_text.lower()
-    suspicious_handle = "scam" in parsed["receiver"] or "paytm" not in parsed["receiver"] and "ok" not in parsed["receiver"]
+    amount_val = 0.0
+    if res["amount_extracted"]:
+        try:
+            amount_val = float(str(res["amount_extracted"]).replace(",", ""))
+        except ValueError:
+            pass
+            
+    # 4. Integrate AI check if requested
+    if run_ai:
+        ai_report = await analyze_upi_screenshot_ai(
+            ocr_text=res["ocr"]["text"],
+            utr_number=utr_val,
+            sender=res["sender_upi_id"],
+            receiver=res["receiver_upi_id"],
+            amount=amount_val
+        )
+        risk_score = ai_report.get("risk_score", res["forgery_score"])
+        risk_level = ai_report.get("risk_level", res["verdict"])
+        ai_fraud_explanation = ai_report.get("ai_fraud_explanation", f"Forensic analysis: {res['verdict']}")
+        font_anomalies_detected = ai_report.get("font_anomalies_detected", not res["font"]["font_consistent"])
+        suspicious_handle_flagged = ai_report.get("suspicious_handle_flagged", any(ind["rule"] == "suspicious_keywords" for ind in res["indicators"]))
+    else:
+        risk_score = res["forgery_score"]
+        risk_level = res["verdict"]
+        
+        # Build explanation listing triggered indicators
+        explanation_parts = []
+        for ind in res["indicators"]:
+            explanation_parts.append(f"- {ind['detail']} (Contribution: +{ind['score']})")
+        if explanation_parts:
+            ai_fraud_explanation = "Forensic analysis flagged the following indicators:\n" + "\n".join(explanation_parts)
+        else:
+            ai_fraud_explanation = "No suspicious forensic indicators were found. The receipt screenshot appears structurally authentic."
+            
+        font_anomalies_detected = not res["font"]["font_consistent"]
+        suspicious_handle_flagged = any(ind["rule"] == "suspicious_keywords" for ind in res["indicators"])
 
-    # Analyze via AI
-    ai_report = await analyze_upi_screenshot_ai(
-        ocr_text=ocr_text,
-        utr_number=utr_val,
-        sender=parsed["sender"],
-        receiver=parsed["receiver"],
-        amount=parsed["amount"]
-    )
-
-    # Store event in SQLite database
+    # 5. Populate and commit to database
     db_event = UPIShieldEvent(
         event_type="screenshot",
         utr_number=utr_val,
-        sender_upi_id=parsed["sender"],
-        receiver_upi_id=parsed["receiver"],
-        amount=parsed["amount"],
+        sender_upi_id=res["sender_upi_id"],
+        receiver_upi_id=res["receiver_upi_id"],
+        amount=amount_val,
         transaction_date=datetime.now(timezone.utc).isoformat(),
         is_valid_utr=1 if is_valid_utr else 0,
-        font_anomalies_detected=1 if font_anomalies else 0,
-        suspicious_handle_flagged=1 if suspicious_handle else 0,
-        risk_score=ai_report.get("risk_score", 15),
-        risk_level=ai_report.get("risk_level", "CLEAN"),
-        ai_fraud_explanation=ai_report.get("ai_fraud_explanation", ""),
-        raw_ocr_text=ocr_text,
-        metadata_json={"file_name": file.filename, "file_size": file.size}
+        font_anomalies_detected=1 if font_anomalies_detected else 0,
+        suspicious_handle_flagged=1 if suspicious_handle_flagged else 0,
+        risk_score=risk_score,
+        risk_level=risk_level,
+        ai_fraud_explanation=ai_fraud_explanation,
+        raw_ocr_text=res["ocr"]["text"],
+        metadata_json={
+            "file_name": file.filename,
+            "file_size": getattr(file, "size", 0) or 0,
+            "app_detected": res["app_detected"],
+            "ela": {
+                "ela_score": res["ela"]["ela_score"],
+                "tamper_suspected": res["ela"]["tamper_suspected"],
+                "hotspot_ratio": res["ela"]["hotspot_ratio"]
+            },
+            "font": {
+                "font_consistent": res["font"]["font_consistent"],
+                "height_variance": res["font"]["height_variance"]
+            },
+            "color": {
+                "color_authentic": res["color"]["color_authentic"],
+                "distance": res["color"]["distance"]
+            },
+            "feature_contributions": res["feature_contributions"]
+        }
     )
 
     db.add(db_event)
@@ -114,6 +174,7 @@ async def analyze_screenshot(
         raw_ocr_text=db_event.raw_ocr_text,
         metadata_json=db_event.metadata_json
     )
+
 
 @router.get("/verify-utr/{utr_number}", response_model=UTRVerificationResponse)
 def verify_utr(utr_number: str, db: Session = Depends(get_db)):

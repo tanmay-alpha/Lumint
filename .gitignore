@@ -57,3 +57,7 @@ Thumbs.db
 # Temp files
 *.tmp
 *.temp
+
+# Research Outputs
+backend/research_outputs/*
+!backend/research_outputs/.gitkeep

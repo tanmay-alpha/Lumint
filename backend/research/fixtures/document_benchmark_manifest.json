@@ -1,0 +1,44 @@
+{
+  "name": "document_benchmark",
+  "version": "1.0.0",
+  "records": [
+    {
+      "id": "doc-1",
+      "dataset_type": "DOCUMENT",
+      "path_or_value": "backend/research/fixtures/mock_files/invoice.pdf",
+      "label": "HIGH",
+      "split": "BENCHMARK",
+      "source": "DocShield_Synthetic",
+      "metadata": {
+        "producer": "Adobe Photoshop CC",
+        "author": "Scammer",
+        "keywords": "invoice fake wire transfer"
+      }
+    },
+    {
+      "id": "doc-2",
+      "dataset_type": "DOCUMENT",
+      "path_or_value": "backend/research/fixtures/mock_files/receipt.png",
+      "label": "CLEAN",
+      "split": "BENCHMARK",
+      "source": "DocShield_Synthetic",
+      "metadata": {
+        "producer": "HP Scanner Software",
+        "author": "Accounts Department"
+      }
+    },
+    {
+      "id": "doc-3",
+      "dataset_type": "DOCUMENT",
+      "path_or_value": "backend/research/fixtures/mock_files/contract.pdf",
+      "label": "HIGH",
+      "split": "BENCHMARK",
+      "source": "DocShield_Synthetic",
+      "metadata": {
+        "producer": "Canva PDF Generator",
+        "editor_tool": "Photoshop Elements"
+      }
+    }
+  ],
+  "notes": "Synthetic document benchmark dataset."
+}
