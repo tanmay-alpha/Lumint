@@ -112,6 +112,21 @@ export default function FraudDnaPage() {
     "actor-id-forge": { x: 330, y: 140 }
   };
 
+  // Helper to determine node position dynamically if not in hardcoded positions
+  const getNodePosition = (nodeId: string) => {
+    if (nodePositions[nodeId]) return nodePositions[nodeId];
+    if (!graphData || !graphData.nodes) return { x: 50, y: 150 };
+    const index = graphData.nodes.findIndex((n) => n.id === nodeId);
+    if (index === -1) return { x: 50, y: 150 };
+    const total = graphData.nodes.length || 1;
+    const angle = (index / total) * 2 * Math.PI;
+    // Map dynamically to percentage-based layout (centered around 50% X and 200px Y)
+    return {
+      x: Math.round(50 + 35 * Math.cos(angle)),
+      y: Math.round(200 + 120 * Math.sin(angle))
+    };
+  };
+
   return (
     <div className="space-y-8">
       {/* Page Header */}
@@ -398,8 +413,8 @@ export default function FraudDnaPage() {
                   {/* Draw SVG connections */}
                   <svg className="absolute inset-0 w-full h-full pointer-events-none">
                     {graphData?.edges.map((edge, idx) => {
-                      const pos1 = nodePositions[edge.source];
-                      const pos2 = nodePositions[edge.target];
+                      const pos1 = getNodePosition(edge.source);
+                      const pos2 = getNodePosition(edge.target);
                       if (!pos1 || !pos2) return null;
                       return (
                         <g key={idx}>
@@ -418,7 +433,7 @@ export default function FraudDnaPage() {
 
                   {/* Floating HTML Nodes */}
                   {graphData?.nodes.map((node) => {
-                    const pos = nodePositions[node.id];
+                    const pos = getNodePosition(node.id);
                     if (!pos) return null;
                     const isSelected = selectedNode?.id === node.id;
                     const isActor = node.type === "ACTOR";
