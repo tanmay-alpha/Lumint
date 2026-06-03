@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional, List, Any
+from app.schemas.xai import FeatureContributionSchema
 
 
 class IndicatorDetail(BaseModel):
@@ -35,6 +36,7 @@ class DocumentAnalysisResponse(BaseModel):
     layout_analysis: Optional[Any] = None
     ela_analysis: Optional[Any] = None
     indicators: Optional[List[IndicatorDetail]] = None
+    feature_contributions: Optional[List[FeatureContributionSchema]] = None
     explanation: Optional[List[str]] = None
     analysis_warnings: Optional[List[str]] = None   # NEW: surface sub-module failures
-    message: Optional[str] = None
+    message: Optional[str] = None

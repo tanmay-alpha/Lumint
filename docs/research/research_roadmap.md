@@ -18,16 +18,23 @@ This document outlines the roadmap for transitioning the **Lumint** platform int
 
 ---
 
-## 3. Current Implementation Status (Milestone R1)
-* **Dataset Manifest Engine**: Standardized schemas (`DatasetRecord`, `DatasetManifest`) for document, URL, UPI, and graph records.
-* **Metrics Suite**: Custom computation of classification performance (Accuracy, Precision, Recall, F1, FPR, FNR) and performance latency percentiles (P50, P95, P99) without heavy dependencies.
-* **Baseline Heuristics**: Controlled, reproducible baselines (`url_keyword_baseline`, `url_domain_length_baseline`, `document_metadata_baseline`, `upi_utr_format_baseline`).
-* **Evaluation Pipeline**: Experiment runner and markdown report generator.
+## 3. Current Implementation Status
+* **Milestone R1 (Research Foundation)**:
+  * Dataset Manifest Engine: Standardized schemas (`DatasetRecord`, `DatasetManifest`) for document, URL, UPI, and graph records.
+  * Metrics Suite: Custom computation of classification performance (Accuracy, Precision, Recall, F1, FPR, FNR) and performance latency percentiles (P50, P95, P99).
+  * Baseline Heuristics: Controlled, reproducible baselines.
+  * Evaluation Pipeline: Experiment runner and markdown report generator.
+* **Milestone R2 (Explainability & Fusion Engine)**:
+  * SHAP-compatible Feature Contribution Engine (`app/core/xai.py`).
+  * Cross-Modal Weighted Score Fusion & Renormalization (`app/core/fusion.py`).
+  * Correlation flag engine mapping cross-modal heuristics.
+  * Integration into DocShield and PhishShield API response schemas.
 
 ---
 
 ## 4. Pending Research Items
 * **Labeled Benchmark Ingestion**: Loading and labeling standardized fraud datasets.
-* **Ablation Studies**: Quantifying the contribution of individual modalities (e.g. comparing URL-only check vs URL+Graph checks).
-* **Baseline Comparison**: Running benchmark runs against external baselines (e.g., standard regex parsers or basic classifiers) on real-world datasets.
-* **Cross-Modal Fusion Modeling**: Formalizing the fusion weights using analytical models (e.g., Logistic Regression, SVM, or Random Forest).
+* **Ablation Studies**: Quantifying the contribution of individual modalities using the R2 cross-modal weights API.
+* **Baseline Comparison**: Running benchmark runs against external baselines on real-world datasets.
+* **Cross-Modal Fusion Modeling**: Formalizing the fusion weights using analytical models (e.g., Logistic Regression, SVM, or Random Forest) compared against the heuristic weights baseline.
+

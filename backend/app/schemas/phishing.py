@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import List, Optional, Any
+from app.schemas.xai import FeatureContributionSchema
 
 
 class TriggeredRule(BaseModel):
@@ -22,4 +23,5 @@ class PhishingCheckResponse(BaseModel):
     triggered_rules: List[TriggeredRule]
     domain_similarity_matches: List[DomainSimilarityMatch]
     phishing_fingerprint: Optional[Any] = None
-    message: str
+    feature_contributions: Optional[List[FeatureContributionSchema]] = None
+    message: str

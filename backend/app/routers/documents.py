@@ -82,6 +82,13 @@ async def analyze_document(file: UploadFile = File(...)):
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
+    # Compute Feature Contributions for research (XAI)
+    try:
+        from app.core.xai import get_feature_contributions
+        result["feature_contributions"] = get_feature_contributions(indicators=result.get("indicators"))
+    except Exception as e:
+        result["feature_contributions"] = []
+
     # Store Fraud DNA fingerprint silently
     try:
         fingerprint = generate_fingerprint(
@@ -98,4 +105,4 @@ async def analyze_document(file: UploadFile = File(...)):
             result["analysis_warnings"] = []
         result["analysis_warnings"].append(f"Fraud DNA fingerprint storage failed: {str(e)}")
 
-    return DocumentAnalysisResponse(**base, **result)
+    return DocumentAnalysisResponse(**base, **result)
