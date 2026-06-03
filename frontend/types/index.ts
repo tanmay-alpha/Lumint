@@ -217,3 +217,106 @@ export interface FraudDNAFingerprint {
   document_type_hint: string | null;
   created_at: string;
 }
+
+// ─── UPI Shield Types ────────────────────────────────────────────────────────
+
+export interface UPIAnalysisResult {
+  id: number;
+  timestamp: string;
+  event_type: string;
+  utr_number: string | null;
+  utr_valid: boolean;
+  utr_format: "phonepay" | "googlepay" | "paytm" | "unknown";
+  sender_upi_id: string;
+  receiver_upi_id: string;
+  amount: number;
+  transaction_date: string | null;
+  is_valid_utr: boolean;
+  font_anomalies_detected: boolean;
+  suspicious_handle_flagged: boolean;
+  risk_score: number;
+  risk_level: "CLEAN" | "SUSPICIOUS" | "HIGH" | "CRITICAL";
+  ai_fraud_explanation: string;
+  raw_ocr_text: string | null;
+  metadata_json: Record<string, unknown> | null;
+  // Derived fields used in UI (computed client-side from heuristics)
+  ela_tamper_regions?: number;
+  font_consistent?: boolean;
+  color_authentic?: boolean;
+  ocr_confidence?: number;
+  amount_extracted?: string | null;
+  app_detected?: string | null;
+  timestamp_extracted?: string | null;
+}
+
+export interface UTRVerificationResult {
+  utr_number: string;
+  is_valid: boolean;
+  risk_score: number;
+  risk_level: string;
+  known_fraud_match: boolean;
+  checks_passed: string[];
+  checks_failed: string[];
+  message: string;
+}
+
+export interface QRScanResult {
+  raw_uri: string;
+  pa: string | null;
+  pn: string | null;
+  am: string | null;
+  cu: string | null;
+  risk_score: number;
+  risk_level: string;
+  is_suspicious_handle: boolean;
+  message: string;
+}
+
+export interface UPIAIResult {
+  verdict: "GENUINE" | "SUSPICIOUS" | "FORGED";
+  confidence: number;
+  forgery_method: string | null;
+  evidence_points: string[];
+  analyst_note: string;
+  recommended_action: string;
+  model_used: string;
+  latency_ms: number;
+}
+
+// ─── AI Analysis Common Types ────────────────────────────────────────────────
+
+export interface AIAnalysisFeature {
+  name: string;
+  value: number;
+  contribution: number; // -100 to +100
+}
+
+export interface DocumentAIResponse {
+  verdict: string;
+  confidence: number;
+  risk_score: number;
+  attack_type: string | null;
+  analyst_note: string;
+  anomalies: string[];
+  recommended_action: string;
+  explanation: string;
+  features: AIAnalysisFeature[];
+  model_used: string;
+  latency_ms: number;
+}
+
+export interface PhishingAIResponse {
+  verdict: string;
+  confidence: number;
+  risk_score: number;
+  attack_vector: string | null;
+  target_brand: string | null;
+  ioc_list: string[];
+  analyst_note: string;
+  recommended_action: string;
+  explanation: string;
+  features: AIAnalysisFeature[];
+  model_used: string;
+  latency_ms: number;
+}
+

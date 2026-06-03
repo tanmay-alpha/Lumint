@@ -1,91 +1,119 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { twMerge } from "tailwind-merge";
 
 export interface ScoreRingProps extends React.HTMLAttributes<HTMLDivElement> {
-  score: number; // 0-100
-  size?: number; // width & height in px
+  score: number;       // 0–100
+  size?: 80 | 120 | 160 | number;
   label?: string;
+  animated?: boolean;
   className?: string;
+}
+
+function getScoreColor(score: number): string {
+  if (score >= 90) return "var(--color-critical)";
+  if (score >= 70) return "var(--color-danger)";
+  if (score >= 40) return "var(--color-warn)";
+  return "var(--color-safe)";
+}
+
+function getScoreTextClass(score: number): string {
+  if (score >= 90) return "text-[var(--color-critical)]";
+  if (score >= 70) return "text-[var(--color-danger)]";
+  if (score >= 40) return "text-[var(--color-warn)]";
+  return "text-[var(--color-safe)]";
+}
+
+function getTrackColor(score: number): string {
+  if (score >= 90) return "rgba(124,58,237,0.12)";
+  if (score >= 70) return "rgba(239,68,68,0.12)";
+  if (score >= 40) return "rgba(245,158,11,0.12)";
+  return "rgba(16,185,129,0.12)";
 }
 
 export const ScoreRing = ({
   score,
   size = 120,
   label = "Risk Score",
+  animated = true,
   className,
   ...props
 }: ScoreRingProps) => {
-  // Normalize score between 0 and 100
-  const normalizedScore = Math.min(Math.max(score, 0), 100);
+  const clamped   = Math.min(Math.max(score, 0), 100);
+  const sw        = Math.max(size * 0.075, 6);
+  const radius    = (size - sw) / 2;
+  const circ      = 2 * Math.PI * radius;
+  const offset    = circ - (circ * clamped) / 100;
+  const color     = getScoreColor(clamped);
+  const track     = getTrackColor(clamped);
+  const textClass = getScoreTextClass(clamped);
 
-  // SVG circle calculations
-  const strokeWidth = size * 0.08;
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (circumference * normalizedScore) / 100;
+  // Counter animation
+  const [displayed, setDisplayed] = useState(animated ? 0 : clamped);
+  useEffect(() => {
+    if (!animated) return;
+    let frame: number;
+    const start = performance.now();
+    const duration = 900;
+    const animate = (now: number) => {
+      const t = Math.min((now - start) / duration, 1);
+      const ease = 1 - Math.pow(1 - t, 3);
+      setDisplayed(Math.round(ease * clamped));
+      if (t < 1) frame = requestAnimationFrame(animate);
+    };
+    frame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(frame);
+  }, [clamped, animated]);
 
-  // Determine color based on threshold
-  // green < 40, amber < 70, red >= 70
-  let strokeColor = "var(--risk-safe)";
-  let textColor = "text-risk-safe";
-  let bgColorClass = "stroke-risk-safe/10";
-  if (normalizedScore >= 70) {
-    strokeColor = "var(--risk-critical)";
-    textColor = "text-risk-critical";
-    bgColorClass = "stroke-risk-critical/10";
-  } else if (normalizedScore >= 40) {
-    strokeColor = "var(--risk-high)";
-    textColor = "text-risk-high";
-    bgColorClass = "stroke-risk-high/10";
-  }
+  const fontSize = size >= 160 ? "text-4xl" : size >= 120 ? "text-3xl" : "text-2xl";
+  const labelSize = size >= 120 ? "text-[10px]" : "text-[9px]";
 
   return (
     <div
-      className={twMerge("relative flex flex-col items-center justify-center", className)}
+      className={twMerge("relative flex flex-col items-center justify-center shrink-0", className)}
       style={{ width: size, height: size }}
       {...props}
     >
       <svg
         width={size}
         height={size}
-        className="absolute -rotate-90 transform"
+        className="absolute -rotate-90"
+        aria-hidden="true"
       >
-        {/* Background Circle */}
+        {/* Track */}
         <circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          className={twMerge("fill-transparent", bgColorClass)}
-          strokeWidth={strokeWidth}
+          fill="none"
+          stroke={track}
+          strokeWidth={sw}
         />
-        {/* Foreground Circle */}
+        {/* Filled arc */}
         <motion.circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          fill="transparent"
-          stroke={strokeColor}
-          strokeWidth={strokeWidth}
-          strokeDasharray={circumference}
+          fill="none"
+          stroke={color}
+          strokeWidth={sw}
+          strokeDasharray={circ}
           strokeLinecap="round"
-          initial={{ strokeDashoffset: circumference }}
-          animate={{ strokeDashoffset }}
-          transition={{ duration: 1, ease: "easeOut" }}
+          initial={{ strokeDashoffset: circ }}
+          animate={{ strokeDashoffset: offset }}
+          transition={{ duration: 0.9, ease: [0.34, 1.56, 0.64, 1] }}
         />
       </svg>
 
-      {/* Content overlays */}
-      <div className="z-10 flex flex-col items-center justify-center text-center">
-        <span
-          className={twMerge("font-mono text-3xl font-bold tracking-tight", textColor)}
-        >
-          {normalizedScore}
+      {/* Center content */}
+      <div className="relative z-10 flex flex-col items-center justify-center text-center">
+        <span className={twMerge("font-mono font-bold tracking-tight", fontSize, textClass)}>
+          {displayed}
         </span>
         {label && (
-          <span className="mt-0.5 text-[10px] font-semibold tracking-wider text-text-secondary uppercase">
+          <span className={twMerge("mt-0.5 font-sans font-semibold tracking-widest text-[var(--color-text-muted)] uppercase", labelSize)}>
             {label}
           </span>
         )}

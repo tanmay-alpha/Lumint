@@ -21,8 +21,24 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "SentinelX - Premium Fraud Intelligence Platform",
-  description: "AI-Powered Banking Fraud Intelligence Operating System. Digital forensics and threat mapping.",
+  title: "Lumint — AI-Powered Fraud Intelligence Platform",
+  description:
+    "Illuminate the threat. Before it strikes. Lumint is a unified multimodal fraud intelligence platform for India's digital payment ecosystem — detecting fraud across documents, URLs, UPI screenshots, and fraud campaign networks.",
+  keywords: [
+    "fraud detection",
+    "AI",
+    "UPI fraud",
+    "phishing",
+    "document forensics",
+    "India",
+    "fintech",
+  ],
+  authors: [{ name: "Lumint Research" }],
+  openGraph: {
+    title: "Lumint — AI Fraud Intelligence",
+    description: "Illuminate the threat. Before it strikes.",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
@@ -35,7 +51,7 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${instrumentSerif.variable} ${dmMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-bg-base text-text-primary font-sans flex flex-col">
+      <body className="min-h-full bg-canvas text-text-primary font-sans flex flex-col">
         {children}
       </body>
     </html>
