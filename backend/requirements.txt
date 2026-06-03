@@ -1,4 +1,5 @@
 fastapi==0.111.0
+groq==1.4.0
 uvicorn[standard]==0.29.0
 sqlalchemy==2.0.30
 pydantic-settings==2.2.1
