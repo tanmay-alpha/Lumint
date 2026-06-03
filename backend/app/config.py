@@ -1,9 +1,9 @@
-from pydantic import field_validator, model_validator
+﻿from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import ArgumentError
 
-DEFAULT_DEV_DATABASE_URL = "sqlite+pysqlite:///./backend/data/sentinelx_dev.db"
+DEFAULT_DEV_DATABASE_URL = "sqlite+pysqlite:///./backend/data/lumint_dev.db"
 TEST_DATABASE_URL = "sqlite+pysqlite:///:memory:"
 
 _INVALID_PLACEHOLDERS = {"", "your_database_url_here", "database_url_here", "<database_url>"}
@@ -11,16 +11,17 @@ _PRODUCTION_ENVS = {"prod", "production"}
 
 
 class Settings(BaseSettings):
-    APP_NAME: str = "SentinelX"
+    APP_NAME: str = "Lumint"
     APP_VERSION: str = "1.0.0"
     APP_ENV: str = "development"
     DEBUG: bool = False
     DATABASE_URL: str = DEFAULT_DEV_DATABASE_URL
+    GROQ_API_KEY: str = ""
     # Comma-separated origins — set ALLOWED_ORIGINS in Vercel env vars
     ALLOWED_ORIGINS: str = (
         "http://localhost:3000,"
         "http://localhost:3001,"
-        "https://fraud-intelligence.vercel.app,"
+        "https://lumint.vercel.app,"
         "https://*.vercel.app"
     )
 

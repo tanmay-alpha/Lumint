@@ -1,7 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.routers import health, documents, fraud_dna, phishing, dashboard
+from app.database import engine, Base
+from app.models.models import UPIShieldEvent, Case, ThreatFeedAlert  # Ensure models are imported for metadata registration
+from app.routers import health, documents, fraud_dna, phishing, dashboard, ai, upi, cases, threats
+
+# Automatic database initialization
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -20,7 +25,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for router in (health.router, documents.router, fraud_dna.router, phishing.router, dashboard.router):
+for router in (
+    health.router, 
+    documents.router, 
+    fraud_dna.router, 
+    phishing.router, 
+    dashboard.router, 
+    ai.router,
+    upi.router,
+    cases.router,
+    threats.router
+):
     app.include_router(router)
 
 
