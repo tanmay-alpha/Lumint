@@ -1,0 +1,248 @@
+{
+  "module": "phish",
+  "models": {
+    "LogisticRegression": {
+      "metrics": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "auc": 1.0,
+        "mcc": 1.0,
+        "logloss": 0.0
+      },
+      "confidence_intervals": {
+        "f1": {
+          "metric": "f1",
+          "point_estimate": 1.0,
+          "ci_lower": 1.0,
+          "ci_upper": 1.0,
+          "confidence": 0.95,
+          "n_replicates": 2000,
+          "method": "stratified_bootstrap_percentile"
+        },
+        "precision": {
+          "metric": "precision",
+          "point_estimate": 1.0,
+          "ci_lower": 1.0,
+          "ci_upper": 1.0,
+          "confidence": 0.95,
+          "n_replicates": 2000,
+          "method": "stratified_bootstrap_percentile"
+        },
+        "recall": {
+          "metric": "recall",
+          "point_estimate": 1.0,
+          "ci_lower": 1.0,
+          "ci_upper": 1.0,
+          "confidence": 0.95,
+          "n_replicates": 2000,
+          "method": "stratified_bootstrap_percentile"
+        },
+        "auc": {
+          "metric": "auc",
+          "point_estimate": 1.0,
+          "ci_lower": 1.0,
+          "ci_upper": 1.0,
+          "confidence": 0.95,
+          "n_replicates": 2000,
+          "method": "stratified_bootstrap_percentile"
+        },
+        "mcc": {
+          "metric": "mcc",
+          "point_estimate": 1.0,
+          "ci_lower": 1.0,
+          "ci_upper": 1.0,
+          "confidence": 0.95,
+          "n_replicates": 2000,
+          "method": "stratified_bootstrap_percentile"
+        }
+      },
+      "auc_delong_ci": {
+        "auc": 1.0,
+        "ci_lower": 1.0,
+        "ci_upper": 1.0,
+        "se": 0.0,
+        "confidence": 0.95
+      }
+    },
+    "RandomForest": {
+      "metrics": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "auc": 1.0,
+        "mcc": 1.0,
+        "logloss": 0.0
+      },
+      "confidence_intervals": {
+        "f1": {
+          "metric": "f1",
+          "point_estimate": 1.0,
+          "ci_lower": 1.0,
+          "ci_upper": 1.0,
+          "confidence": 0.95,
+          "n_replicates": 2000,
+          "method": "stratified_bootstrap_percentile"
+        },
+        "precision": {
+          "metric": "precision",
+          "point_estimate": 1.0,
+          "ci_lower": 1.0,
+          "ci_upper": 1.0,
+          "confidence": 0.95,
+          "n_replicates": 2000,
+          "method": "stratified_bootstrap_percentile"
+        },
+        "recall": {
+          "metric": "recall",
+          "point_estimate": 1.0,
+          "ci_lower": 1.0,
+          "ci_upper": 1.0,
+          "confidence": 0.95,
+          "n_replicates": 2000,
+          "method": "stratified_bootstrap_percentile"
+        },
+        "auc": {
+          "metric": "auc",
+          "point_estimate": 1.0,
+          "ci_lower": 1.0,
+          "ci_upper": 1.0,
+          "confidence": 0.95,
+          "n_replicates": 2000,
+          "method": "stratified_bootstrap_percentile"
+        },
+        "mcc": {
+          "metric": "mcc",
+          "point_estimate": 1.0,
+          "ci_lower": 1.0,
+          "ci_upper": 1.0,
+          "confidence": 0.95,
+          "n_replicates": 2000,
+          "method": "stratified_bootstrap_percentile"
+        }
+      },
+      "auc_delong_ci": {
+        "auc": 1.0,
+        "ci_lower": 1.0,
+        "ci_upper": 1.0,
+        "se": 0.0,
+        "confidence": 0.95
+      }
+    },
+    "GradientBoosting": {
+      "metrics": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "auc": 1.0,
+        "mcc": 1.0,
+        "logloss": 0.0
+      },
+      "confidence_intervals": {
+        "f1": {
+          "metric": "f1",
+          "point_estimate": 1.0,
+          "ci_lower": 1.0,
+          "ci_upper": 1.0,
+          "confidence": 0.95,
+          "n_replicates": 2000,
+          "method": "stratified_bootstrap_percentile"
+        },
+        "precision": {
+          "metric": "precision",
+          "point_estimate": 1.0,
+          "ci_lower": 1.0,
+          "ci_upper": 1.0,
+          "confidence": 0.95,
+          "n_replicates": 2000,
+          "method": "stratified_bootstrap_percentile"
+        },
+        "recall": {
+          "metric": "recall",
+          "point_estimate": 1.0,
+          "ci_lower": 1.0,
+          "ci_upper": 1.0,
+          "confidence": 0.95,
+          "n_replicates": 2000,
+          "method": "stratified_bootstrap_percentile"
+        },
+        "auc": {
+          "metric": "auc",
+          "point_estimate": 1.0,
+          "ci_lower": 1.0,
+          "ci_upper": 1.0,
+          "confidence": 0.95,
+          "n_replicates": 2000,
+          "method": "stratified_bootstrap_percentile"
+        },
+        "mcc": {
+          "metric": "mcc",
+          "point_estimate": 1.0,
+          "ci_lower": 1.0,
+          "ci_upper": 1.0,
+          "confidence": 0.95,
+          "n_replicates": 2000,
+          "method": "stratified_bootstrap_percentile"
+        }
+      },
+      "auc_delong_ci": {
+        "auc": 1.0,
+        "ci_lower": 1.0,
+        "ci_upper": 1.0,
+        "se": 0.0,
+        "confidence": 0.95
+      }
+    }
+  },
+  "significance_tests": {
+    "RF_vs_LR": {
+      "statistic": 0.0,
+      "p_value": 1.0,
+      "significant": false,
+      "alpha": 0.05,
+      "interpretation": "Model A is not significantly different from Model B",
+      "b": 0,
+      "c": 0
+    },
+    "GB_vs_RF": {
+      "statistic": 0.0,
+      "p_value": 1.0,
+      "significant": false,
+      "alpha": 0.05,
+      "interpretation": "Model A is not significantly different from Model B",
+      "b": 0,
+      "c": 0
+    },
+    "GB_vs_LR": {
+      "statistic": 0.0,
+      "p_value": 1.0,
+      "significant": false,
+      "alpha": 0.05,
+      "interpretation": "Model A is not significantly different from Model B",
+      "b": 0,
+      "c": 0
+    }
+  },
+  "auc_comparisons": {
+    "RF_vs_LR": {
+      "z_statistic": 0.0,
+      "p_value": 1.0,
+      "auc_a": 1.0,
+      "auc_b": 1.0
+    },
+    "GB_vs_RF": {
+      "z_statistic": 0.0,
+      "p_value": 1.0,
+      "auc_a": 1.0,
+      "auc_b": 1.0
+    },
+    "GB_vs_LR": {
+      "z_statistic": 0.0,
+      "p_value": 1.0,
+      "auc_a": 1.0,
+      "auc_b": 1.0
+    }
+  },
+  "best_model": "LogisticRegression",
+  "best_model_justification": "LogisticRegression was selected as the best model because it achieved the highest mean F1-score during stratified 5-fold cross-validation. Significance tests (McNemar and DeLong AUC) were conducted to verify if the performance improvements are statistically significant."
+}

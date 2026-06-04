@@ -166,3 +166,32 @@ if __name__ == "__main__":
 
     print(f"Report generated: {report_path}")
     print(report)
+
+    # R10 Statistical validation layer
+    from ml.stats.report import generate_statistical_report
+    from ml.stats.tables import generate_paper_table_with_ci
+
+    all_md_tables = ["# R10: Model Uncertainty & Significance Reports\n"]
+    for module in ["phish", "doc", "upi"]:
+        print(f"Running statistical analysis for {module}...")
+        try:
+            stats_dict = generate_statistical_report(module)
+            # Save JSON report
+            json_report_path = REPORTS_DIR / f"r10_{module}_statistical.json"
+            with open(json_report_path, "w", encoding="utf-8") as f:
+                json.dump(stats_dict, f, indent=2)
+            print(f"Saved {json_report_path}")
+
+            # Generate markdown table
+            md_table = generate_paper_table_with_ci(stats_dict)
+            all_md_tables.append(md_table)
+        except Exception as e:
+            print(f"Error generating statistical report for {module}: {e}")
+            import traceback
+            traceback.print_exc()
+
+    r10_tables_path = REPORTS_DIR / "r10_tables.md"
+    with open(r10_tables_path, "w", encoding="utf-8") as f:
+        f.write("\n\n".join(all_md_tables))
+    print(f"Saved {r10_tables_path}")
+
