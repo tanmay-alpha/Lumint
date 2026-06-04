@@ -77,14 +77,15 @@ async def analyze_document(
         "content_type": file.content_type or "unknown",
     }
 
+    from fastapi.concurrency import run_in_threadpool
     if suffix != ".pdf":
         try:
-            result = analyze_image_document(save_path, len(contents))
+            result = await run_in_threadpool(analyze_image_document, save_path, len(contents))
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Image analysis failed: {str(e)}")
     else:
         try:
-            result = analyze_pdf_document(save_path, len(contents))
+            result = await run_in_threadpool(analyze_pdf_document, save_path, len(contents))
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 

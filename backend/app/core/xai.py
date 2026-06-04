@@ -4,6 +4,11 @@ from typing import Optional, Union, List, Dict, Any
 import numpy as np
 from pydantic import BaseModel, Field
 
+try:
+    import shap
+except ImportError:
+    shap = None
+
 logger = logging.getLogger(__name__)
 
 class ContributionDirection(str, Enum):
@@ -162,9 +167,8 @@ def get_feature_contributions(
     Main XAI interface with SHAP explainer and robust fallback logic.
     """
     # Guarded SHAP path
-    if model is not None and features is not None:
+    if model is not None and features is not None and shap is not None:
         try:
-            import shap
             import numpy as np
 
             # Unwrap CalibratedClassifierCV if needed

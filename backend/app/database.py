@@ -16,7 +16,10 @@ def _engine_options(database_url: str) -> dict[str, Any]:
     url = make_url(database_url)
 
     if url.drivername.startswith("sqlite"):
-        options["connect_args"] = {"check_same_thread": False}
+        options["connect_args"] = {
+            "check_same_thread": False,
+            "timeout": 30
+        }
         if url.database in (None, "", ":memory:"):
             options["poolclass"] = StaticPool
 
@@ -27,6 +30,18 @@ engine = create_engine(
     settings.DATABASE_URL,
     **_engine_options(settings.DATABASE_URL),
 )
+
+from sqlalchemy import event
+
+@event.listens_for(engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    url = make_url(settings.DATABASE_URL)
+    if url.drivername.startswith("sqlite"):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.close()
+
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

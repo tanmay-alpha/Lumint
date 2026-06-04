@@ -44,6 +44,20 @@ def parse_upi_ocr(text: str) -> dict:
         "amount": amount
     }
 
+
+def save_upi_event_bg(event_data: dict, metadata_json: dict):
+    from app.database import SessionLocal
+    db = SessionLocal()
+    try:
+        db_event = UPIShieldEvent(**event_data, metadata_json=metadata_json)
+        db.add(db_event)
+        db.commit()
+    except Exception as e:
+        import logging
+        logging.getLogger("lumint.routers.upi").error(f"Failed to save UPI event in background: {str(e)}")
+    finally:
+        db.close()
+
 @router.post("/analyze-screenshot", response_model=UPIAnalyzeResponse)
 @router.post("/analyze", response_model=UPIAnalyzeResponse)
 async def analyze_screenshot(
@@ -68,9 +82,10 @@ async def analyze_screenshot(
         shutil.copyfileobj(file.file, tmp)
         tmp_path = Path(tmp.name)
         
+    from fastapi.concurrency import run_in_threadpool
     try:
         # 2. Run UPI screenshot forensics analyzer pipeline
-        res = analyze_upi_screenshot(tmp_path, custom_ocr_text=custom_ocr or custom_ocr_text)
+        res = await run_in_threadpool(analyze_upi_screenshot, tmp_path, custom_ocr or custom_ocr_text)
     finally:
         try:
             tmp_path.unlink()
@@ -119,63 +134,67 @@ async def analyze_screenshot(
         font_anomalies_detected = not res["font"]["font_consistent"]
         suspicious_handle_flagged = any(ind["rule"] == "suspicious_keywords" for ind in res["indicators"])
 
-    # 5. Populate and commit to database
-    db_event = UPIShieldEvent(
+    # 5. Populate and commit to database (Backgrounded)
+    event_timestamp = datetime.now(timezone.utc)
+    event_data = {
+        "event_type": "screenshot",
+        "utr_number": utr_val,
+        "sender_upi_id": res["sender_upi_id"],
+        "receiver_upi_id": res["receiver_upi_id"],
+        "amount": amount_val,
+        "transaction_date": event_timestamp.isoformat(),
+        "is_valid_utr": 1 if is_valid_utr else 0,
+        "font_anomalies_detected": 1 if font_anomalies_detected else 0,
+        "suspicious_handle_flagged": 1 if suspicious_handle_flagged else 0,
+        "risk_score": risk_score,
+        "risk_level": risk_level,
+        "ai_fraud_explanation": ai_fraud_explanation,
+        "raw_ocr_text": res["ocr"]["text"]
+    }
+    
+    meta_json = {
+        "file_name": file.filename,
+        "file_size": getattr(file, "size", 0) or 0,
+        "app_detected": res["app_detected"],
+        "ela": {
+            "ela_score": res["ela"]["ela_score"],
+            "tamper_suspected": res["ela"]["tamper_suspected"],
+            "hotspot_ratio": res["ela"]["hotspot_ratio"]
+        },
+        "font": {
+            "font_consistent": res["font"]["font_consistent"],
+            "height_variance": res["font"]["height_variance"]
+        },
+        "color": {
+            "color_authentic": res["color"]["color_authentic"],
+            "distance": res["color"]["distance"]
+        },
+        "feature_contributions": res["feature_contributions"]
+    }
+
+    background_tasks.add_task(
+        save_upi_event_bg,
+        event_data,
+        meta_json
+    )
+
+    response_obj = UPIAnalyzeResponse(
+        id=None,
+        timestamp=event_timestamp,
         event_type="screenshot",
         utr_number=utr_val,
         sender_upi_id=res["sender_upi_id"],
         receiver_upi_id=res["receiver_upi_id"],
         amount=amount_val,
-        transaction_date=datetime.now(timezone.utc).isoformat(),
-        is_valid_utr=1 if is_valid_utr else 0,
-        font_anomalies_detected=1 if font_anomalies_detected else 0,
-        suspicious_handle_flagged=1 if suspicious_handle_flagged else 0,
+        transaction_date=event_timestamp.isoformat(),
+        is_valid_utr=is_valid_utr,
+        font_anomalies_detected=font_anomalies_detected,
+        suspicious_handle_flagged=suspicious_handle_flagged,
         risk_score=risk_score,
         risk_level=risk_level,
         ai_fraud_explanation=ai_fraud_explanation,
         raw_ocr_text=res["ocr"]["text"],
-        metadata_json={
-            "file_name": file.filename,
-            "file_size": getattr(file, "size", 0) or 0,
-            "app_detected": res["app_detected"],
-            "ela": {
-                "ela_score": res["ela"]["ela_score"],
-                "tamper_suspected": res["ela"]["tamper_suspected"],
-                "hotspot_ratio": res["ela"]["hotspot_ratio"]
-            },
-            "font": {
-                "font_consistent": res["font"]["font_consistent"],
-                "height_variance": res["font"]["height_variance"]
-            },
-            "color": {
-                "color_authentic": res["color"]["color_authentic"],
-                "distance": res["color"]["distance"]
-            },
-            "feature_contributions": res["feature_contributions"]
-        }
-    )
-
-    db.add(db_event)
-    db.commit()
-    db.refresh(db_event)
-
-    response_obj = UPIAnalyzeResponse(
-        id=db_event.id,
-        timestamp=db_event.timestamp,
-        event_type=db_event.event_type,
-        utr_number=db_event.utr_number,
-        sender_upi_id=db_event.sender_upi_id,
-        receiver_upi_id=db_event.receiver_upi_id,
-        amount=db_event.amount,
-        transaction_date=db_event.transaction_date,
-        is_valid_utr=db_event.is_valid_utr == 1,
-        font_anomalies_detected=db_event.font_anomalies_detected == 1,
-        suspicious_handle_flagged=db_event.suspicious_handle_flagged == 1,
-        risk_score=db_event.risk_score,
-        risk_level=db_event.risk_level,
-        ai_fraud_explanation=db_event.ai_fraud_explanation,
-        raw_ocr_text=db_event.raw_ocr_text,
-        metadata_json=db_event.metadata_json
+        metadata_json=meta_json
     )
     if ground_truth is not None:
         from ml.drift.registry import DriftRegistry
