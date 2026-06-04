@@ -71,3 +71,9 @@ data/private/
 paper/tables/generated_*.json
 paper/tables/generated_*.csv
 paper/figures/generated_*.png
+
+# Milestone R12 — Real Data Integration exclusions
+backend/data/real/
+backend/data/raw/
+*.csv
+!backend/data/*.csv
