@@ -17,6 +17,7 @@ import {
   X,
   Bell,
   Zap,
+  Beaker,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { twMerge } from "tailwind-merge";
@@ -29,6 +30,7 @@ const NAV_ITEMS = [
   { name: "Fraud DNA",    href: "/fraud-dna",             icon: GitBranch,       desc: "Campaign network graph" },
   { name: "UPI Shield",   href: "/upi-shield",            icon: Smartphone,      desc: "Payment screenshot scan" },
   { name: "Activity",     href: "/events",                icon: Activity,        desc: "Event timeline" },
+  { name: "Research",     href: "/dashboard/research",    icon: Beaker,          desc: "Statistical analysis & paper" },
   { name: "Settings",     href: "/settings",              icon: Settings,        desc: "Configuration" },
 ] as const;
 
@@ -39,6 +41,7 @@ const PAGE_LABELS: Record<string, string> = {
   "/fraud-dna":   "Fraud DNA · Campaign Network",
   "/upi-shield":  "UPI Shield · Screenshot Analysis",
   "/events":      "Activity Timeline",
+  "/dashboard/research": "Lumint Research Results",
   "/settings":    "Settings",
 };
 
@@ -79,16 +82,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const sidebarWidth = collapsed ? 64 : 240;
 
-  const NavItem = ({
-    item,
-    mobile = false,
-  }: {
-    item: (typeof NAV_ITEMS)[number];
-    mobile?: boolean;
-  }) => {
+  const renderNavItem = (
+    item: (typeof NAV_ITEMS)[number],
+    mobile = false
+  ) => {
     const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
     return (
       <Link
+        key={item.href}
         href={item.href}
         onClick={() => setMobileOpen(false)}
         className={twMerge(
@@ -146,7 +147,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   };
 
-  const SidebarContent = ({ mobile = false }: { mobile?: boolean }) => (
+  const renderSidebarContent = (mobile = false) => (
     <>
       {/* Logo */}
       <div className={twMerge("px-4 py-5 border-b border-[var(--color-border)]", collapsed && !mobile && "px-3.5")}>
@@ -161,9 +162,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Nav */}
       <nav className={twMerge("flex-1 py-4 space-y-0.5", collapsed && !mobile ? "px-2" : "px-3")}>
-        {NAV_ITEMS.map((item) => (
-          <NavItem key={item.href} item={item} mobile={mobile} />
-        ))}
+        {NAV_ITEMS.map((item) => renderNavItem(item, mobile))}
       </nav>
 
       {/* Footer */}
@@ -189,7 +188,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         className="hidden lg:flex flex-col shrink-0 bg-[var(--color-surface)] border-r border-[var(--color-border)] relative z-30 overflow-hidden"
         style={{ minWidth: sidebarWidth }}
       >
-        <SidebarContent />
+        {renderSidebarContent()}
 
         {/* Collapse toggle */}
         <button
@@ -225,7 +224,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               >
                 <X className="h-4 w-4" />
               </button>
-              <SidebarContent mobile />
+              {renderSidebarContent(true)}
             </motion.aside>
           </>
         )}

@@ -1,16 +1,10 @@
 import { 
   StatsResponse, 
   RecentEventsResponse, 
-  RiskDistributionResponse, 
-  IndicatorSummaryResponse,
-  DocumentAnalysisResponse,
-  PhishingCheckResponse,
-  PhishingExplainResponse,
-  CampaignsResponse,
-  GraphResponse,
-  ThreatSummaryResponse,
-  RecentEvent,
-  RiskLevel
+  CampaignsResponse, 
+  GraphResponse, 
+  ThreatSummaryResponse, 
+  RecentEvent
 } from "@/types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -133,7 +127,7 @@ const mockEvents: RecentEvent[] = [
   }
 ];
 
-const mockStats: StatsResponse = {
+export const mockStats: StatsResponse = {
   total_events: 148,
   document_events: 64,
   url_events: 84,

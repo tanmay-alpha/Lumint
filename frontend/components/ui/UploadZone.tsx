@@ -2,7 +2,7 @@
 
 import React, { useCallback, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { UploadCloud, X, File, Image } from "lucide-react";
+import { UploadCloud, X, File, Image as ImageIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 export interface UploadZoneProps {
@@ -86,10 +86,10 @@ export const UploadZone = ({
           "relative flex flex-col items-center justify-center gap-3 rounded-[16px] border-2 border-dashed",
           "cursor-pointer transition-all duration-200 min-h-[180px] p-8 text-center",
           isDragging
-            ? "border-[var(--color-accent)] bg-[var(--color-accent-subtle)]"
-            : selected
-            ? "border-[var(--color-border-strong)] bg-[var(--color-surface)]"
-            : "border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-accent)] hover:bg-[var(--color-accent-subtle)]",
+             ? "border-[var(--color-accent)] bg-[var(--color-accent-subtle)]"
+             : selected
+             ? "border-[var(--color-border-strong)] bg-[var(--color-surface)]"
+             : "border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-accent)] hover:bg-[var(--color-accent-subtle)]",
           disabled && "opacity-50 cursor-not-allowed"
         )}
       >
@@ -113,7 +113,7 @@ export const UploadZone = ({
             >
               {/* Icon */}
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--color-accent-subtle)] text-[var(--color-accent)]">
-                {isImage ? <Image className="h-6 w-6" /> : <File className="h-6 w-6" />}
+                {isImage ? <ImageIcon className="h-6 w-6" /> : <File className="h-6 w-6" />}
               </div>
 
               {/* File name + size */}

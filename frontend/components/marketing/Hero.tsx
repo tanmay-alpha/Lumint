@@ -3,8 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight, Play, Eye } from "lucide-react";
-import { twMerge } from "tailwind-merge";
+import { ArrowRight, Eye } from "lucide-react";
 
 interface CountUpProps {
   end: number;

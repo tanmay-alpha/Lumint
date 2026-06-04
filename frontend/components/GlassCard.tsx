@@ -13,7 +13,6 @@ interface GlassCardProps extends React.ComponentPropsWithoutRef<typeof motion.di
 export const GlassCard: React.FC<GlassCardProps> = ({
   children,
   hoverEffect = true,
-  tiltEffect = false,
   className,
   delay = 0,
   ...props

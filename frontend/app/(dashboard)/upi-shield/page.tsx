@@ -506,7 +506,7 @@ export default function UPIShieldPage() {
                         {/* Analyst note */}
                         <div className="border-l-2 border-[var(--color-ai-border)] pl-4">
                           <p className="text-[13px] italic font-display text-[var(--color-text-secondary)] leading-relaxed">
-                            "{aiResult.analyst_note}"
+                            &ldquo;{aiResult.analyst_note}&rdquo;
                           </p>
                         </div>
 

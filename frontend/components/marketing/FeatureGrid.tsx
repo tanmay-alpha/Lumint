@@ -2,7 +2,7 @@
 
 import React from "react";
 import { GlassCard } from "../ui/GlassCard";
-import { ShieldAlert, Network, Fingerprint, Eye, Search, AlertCircle } from "lucide-react";
+import { ShieldAlert, Network, Fingerprint } from "lucide-react";
 import { motion } from "framer-motion";
 
 export const FeatureGrid = () => {
