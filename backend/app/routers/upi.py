@@ -4,7 +4,7 @@ import shutil
 from datetime import datetime, timezone
 from typing import Optional
 from pathlib import Path
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, BackgroundTasks
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.models import UPIShieldEvent
@@ -47,6 +47,7 @@ def parse_upi_ocr(text: str) -> dict:
 @router.post("/analyze-screenshot", response_model=UPIAnalyzeResponse)
 @router.post("/analyze", response_model=UPIAnalyzeResponse)
 async def analyze_screenshot(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     custom_ocr: Optional[str] = Form(None),
     custom_ocr_text: Optional[str] = Form(None),
@@ -88,6 +89,7 @@ async def analyze_screenshot(
             pass
             
     # 4. Integrate AI check if requested
+    ai_report = None
     if run_ai:
         ai_report = await analyze_upi_screenshot_ai(
             ocr_text=res["ocr"]["text"],
@@ -179,6 +181,28 @@ async def analyze_screenshot(
         from ml.drift.registry import DriftRegistry
         y_pred = 1 if response_obj.risk_score >= 50 else 0
         DriftRegistry.update_all("upi", ground_truth, y_pred)
+
+    from ml.drift.registry import DriftRegistry
+    try:
+        drift_signal = DriftRegistry.get("upi").get_current_signal()
+    except Exception:
+        drift_signal = {"status": "stable"}
+
+    from app.core.event_publisher import publish_threat_event
+    background_tasks.add_task(
+        publish_threat_event,
+        module="upi",
+        detection_result={
+            "amount": amount_val,
+            "risk_score": risk_score,
+            "risk_level": risk_level,
+            "font_anomalies_detected": font_anomalies_detected,
+            "suspicious_handle_flagged": suspicious_handle_flagged
+        },
+        ai_result=ai_report,
+        drift_signal=drift_signal
+    )
+
     return response_obj
 
 

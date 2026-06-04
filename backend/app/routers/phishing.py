@@ -13,6 +13,9 @@ from app.schemas.phishing import PhishingCheckResponse
 router = APIRouter(prefix="/api/phishing", tags=["phishing"])
 
 
+from fastapi import APIRouter, HTTPException, BackgroundTasks
+from app.core.event_publisher import publish_threat_event
+
 class PhishingCheckRequest(BaseModel):
     url: str
     ground_truth: Optional[int] = None
@@ -113,12 +116,26 @@ def _analyze_single(raw: str) -> PhishingCheckResponse:
 
 
 @router.post("/check", response_model=PhishingCheckResponse)
-def check_url(body: PhishingCheckRequest):
+async def check_url(body: PhishingCheckRequest, background_tasks: BackgroundTasks):
     res = _analyze_single(body.url)
     if body.ground_truth is not None:
         from ml.drift.registry import DriftRegistry
         y_pred = 1 if res.risk_score >= 50 else 0
         DriftRegistry.update_all("phish", body.ground_truth, y_pred)
+    
+    from ml.drift.registry import DriftRegistry
+    try:
+        drift_signal = DriftRegistry.get("phish").get_current_signal()
+    except Exception:
+        drift_signal = {"status": "stable"}
+        
+    background_tasks.add_task(
+        publish_threat_event,
+        module="phish",
+        detection_result=res.model_dump(),
+        ai_result=None,
+        drift_signal=drift_signal
+    )
     return res
 
 

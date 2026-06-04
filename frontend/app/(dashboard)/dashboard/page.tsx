@@ -19,10 +19,13 @@ import {
   Fingerprint
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useThreatStream } from "@/hooks/useThreatStream";
+import LiveStatsBar from "@/components/dashboard/LiveStatsBar";
 
 export default function DashboardOverviewPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [events, setEvents] = useState<RecentEvent[]>([]);
+  const { events: liveEvents, status: wsStatus } = useThreatStream(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
@@ -91,6 +94,9 @@ export default function DashboardOverviewPage() {
 
   return (
     <div className="space-y-8">
+      {/* Live Threat Stats Bar */}
+      <LiveStatsBar events={liveEvents} connectionStatus={wsStatus} />
+
       {/* Top Welcome Title bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

@@ -25,6 +25,22 @@
       "auc": 1.0,
       "mcc": 1.0,
       "logloss": 0.0
+    },
+    "LightGBM": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "auc": 1.0,
+      "mcc": 1.0,
+      "logloss": 0.0
+    },
+    "XGBoost": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "auc": 1.0,
+      "mcc": 1.0,
+      "logloss": 0.0005
     }
   },
   "test_set": {
@@ -39,5 +55,5 @@
   "n_test": 4500,
   "n_features": 2025,
   "random_state": 42,
-  "timestamp": "2026-06-03T17:22:54.111745+00:00"
+  "timestamp": "2026-06-04T21:22:36.012442+00:00"
 }

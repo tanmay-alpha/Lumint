@@ -39,6 +39,8 @@ from sklearn.metrics import (
     matthews_corrcoef,
     log_loss,
 )
+from lightgbm import LGBMClassifier
+from xgboost import XGBClassifier
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
@@ -52,7 +54,7 @@ REPORTS_DIR = BACKEND_ROOT / "reports"
 
 
 def _get_models() -> Dict[str, Any]:
-    """Return the 3 candidate model instances."""
+    """Return the 5 candidate model instances."""
     return {
         "LogisticRegression": LogisticRegression(
             max_iter=1000, random_state=SEED, solver="lbfgs", C=1.0
@@ -62,6 +64,12 @@ def _get_models() -> Dict[str, Any]:
         ),
         "GradientBoosting": GradientBoostingClassifier(
             n_estimators=200, max_depth=5, learning_rate=0.1, random_state=SEED
+        ),
+        "LightGBM": LGBMClassifier(
+            n_estimators=200, max_depth=5, learning_rate=0.1, random_state=SEED, verbosity=-1, n_jobs=-1
+        ),
+        "XGBoost": XGBClassifier(
+            n_estimators=200, max_depth=5, learning_rate=0.1, random_state=SEED, eval_metric="logloss", n_jobs=-1
         ),
     }
 

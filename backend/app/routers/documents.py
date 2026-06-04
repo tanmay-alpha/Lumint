@@ -1,11 +1,12 @@
 import uuid
 from pathlib import Path
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks
 from typing import Optional
 from app.schemas.document import DocumentAnalysisResponse
 from app.services.docshield.analyzer import analyze_pdf_document, analyze_image_document
 from app.services.fraud_dna.fingerprinter import generate_fingerprint
 from app.services.fraud_dna.store import save_fingerprint, STORE_PATH
+from app.core.event_publisher import publish_threat_event
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
@@ -33,7 +34,11 @@ def _validate_magic(contents: bytes, suffix: str) -> bool:
 
 
 @router.post("/analyze", response_model=DocumentAnalysisResponse)
-async def analyze_document(file: UploadFile = File(...), ground_truth: Optional[int] = None):
+async def analyze_document(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    ground_truth: Optional[int] = None
+):
     if not file or not file.filename:
         raise HTTPException(status_code=400, detail="No file provided.")
 
@@ -143,4 +148,19 @@ async def analyze_document(file: UploadFile = File(...), ground_truth: Optional[
         from ml.drift.registry import DriftRegistry
         y_pred = 1 if response_obj.risk_score >= 50 else 0
         DriftRegistry.update_all("doc", ground_truth, y_pred)
+
+    from ml.drift.registry import DriftRegistry
+    try:
+        drift_signal = DriftRegistry.get("doc").get_current_signal()
+    except Exception:
+        drift_signal = {"status": "stable"}
+
+    background_tasks.add_task(
+        publish_threat_event,
+        module="doc",
+        detection_result=response_obj.model_dump(),
+        ai_result=None,
+        drift_signal=drift_signal
+    )
+
     return response_obj

@@ -106,8 +106,8 @@ class TestTrainingPipeline:
     def test_cv_results_has_three_models(self, phish_metrics):
         result, _ = phish_metrics
         cv = result["cv_results"]
-        assert len(cv) == 3
-        for model_name in ["LogisticRegression", "RandomForest", "GradientBoosting"]:
+        assert len(cv) == 5
+        for model_name in ["LogisticRegression", "RandomForest", "GradientBoosting", "LightGBM", "XGBoost"]:
             assert model_name in cv
 
     def test_f1_above_0_75(self, phish_metrics):

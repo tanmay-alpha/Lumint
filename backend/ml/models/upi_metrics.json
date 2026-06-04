@@ -1,1 +1,59 @@
-{"best_model": "RandomForest"}
+{
+  "module": "upi",
+  "best_model": "LogisticRegression",
+  "cv_results": {
+    "LogisticRegression": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "auc": 1.0,
+      "mcc": 1.0,
+      "logloss": 0.0014
+    },
+    "RandomForest": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "auc": 1.0,
+      "mcc": 1.0,
+      "logloss": 0.0
+    },
+    "GradientBoosting": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "auc": 1.0,
+      "mcc": 1.0,
+      "logloss": 0.0
+    },
+    "LightGBM": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "auc": 1.0,
+      "mcc": 1.0,
+      "logloss": 0.0
+    },
+    "XGBoost": {
+      "precision": 1.0,
+      "recall": 0.9987,
+      "f1": 0.9993,
+      "auc": 0.9993,
+      "mcc": 0.999,
+      "logloss": 0.004
+    }
+  },
+  "test_set": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "auc": 1.0,
+    "mcc": 1.0,
+    "logloss": 0.0
+  },
+  "n_train": 2250,
+  "n_test": 2250,
+  "n_features": 8,
+  "random_state": 42,
+  "timestamp": "2026-06-04T21:22:42.910412+00:00"
+}
