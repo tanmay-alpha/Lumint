@@ -1,0 +1,72 @@
+{
+  "phish": {
+    "group_a_lexical": {
+      "precision": 0.8742,
+      "recall": 0.95,
+      "f1": 0.9105,
+      "auc": 0.9406,
+      "mcc": 0.8647,
+      "logloss": 2.2429,
+      "delta_f1": -0.0895,
+      "delta_auc": -0.0594,
+      "delta_mcc": -0.1353
+    },
+    "group_b_tfidf": {
+      "precision": 0.9279,
+      "recall": 0.9433,
+      "f1": 0.9355,
+      "auc": 0.9532,
+      "mcc": 0.903,
+      "logloss": 1.562,
+      "delta_f1": -0.0645,
+      "delta_auc": -0.0468,
+      "delta_mcc": -0.097
+    },
+    "group_c_combined": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "auc": 1.0,
+      "mcc": 1.0,
+      "logloss": 0.0001,
+      "delta_f1": 0.0,
+      "delta_auc": 0.0,
+      "delta_mcc": 0.0
+    }
+  },
+  "doc": {
+    "group_a_ela": {
+      "precision": 0.8661,
+      "recall": 0.97,
+      "f1": 0.9151,
+      "auc": 0.9475,
+      "mcc": 0.8723,
+      "logloss": 2.1626,
+      "delta_f1": -0.0849,
+      "delta_auc": -0.0525,
+      "delta_mcc": -0.1277
+    },
+    "group_b_metadata": {
+      "precision": 0.8853,
+      "recall": 0.965,
+      "f1": 0.9234,
+      "auc": 0.9512,
+      "mcc": 0.8846,
+      "logloss": 1.9223,
+      "delta_f1": -0.0766,
+      "delta_auc": -0.0488,
+      "delta_mcc": -0.1154
+    },
+    "group_c_combined": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "auc": 1.0,
+      "mcc": 1.0,
+      "logloss": 0.0001,
+      "delta_f1": 0.0,
+      "delta_auc": 0.0,
+      "delta_mcc": 0.0
+    }
+  }
+}
