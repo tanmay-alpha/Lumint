@@ -14,7 +14,11 @@ from pydantic import BaseModel
 
 from ai.client import MODEL_ID, ask_groq
 
+from ml.llm.local_inference import LumintFraudLLM
+
 logger = logging.getLogger("lumint.ai.phishshield")
+
+llm = LumintFraudLLM()
 
 _SYSTEM_PROMPT = """You are a senior cybersecurity threat intelligence analyst specializing in
 phishing campaign attribution, brand impersonation detection, and attack vector classification.
@@ -85,10 +89,7 @@ _FALLBACK_RESULT = PhishingAIResult(
 
 async def analyze_phishing_ai(phishing_result: dict) -> PhishingAIResult:
     """
-    Analyze a PhishShield URL scan result using Groq LLaMA 3.3 70B.
-
-    Extracts domain signals, triggered rules, similarity matches, and keywords
-    then sends a structured threat intelligence prompt to the AI analyst.
+    Analyze a PhishShield URL scan result using LumintFraudLLM (local with Groq fallback).
 
     Args:
         phishing_result: Raw dict returned by the PhishShield /check endpoint.
@@ -97,47 +98,10 @@ async def analyze_phishing_ai(phishing_result: dict) -> PhishingAIResult:
         PhishingAIResult with verdict, brand attribution, attack vector, IOCs,
         and analyst note. Never raises — returns fallback on error.
     """
-    url = phishing_result.get("normalized_url") or phishing_result.get("url", "unknown")
-    domain = phishing_result.get("domain", "unknown")
-    risk_score = phishing_result.get("risk_score", 0)
-    risk_level = phishing_result.get("risk_level", "UNKNOWN")
-    triggered_rules = phishing_result.get("triggered_rules") or []
-    similarity_matches = phishing_result.get("domain_similarity_matches") or []
-    keywords = phishing_result.get("top_keywords") or []
-    is_official = phishing_result.get("is_official_bank_domain", False)
+    raw = await llm.analyze(phishing_result, module="phish")
 
-    rule_summary = [
-        f"[{r.get('rule', '?')} +{r.get('score', 0)}pt] {r.get('detail', '')}"
-        for r in triggered_rules[:8]
-    ]
-    sim_summary = [
-        f"{m.get('bank', '?')} — {round(m.get('similarity', 0) * 100)}% similarity"
-        for m in similarity_matches[:5]
-    ]
-
-    user_prompt = f"""PHISHSHIELD URL ANALYSIS REPORT — Lumint Engine
-Target URL: {url}
-Domain: {domain}
-Risk Score: {risk_score}/100 | Risk Level: {risk_level}
-Official Bank Domain: {is_official}
-
-TRIGGERED DETECTION RULES ({len(triggered_rules)} total):
-{json.dumps(rule_summary, indent=2)}
-
-BRAND SIMILARITY MATCHES:
-{json.dumps(sim_summary, indent=2) if sim_summary else "None detected"}
-
-SUSPICIOUS KEYWORDS FOUND: {keywords}
-
-Based on the above PhishShield detection data, produce your threat intelligence report as structured JSON."""
-
-    raw = await ask_groq(system=_SYSTEM_PROMPT, user=user_prompt, json_mode=True)
-
-    if "_error" in raw:
-        logger.warning("PhishShield AI fallback triggered: %s", raw.get("_error"))
-        return _FALLBACK_RESULT.model_copy(
-            update={"latency_ms": raw.get("_latency_ms", 0)}
-        )
+    if not raw or "verdict" not in raw:
+        return _FALLBACK_RESULT
 
     try:
         return PhishingAIResult(
@@ -147,8 +111,8 @@ Based on the above PhishShield detection data, produce your threat intelligence 
             confidence=int(raw.get("confidence", 50)),
             analyst_note=raw.get("analyst_note", "Analysis incomplete."),
             ioc_summary=raw.get("ioc_summary") or ["No IOCs listed"],
-            model_used=raw.get("_model", MODEL_ID),
-            latency_ms=raw.get("_latency_ms", 0),
+            model_used=raw.get("model_used", MODEL_ID),
+            latency_ms=raw.get("latency_ms", 0),
         )
     except Exception as exc:
         logger.error("PhishShield AI result parsing failed: %s", exc)

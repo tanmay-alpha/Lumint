@@ -1,8 +1,11 @@
 import logging
 from typing import Any, Dict
 from ai.client import ask_groq
+from ml.llm.local_inference import LumintFraudLLM
 
 logger = logging.getLogger("lumint.ai.upi")
+
+llm = LumintFraudLLM()
 
 SYSTEM_PROMPT = """
 You are Lumint's Lead Banking Forensic Analyst.
@@ -27,26 +30,23 @@ You must respond with a JSON object containing EXACTLY these keys:
 
 async def analyze_upi_screenshot_ai(ocr_text: str, utr_number: str, sender: str, receiver: str, amount: float) -> Dict[str, Any]:
     """
-    Query Groq LLaMA 3.3 70B to evaluate fraud indicators in a UPI screenshot.
+    Query LumintFraudLLM (local with Groq fallback) to evaluate fraud indicators in a UPI screenshot.
     """
-    user_prompt = f"""
-    --- Extracted Receipt Context ---
-    Raw OCR Text: {ocr_text}
-    Extracted UTR: {utr_number}
-    Sender ID: {sender}
-    Receiver ID: {receiver}
-    Transaction Amount: {amount}
-    ---------------------------------
-    Compute fraud indicators, look for typical UPI screenshot generation tool patterns (e.g. mismatched reference numbers, invalid bank domains, or suspicious payee handles), and explain the threat vectors.
-    """
+    detection_result = {
+        "ocr_text": ocr_text,
+        "utr_number": utr_number,
+        "sender": sender,
+        "receiver": receiver,
+        "amount": amount
+    }
     try:
-        response = await ask_groq(system=SYSTEM_PROMPT, user=user_prompt, json_mode=True)
-        if "_error" in response:
-            logger.warning("Groq AI check failed for UPI; using heuristic fallback.")
+        response = await llm.analyze(detection_result, module="upi")
+        if not response or "risk_score" not in response:
+            logger.warning("LumintFraudLLM check failed for UPI; using heuristic fallback.")
             return get_fallback_report(utr_number, amount)
         return response
     except Exception as e:
-        logger.error("Error analyzing UPI receipt with Groq: %s", e)
+        logger.error("Error analyzing UPI receipt with LumintFraudLLM: %s", e)
         return get_fallback_report(utr_number, amount)
 
 def get_fallback_report(utr_number: str, amount: float) -> Dict[str, Any]:
