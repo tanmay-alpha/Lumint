@@ -1,0 +1,16 @@
+{
+  "description": "Error rate stream with drift detection events",
+  "abrupt": {
+    "true_drift_point": 1000,
+    "adwin_detection": 1056,
+    "ph_detection": 1170,
+    "ddm_detection": 1039,
+    "majority_detection": 1056
+  },
+  "gradual": {
+    "drift_start": 1000,
+    "drift_end": 2000,
+    "majority_detection": 1344
+  },
+  "ascii_timeline": "t=0        t=1000              t=2000         t=3000\n|  STABLE  |  ABRUPT DRIFT  \u2192 \u2190 RECOVERY   |\n|  p=0.05  |  p=0.40                        |\n           \u2191 True Drift    \u2191 ADWIN@1056\n                           \u2191 PHT@1170\n                           \u2191 Majority Vote@1056"
+}

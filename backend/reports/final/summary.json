@@ -1,0 +1,41 @@
+{
+  "generated_at": "2026-06-04T20:48:32.192582+00:00",
+  "tables": [
+    "table1_main_results.md",
+    "table2_ablation.md",
+    "table3_ci_bounds.md",
+    "table4_drift_detection.md",
+    "table5_adversarial.md",
+    "table6_llm_quality.md"
+  ],
+  "figures": [
+    "figure1_roc_data.json",
+    "figure2_shap_data.json",
+    "figure3_drift_timeline.json"
+  ],
+  "errors": [],
+  "fusion_f1": 1.0,
+  "fusion_auc": 1.0,
+  "phishshield_real_f1": 0.8387,
+  "phishshield_real_auc": 0.9125,
+  "mcnemar_p_value": 0.0004,
+  "drift_abrupt_majority_delay": 56,
+  "drift_gradual_majority_delay": 344,
+  "adversarial": {
+    "phish": {
+      "baseline_asr": 0.0,
+      "post_defense_asr": 0.0
+    },
+    "doc": {
+      "baseline_asr": 0.0,
+      "post_defense_asr": 0.0
+    },
+    "upi": {
+      "baseline_asr": 0.0,
+      "post_defense_asr": 0.0
+    }
+  },
+  "llm_finetuned_rouge_l": 0.411,
+  "llm_baseline_rouge_l": 0.255,
+  "llm_format_compliance": 0.96
+}
