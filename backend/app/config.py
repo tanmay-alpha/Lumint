@@ -1,4 +1,4 @@
-﻿from pydantic import field_validator, model_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import ArgumentError
@@ -35,6 +35,13 @@ class Settings(BaseSettings):
         v = v.strip()
         if v.lower() in _INVALID_PLACEHOLDERS:
             raise ValueError("DATABASE_URL must be a valid SQLAlchemy URL.")
+        
+        # If it points to ./backend/data/ but we are in the backend dir, adapt to ./data/
+        import os
+        if "sqlite" in v and "./backend/data/" in v:
+            if not os.path.exists("./backend") and os.path.exists("./data"):
+                v = v.replace("./backend/data/", "./data/")
+                
         try:
             make_url(v)
         except ArgumentError as exc:
@@ -43,7 +50,7 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_production_db(self) -> "Settings":
-        if self.APP_ENV.strip().lower() in _PRODUCTION_ENVS and self.DATABASE_URL == DEFAULT_DEV_DATABASE_URL:
+        if self.APP_ENV.strip().lower() in _PRODUCTION_ENVS and (self.DATABASE_URL == DEFAULT_DEV_DATABASE_URL or "lumint_dev.db" in self.DATABASE_URL):
             raise ValueError("APP_ENV=production requires an explicit production DATABASE_URL.")
         return self
 
