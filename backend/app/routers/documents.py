@@ -1,6 +1,7 @@
 import uuid
 from pathlib import Path
 from fastapi import APIRouter, UploadFile, File, HTTPException
+from typing import Optional
 from app.schemas.document import DocumentAnalysisResponse
 from app.services.docshield.analyzer import analyze_pdf_document, analyze_image_document
 from app.services.fraud_dna.fingerprinter import generate_fingerprint
@@ -32,7 +33,7 @@ def _validate_magic(contents: bytes, suffix: str) -> bool:
 
 
 @router.post("/analyze", response_model=DocumentAnalysisResponse)
-async def analyze_document(file: UploadFile = File(...)):
+async def analyze_document(file: UploadFile = File(...), ground_truth: Optional[int] = None):
     if not file or not file.filename:
         raise HTTPException(status_code=400, detail="No file provided.")
 
@@ -137,4 +138,9 @@ async def analyze_document(file: UploadFile = File(...)):
             result["analysis_warnings"] = []
         result["analysis_warnings"].append(f"Fraud DNA fingerprint storage failed: {str(e)}")
 
-    return DocumentAnalysisResponse(**base, **result)
+    response_obj = DocumentAnalysisResponse(**base, **result)
+    if ground_truth is not None:
+        from ml.drift.registry import DriftRegistry
+        y_pred = 1 if response_obj.risk_score >= 50 else 0
+        DriftRegistry.update_all("doc", ground_truth, y_pred)
+    return response_obj

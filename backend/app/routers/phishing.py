@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -15,6 +15,7 @@ router = APIRouter(prefix="/api/phishing", tags=["phishing"])
 
 class PhishingCheckRequest(BaseModel):
     url: str
+    ground_truth: Optional[int] = None
 
 
 class BatchCheckRequest(BaseModel):
@@ -113,7 +114,12 @@ def _analyze_single(raw: str) -> PhishingCheckResponse:
 
 @router.post("/check", response_model=PhishingCheckResponse)
 def check_url(body: PhishingCheckRequest):
-    return _analyze_single(body.url)
+    res = _analyze_single(body.url)
+    if body.ground_truth is not None:
+        from ml.drift.registry import DriftRegistry
+        y_pred = 1 if res.risk_score >= 50 else 0
+        DriftRegistry.update_all("phish", body.ground_truth, y_pred)
+    return res
 
 
 @router.post("/check/batch")

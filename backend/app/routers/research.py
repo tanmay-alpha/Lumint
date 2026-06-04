@@ -269,3 +269,39 @@ def get_datasets():
             "doi_link": "#"
         }
     }
+
+
+@router.get("/drift-status")
+def get_drift_status():
+    """
+    Returns the current concept drift detection status for all modules.
+    """
+    from ml.drift.registry import DriftRegistry
+    status_map = DriftRegistry.get_all_status()
+    return {
+        module: signal.to_dict()
+        for module, signal in status_map.items()
+    }
+
+
+@router.get("/adversarial")
+def get_adversarial():
+    """
+    Returns the adversarial robustness test results.
+    """
+    import os
+    import json
+    report_path = os.path.join(REPORTS_DIR, "r16_adversarial_robustness.json")
+    if not os.path.exists(report_path):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Adversarial robustness report not found. Run the report script to generate it."
+        )
+    try:
+        with open(report_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error reading adversarial report: {str(e)}"
+        )

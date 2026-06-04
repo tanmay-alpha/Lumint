@@ -51,6 +51,7 @@ async def analyze_screenshot(
     custom_ocr: Optional[str] = Form(None),
     custom_ocr_text: Optional[str] = Form(None),
     run_ai: bool = Form(False),
+    ground_truth: Optional[int] = Form(None),
     db: Session = Depends(get_db)
 ):
     """
@@ -156,7 +157,7 @@ async def analyze_screenshot(
     db.commit()
     db.refresh(db_event)
 
-    return UPIAnalyzeResponse(
+    response_obj = UPIAnalyzeResponse(
         id=db_event.id,
         timestamp=db_event.timestamp,
         event_type=db_event.event_type,
@@ -174,6 +175,11 @@ async def analyze_screenshot(
         raw_ocr_text=db_event.raw_ocr_text,
         metadata_json=db_event.metadata_json
     )
+    if ground_truth is not None:
+        from ml.drift.registry import DriftRegistry
+        y_pred = 1 if response_obj.risk_score >= 50 else 0
+        DriftRegistry.update_all("upi", ground_truth, y_pred)
+    return response_obj
 
 
 @router.get("/verify-utr/{utr_number}", response_model=UTRVerificationResponse)

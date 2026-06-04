@@ -1,0 +1,131 @@
+{
+  "timestamp": "2026-06-04T17:42:15.967060+00:00",
+  "results": {
+    "phish": {
+      "module": "phish",
+      "baseline_f1": 1.0,
+      "fgsm_asr_epsilon_0.05": 0.0,
+      "hopskipjump_asr": 0.0,
+      "after_defense_asr": 0.0,
+      "f1_cost": 0.0,
+      "evaluation": {
+        "module": "phish",
+        "baseline_f1": 1.0,
+        "fgsm_results": {
+          "epsilon_0.01": {
+            "asr": 0.0,
+            "f1_under_attack": 1.0
+          },
+          "epsilon_0.05": {
+            "asr": 0.0,
+            "f1_under_attack": 1.0
+          },
+          "epsilon_0.10": {
+            "asr": 0.0,
+            "f1_under_attack": 1.0
+          },
+          "epsilon_0.20": {
+            "asr": 0.0,
+            "f1_under_attack": 1.0
+          }
+        },
+        "hopskipjump_asr": 0.0,
+        "robustness_score": 1.0,
+        "verdict": "ROBUST"
+      },
+      "defense": {
+        "module": "phish",
+        "original_asr_epsilon_0.05": 0.0,
+        "hardened_asr_epsilon_0.05": 0.0,
+        "asr_reduction_pct": 0.0,
+        "f1_original": 1.0,
+        "f1_hardened": 1.0,
+        "f1_cost": 0.0
+      }
+    },
+    "doc": {
+      "module": "doc",
+      "baseline_f1": 1.0,
+      "fgsm_asr_epsilon_0.05": 0.0,
+      "hopskipjump_asr": 0.0,
+      "after_defense_asr": 0.0,
+      "f1_cost": 0.0,
+      "evaluation": {
+        "module": "doc",
+        "baseline_f1": 1.0,
+        "fgsm_results": {
+          "epsilon_0.01": {
+            "asr": 0.0,
+            "f1_under_attack": 1.0
+          },
+          "epsilon_0.05": {
+            "asr": 0.0,
+            "f1_under_attack": 1.0
+          },
+          "epsilon_0.10": {
+            "asr": 0.0,
+            "f1_under_attack": 1.0
+          },
+          "epsilon_0.20": {
+            "asr": 0.0,
+            "f1_under_attack": 1.0
+          }
+        },
+        "hopskipjump_asr": 0.0,
+        "robustness_score": 1.0,
+        "verdict": "ROBUST"
+      },
+      "defense": {
+        "module": "doc",
+        "original_asr_epsilon_0.05": 0.0,
+        "hardened_asr_epsilon_0.05": 0.0,
+        "asr_reduction_pct": 0.0,
+        "f1_original": 1.0,
+        "f1_hardened": 1.0,
+        "f1_cost": 0.0
+      }
+    },
+    "upi": {
+      "module": "upi",
+      "baseline_f1": 1.0,
+      "fgsm_asr_epsilon_0.05": 0.0,
+      "hopskipjump_asr": 1.0,
+      "after_defense_asr": 0.0,
+      "f1_cost": 0.0,
+      "evaluation": {
+        "module": "upi",
+        "baseline_f1": 1.0,
+        "fgsm_results": {
+          "epsilon_0.01": {
+            "asr": 0.0,
+            "f1_under_attack": 1.0
+          },
+          "epsilon_0.05": {
+            "asr": 0.0,
+            "f1_under_attack": 1.0
+          },
+          "epsilon_0.10": {
+            "asr": 0.0,
+            "f1_under_attack": 1.0
+          },
+          "epsilon_0.20": {
+            "asr": 0.0,
+            "f1_under_attack": 1.0
+          }
+        },
+        "hopskipjump_asr": 1.0,
+        "robustness_score": 1.0,
+        "verdict": "ROBUST"
+      },
+      "defense": {
+        "module": "upi",
+        "original_asr_epsilon_0.05": 0.0,
+        "hardened_asr_epsilon_0.05": 0.0,
+        "asr_reduction_pct": 0.0,
+        "f1_original": 1.0,
+        "f1_hardened": 1.0,
+        "f1_cost": 0.0
+      }
+    }
+  }
+}

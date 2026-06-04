@@ -18,6 +18,10 @@ def get_fusion_score(body: FusionRequest):
             weights=body.weights,
             use_ml=True
         )
+        if body.ground_truth is not None:
+            from ml.drift.registry import DriftRegistry
+            y_pred = 1 if score_details.unified_score >= 50 else 0
+            DriftRegistry.update_all("fusion", body.ground_truth, y_pred)
         return score_details
     except Exception as e:
         raise HTTPException(

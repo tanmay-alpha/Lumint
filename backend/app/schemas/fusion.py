@@ -11,6 +11,7 @@ class FusionRequest(BaseModel):
     phishing_result: Optional[Dict[str, Any]] = None
     upi_result: Optional[Dict[str, Any]] = None
     weights: Optional[Dict[str, float]] = None
+    ground_truth: Optional[int] = None
 
 class FusionResponse(BaseModel):
     unified_score: int

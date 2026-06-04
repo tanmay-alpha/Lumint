@@ -1,0 +1,34 @@
+{
+  "abrupt": {
+    "true_drift_point": 1000,
+    "adwin_detection": 1056,
+    "ph_detection": 1170,
+    "ddm_detection": 1039,
+    "adwin_delay": 56,
+    "ph_delay": 170,
+    "ddm_delay": 39,
+    "false_alarms_before_drift": {
+      "adwin": 0,
+      "ph": 0,
+      "ddm": 0
+    },
+    "majority_vote_detection": 1056,
+    "majority_delay": 56
+  },
+  "gradual": {
+    "true_drift_point": 1000,
+    "adwin_detection": 1344,
+    "ph_detection": 1576,
+    "ddm_detection": 1274,
+    "adwin_delay": 344,
+    "ph_delay": 576,
+    "ddm_delay": 274,
+    "false_alarms_before_drift": {
+      "adwin": 0,
+      "ph": 0,
+      "ddm": 0
+    },
+    "majority_vote_detection": 1344,
+    "majority_delay": 344
+  }
+}
