@@ -8,6 +8,9 @@
 | DocShield | LogisticRegression \* | 1.000 [0.985–1.000] | 1.000 | 1.000 | 1.000 | 1.000 |
 | DocShield | RandomForest | 1.000 [0.985–1.000] | 1.000 | 1.000 | 1.000 | 1.000 |
 | DocShield | GradientBoosting | 1.000 [0.985–1.000] | 1.000 | 1.000 | 1.000 | 1.000 |
+| UPIShield | LogisticRegression \* | 1.000 [0.985–1.000] | 1.000 | 1.000 | 1.000 | 1.000 |
+| UPIShield | RandomForest | 1.000 [0.985–1.000] | 1.000 | 1.000 | 1.000 | 1.000 |
+| UPIShield | GradientBoosting | 1.000 [0.985–1.000] | 1.000 | 1.000 | 1.000 | 1.000 |
 | Cross-Modal Fusion | LR Meta-Learner \* | 1.000 [0.985–1.000] | 1.000 | 1.000 | 1.000 | 1.000 |
 
 \* = Best/deployed model. CI from 2000-replicate stratified bootstrap.
