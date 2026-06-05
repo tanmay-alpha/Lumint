@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Instrument_Serif, DM_Mono, Geist } from "next/font/google";
+import { Instrument_Serif, JetBrains_Mono, Geist } from "next/font/google";
 import "./globals.css";
 
 const instrumentSerif = Instrument_Serif({
@@ -9,9 +9,9 @@ const instrumentSerif = Instrument_Serif({
   variable: "--font-display",
 });
 
-const dmMono = DM_Mono({
+const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
-  weight: ["300", "400", "500"],
+  weight: ["300", "400", "500", "600", "700"],
   variable: "--font-mono",
 });
 
@@ -49,7 +49,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${instrumentSerif.variable} ${dmMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${instrumentSerif.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full bg-canvas text-text-primary font-sans flex flex-col">
         {children}

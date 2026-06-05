@@ -1,253 +1,280 @@
 @import "tailwindcss";
 @config "../tailwind.config.ts";
 
-/* ─────────────────────────────────────────
-   LUMINT DESIGN SYSTEM — CSS CUSTOM PROPERTIES
-   ───────────────────────────────────────── */
 :root {
-  /* Canvas / Surface */
-  --color-canvas:         #F7F8FA;
-  --color-surface:        #FFFFFF;
-  --color-surface-2:      #F3F4F6;
-  --color-border:         #E2E5EA;
-  --color-border-strong:  #CBD0D8;
+  /* Canvas */
+  --canvas:          #F6F8FA;   /* GitHub-style off-white */
+  --surface:         #FFFFFF;
+  --surface-raised:  #F0F2F5;
+  --surface-overlay: rgba(255, 255, 255, 0.85);
+
+  /* Borders */
+  --border:          #D0D7DE;
+  --border-muted:    #E8EAED;
+  --border-strong:   #8C959F;
 
   /* Text */
-  --color-text-primary:   #111827;
-  --color-text-secondary: #4B5563;
-  --color-text-muted:     #6B7280;
+  --text-primary:    #0D1117;
+  --text-secondary:  #57606A;
+  --text-muted:      #8B949E;
+  --text-inverse:    #FFFFFF;
 
-  /* Accent — Ice Blue / Teal */
-  --color-accent:         #0EA5E9;
-  --color-accent-dark:    #0369A1;
-  --color-accent-subtle:  #E0F2FE;
-  --color-teal:           #0D9488;
-  --color-teal-subtle:    #CCFBF1;
+  /* Brand */
+  --brand:           #0969DA;   /* GitHub blue — trusted */
+  --brand-hover:     #0550AE;
+  --brand-subtle:    #DDF4FF;
+  --brand-muted:     #54AEFF;
 
-  /* Risk palette */
-  --color-safe:           #10B981;
-  --color-safe-subtle:    #D1FAE5;
-  --color-warn:           #F59E0B;
-  --color-warn-subtle:    #FEF3C7;
-  --color-danger:         #EF4444;
-  --color-danger-subtle:  #FEE2E2;
-  --color-critical:       #7C3AED;
-  --color-critical-subtle:#EDE9FE;
+  /* Intelligence accent */
+  --intel:           #0D9373;   /* Forensics teal */
+  --intel-subtle:    #DCFFE4;
+
+  /* Risk scale */
+  --risk-none:       #1A7F37;
+  --risk-none-bg:    #DCFFE4;
+  --risk-low:        #5A6378;
+  --risk-low-bg:     #F0F2F5;
+  --risk-medium:     #9A6700;
+  --risk-medium-bg:  #FFF8C5;
+  --risk-high:       #CF222E;
+  --risk-high-bg:    #FFEBE9;
+  --risk-critical:   #6E40C9;
+  --risk-critical-bg:#FBEFFF;
 
   /* AI layer */
-  --color-ai-border:      #C4B5FD;
-  --color-ai-bg:          #FAFAFF;
-  --color-ai-text:        #5B21B6;
+  --ai-accent:       #8250DF;
+  --ai-subtle:       #FBEFFF;
+  --ai-border:       #D2B4FE;
 
-  /* Elevation shadows */
-  --shadow-1: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-2: 0 4px 16px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04);
-  --shadow-3: 0 8px 32px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06);
+  /* Data visualization */
+  --chart-1: #0969DA;
+  --chart-2: #0D9373;
+  --chart-3: #CF222E;
+  --chart-4: #9A6700;
+  --chart-5: #6E40C9;
 
-  /* Legacy aliases for backward compat */
-  --bg-base: var(--color-canvas);
-  --surface: var(--color-surface);
-  --border: var(--color-border);
-  --text-primary: var(--color-text-primary);
-  --text-secondary: var(--color-text-secondary);
-  --accent-blue: var(--color-accent);
-  --accent-teal: var(--color-teal);
-  --risk-critical: var(--color-danger);
-  --risk-high: var(--color-warn);
-  --risk-medium: #FFCC00;
-  --risk-safe: var(--color-safe);
+  /* Shadows */
+  --shadow-sm: 0 1px 0 rgba(31, 35, 40, 0.04);
+  --shadow-md: 0 3px 6px rgba(140, 149, 159, 0.15);
+  --shadow-lg: 0 8px 24px rgba(140, 149, 159, 0.20);
+  --shadow-xl: 0 12px 48px rgba(140, 149, 159, 0.30);
+
+  /* Radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  /* Fonts (Next.js CSS vars) */
+  --font-display: var(--font-display);
+  --font-body:    var(--font-sans);
+  --font-mono:    var(--font-mono);
+}
+
+[data-theme="dark"] {
+  /* Canvas */
+  --canvas:          #0D1117;   /* GitHub-style dark canvas */
+  --surface:         #161B22;   /* GitHub-style dark surface */
+  --surface-raised:  #21262D;
+  --surface-overlay: rgba(22, 27, 34, 0.85);
+
+  /* Borders */
+  --border:          #30363D;
+  --border-muted:    #21262D;
+  --border-strong:   #8B949E;
+
+  /* Text */
+  --text-primary:    #E6EDF3;
+  --text-secondary:  #8B949E;
+  --text-muted:      #484F58;
+  --text-inverse:    #0D1117;
+
+  /* Brand */
+  --brand:           #1F6FEB;   /* GitHub dark blue */
+  --brand-hover:     #388BFD;
+  --brand-subtle:    rgba(56, 139, 253, 0.15);
+  --brand-muted:     #1F6FEB;
+
+  /* Intelligence accent */
+  --intel:           #34D399;   /* Bright teal */
+  --intel-subtle:    rgba(52, 211, 153, 0.1);
+
+  /* Risk scale */
+  --risk-none:       #34D399;
+  --risk-none-bg:    rgba(52, 211, 153, 0.1);
+  --risk-low:        #8B949E;
+  --risk-low-bg:     #21262D;
+  --risk-medium:     #D29922;
+  --risk-medium-bg:  rgba(210, 153, 34, 0.15);
+  --risk-high:       #F85149;
+  --risk-high-bg:    rgba(248, 81, 73, 0.15);
+  --risk-critical:   #BC8CFF;
+  --risk-critical-bg:rgba(188, 140, 255, 0.15);
+
+  /* AI layer */
+  --ai-accent:       #A371F7;
+  --ai-subtle:       rgba(163, 113, 247, 0.1);
+  --ai-border:       #A371F7;
+
+  /* Shadows for dark mode */
+  --shadow-sm: 0 1px 0 rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 3px 6px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
+  --shadow-xl: 0 12px 48px rgba(0, 0, 0, 0.8);
 }
 
 @theme {
-  /* Legacy tokens still used in existing components */
-  --color-bg-base:        var(--color-canvas);
-  --color-surface:        var(--color-surface);
-  --color-border:         var(--color-border);
-  --color-text-primary:   var(--color-text-primary);
-  --color-text-secondary: var(--color-text-secondary);
-  --color-accent-blue:    var(--color-accent);
-  --color-accent-teal:    var(--color-teal);
-  --color-risk-critical:  var(--color-danger);
-  --color-risk-high:      var(--color-warn);
-  --color-risk-medium:    #FFCC00;
-  --color-risk-safe:      var(--color-safe);
+  --color-canvas:          var(--canvas);
+  --color-surface:         var(--surface);
+  --color-surface-raised:  var(--surface-raised);
+  --color-surface-overlay: var(--surface-overlay);
+  --color-border-default:  var(--border);
+  --color-border-muted:    var(--border-muted);
+  --color-border-strong:   var(--border-strong);
+  --color-text-primary:    var(--text-primary);
+  --color-text-secondary:  var(--text-secondary);
+  --color-text-muted:      var(--text-muted);
+  --color-text-inverse:    var(--text-inverse);
+  --color-brand:           var(--brand);
+  --color-brand-hover:     var(--brand-hover);
+  --color-brand-subtle:    var(--brand-subtle);
+  --color-brand-muted:     var(--brand-muted);
+  --color-intel:           var(--intel);
+  --color-intel-subtle:    var(--intel-subtle);
+  --color-risk-none:       var(--risk-none);
+  --color-risk-none-bg:    var(--risk-none-bg);
+  --color-risk-low:        var(--risk-low);
+  --color-risk-low-bg:     var(--risk-low-bg);
+  --color-risk-medium:     var(--risk-medium);
+  --color-risk-medium-bg:  var(--risk-medium-bg);
+  --color-risk-high:       var(--risk-high);
+  --color-risk-high-bg:    var(--risk-high-bg);
+  --color-risk-critical:   var(--risk-critical);
+  --color-risk-critical-bg:var(--risk-critical-bg);
+  --color-ai-accent:       var(--ai-accent);
+  --color-ai-subtle:       var(--ai-subtle);
+  --color-ai-border:       var(--ai-border);
 
-  --font-display: var(--font-display);
-  --font-mono:    var(--font-mono);
-  --font-sans:    var(--font-sans);
+  --font-display:          var(--font-display);
+  --font-sans:             var(--font-body);
+  --font-mono:             var(--font-mono);
+
+  --radius-sm:             var(--radius-sm);
+  --radius-md:             var(--radius-md);
+  --radius-lg:             var(--radius-lg);
+  --radius-xl:             var(--radius-xl);
+
+  --shadow-sm:             var(--shadow-sm);
+  --shadow-md:             var(--shadow-md);
+  --shadow-lg:             var(--shadow-lg);
+  --shadow-xl:             var(--shadow-xl);
 }
 
-/* ─────────────────────────────────────────
-   BASE STYLES
-   ───────────────────────────────────────── */
+/* Base resets & typography utility classes */
 html { scroll-behavior: smooth; }
-
 body {
-  background-color: var(--color-canvas);
-  color: var(--color-text-primary);
-  font-family: var(--font-sans), system-ui, sans-serif;
-  font-feature-settings: "cv02","cv03","cv04","cv11";
-  overflow-x: hidden;
+  background-color: var(--canvas);
+  color: var(--text-primary);
+  font-family: var(--font-body), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-/* ─────────────────────────────────────────
-   CUSTOM SCROLLBAR
-   ───────────────────────────────────────── */
+/* Custom Scrollbar */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border-strong);
+  background: var(--border-strong);
   border-radius: 9999px;
 }
-::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
-/* ─────────────────────────────────────────
-   SHIMMER ANIMATION (SkeletonLoader)
-   ───────────────────────────────────────── */
-@keyframes shimmer {
+/* Typography utilities */
+.text-display {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 48px;
+  line-height: 1.1;
+  font-weight: 400;
+}
+.text-headline {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 28px;
+  line-height: 1.2;
+  font-weight: 400;
+}
+.text-title {
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-size: 20px;
+  line-height: 1.3;
+  font-weight: 600;
+}
+.text-body {
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 400;
+}
+.text-caption {
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 400;
+}
+.text-label {
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.text-data {
+  font-family: var(--font-mono), monospace;
+  font-size: 14px;
+  line-height: 1;
+  font-weight: 400;
+}
+.text-data-lg {
+  font-family: var(--font-mono), monospace;
+  font-size: 24px;
+  line-height: 1;
+  font-weight: 500;
+}
+
+/* Animations & transitions */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--surface-raised) 25%,
+    var(--border-muted) 50%,
+    var(--surface-raised) 75%
+  );
+  background-size: 800px 100%;
+  animation: shimmer-anim 1.4s infinite linear;
+}
+
+@keyframes shimmer-anim {
   0%   { background-position: -400px 0; }
   100% { background-position:  400px 0; }
 }
 
-.shimmer {
-  background: linear-gradient(
-    90deg,
-    var(--color-surface-2) 25%,
-    #e9eaec 50%,
-    var(--color-surface-2) 75%
-  );
-  background-size: 800px 100%;
-  animation: shimmer 1.4s infinite linear;
-}
-
-/* ─────────────────────────────────────────
-   SUBTLE GRID BACKGROUND
-   ───────────────────────────────────────── */
-.grid-bg {
-  background-image:
-    linear-gradient(rgba(17,24,39,0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(17,24,39,0.03) 1px, transparent 1px);
-  background-size: 24px 24px;
-}
-
-/* ─────────────────────────────────────────
-   RADIAL HERO MESH GRADIENT
-   ───────────────────────────────────────── */
-.hero-mesh {
-  background:
-    radial-gradient(ellipse 80% 50% at 20% 30%, rgba(14,165,233,0.08) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 80% 70%, rgba(13,148,136,0.06) 0%, transparent 55%),
-    radial-gradient(ellipse 50% 60% at 50% 0%,  rgba(124,58,237,0.04) 0%, transparent 50%);
-}
-
-/* ─────────────────────────────────────────
-   GLASSMORPHISM HELPER
-   ───────────────────────────────────────── */
-.glass {
-  background: rgba(255,255,255,0.72);
-  backdrop-filter: blur(12px) saturate(160%);
-  -webkit-backdrop-filter: blur(12px) saturate(160%);
-  border: 1px solid rgba(255,255,255,0.6);
-}
-
-/* ─────────────────────────────────────────
-   ACCENT GLOW FOR INPUTS
-   ───────────────────────────────────────── */
-.input-accent-glow:focus {
-  outline: none;
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(14,165,233,0.15);
-}
-
-/* ─────────────────────────────────────────
-   RISK DOT PULSE (danger/critical)
-   ───────────────────────────────────────── */
 @keyframes risk-pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
-  50%       { opacity: 0.6; transform: scale(1.25); }
-}
-.risk-dot-pulse { animation: risk-pulse 1.5s ease-in-out 1; }
-
-/* ─────────────────────────────────────────
-   TYPOGRAPHY UTILITIES
-   ───────────────────────────────────────── */
-.text-display {
-  font-family: var(--font-display), serif;
-  font-size: 56px;
-  line-height: 1.05;
-  font-weight: 400;
-  letter-spacing: -0.02em;
+  50%       { opacity: 0.4; transform: scale(1.3); }
 }
 
-.text-h1 {
-  font-family: var(--font-display), serif;
-  font-size: 36px;
-  line-height: 1.15;
-  font-weight: 400;
+.risk-dot-pulse {
+  animation: risk-pulse 2s infinite ease-in-out;
 }
 
-.text-h2 {
-  font-family: var(--font-display), serif;
-  font-size: 24px;
-  line-height: 1.3;
-  font-weight: 400;
+.mesh-grid-bg {
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, var(--border-muted) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--border-muted) 1px, transparent 1px);
 }
 
-.text-label {
-  font-size: 13px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+.hero-mesh-bg {
+  background: 
+    radial-gradient(circle at 10% 20%, rgba(9, 105, 218, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 90% 80%, rgba(13, 147, 115, 0.05) 0%, transparent 50%);
 }
-
-.text-mono-lg {
-  font-family: var(--font-mono), monospace;
-  font-size: 20px;
-  font-weight: 500;
-}
-
-.text-mono {
-  font-family: var(--font-mono), monospace;
-  font-size: 14px;
-  font-weight: 400;
-}
-
-/* ─────────────────────────────────────────
-   ACTIVE NAV ITEM INDICATOR (Framer layoutId fallback)
-   ───────────────────────────────────────── */
-.nav-active-bar {
-  position: absolute;
-  left: 0;
-  top: 25%;
-  height: 50%;
-  width: 3px;
-  border-radius: 0 2px 2px 0;
-  background: var(--color-accent);
-}
-
-/* ─────────────────────────────────────────
-   PROGRESS BAR
-   ───────────────────────────────────────── */
-.progress-track {
-  height: 4px;
-  border-radius: 9999px;
-  background: var(--color-surface-2);
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  border-radius: 9999px;
-  background: var(--color-accent);
-  transition: width 0.6s ease-out;
-}
-
-/* ─────────────────────────────────────────
-   COPY BUTTON FLASH
-   ───────────────────────────────────────── */
-@keyframes check-flash {
-  0%, 100% { opacity: 0; }
-  20%, 80%  { opacity: 1; }
-}
-.check-flash { animation: check-flash 1.2s ease; }

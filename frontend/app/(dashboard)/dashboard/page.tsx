@@ -3,22 +3,22 @@
 import React, { useEffect, useState } from "react";
 import client from "@/lib/api/client";
 import { DashboardStats, RecentEvent } from "@/lib/types";
-import StatCard from "@/components/ui/StatCard";
-import GlassCard from "@/components/ui/GlassCard";
-import RiskBadge from "@/components/ui/RiskBadge";
-import SkeletonLoader from "@/components/ui/SkeletonLoader";
+import { MetricBlock } from "@/components/ui/MetricBlock";
+import { DataCard } from "@/components/ui/DataCard";
+import { Badge } from "@/components/ui/Badge";
+import { SkeletonLoader } from "@/components/ui/SkeletonLoader";
+import { Button } from "@/components/ui/Button";
+import { IntelligenceTable, Column } from "@/components/ui/IntelligenceTable";
 import {
   RefreshCw,
   Clock,
   ShieldCheck,
   AlertTriangle,
   FileSpreadsheet,
-  Link,
-  ChevronDown,
-  ChevronUp,
-  Fingerprint
+  Link as LinkIcon,
+  Fingerprint,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useThreatStream } from "@/hooks/useThreatStream";
 import LiveStatsBar from "@/components/dashboard/LiveStatsBar";
 
@@ -28,7 +28,6 @@ export default function DashboardOverviewPage() {
   const { events: liveEvents, status: wsStatus } = useThreatStream(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
 
   const fetchDashboardData = async (showRefreshIndicator = false) => {
     if (showRefreshIndicator) setIsRefreshing(true);
@@ -37,9 +36,8 @@ export default function DashboardOverviewPage() {
     try {
       const [statsData, eventsData] = await Promise.all([
         client.getStats(),
-        client.getRecentEvents(25)
+        client.getRecentEvents(25),
       ]);
-      
       setStats(statsData);
       setEvents(eventsData);
     } catch (err) {
@@ -51,36 +49,35 @@ export default function DashboardOverviewPage() {
   };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchDashboardData();
   }, []);
-
-  const toggleExpandEvent = (eventId: string) => {
-    setExpandedEventId(expandedEventId === eventId ? null : eventId);
-  };
 
   if (isLoading) {
     return (
       <div className="space-y-8">
         <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <div className="h-7 w-48 bg-border/40 rounded-lg animate-pulse" />
-            <div className="h-4 w-72 bg-border/40 rounded-lg animate-pulse mt-2" />
+          <div className="space-y-2">
+            <SkeletonLoader variant="text-lg" className="w-48" />
+            <SkeletonLoader variant="text-sm" className="w-72" />
           </div>
-          <div className="h-10 w-28 bg-border/40 rounded-lg animate-pulse" />
+          <SkeletonLoader variant="text-md" className="w-28 h-10" />
         </div>
 
         {/* Stats Grid Skeleton */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {[...Array(4)].map((_, i) => (
-            <SkeletonLoader key={i} variant="card" className="h-[140px]" />
+            <SkeletonLoader key={i} variant="rect" className="h-[120px] rounded-xl" />
           ))}
         </div>
 
         {/* Panels Skeleton */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <SkeletonLoader variant="card" className="lg:col-span-2 h-[450px]" />
-          <SkeletonLoader variant="card" className="h-[450px]" />
+          <div className="lg:col-span-2">
+            <SkeletonLoader variant="rect" className="h-[450px] rounded-xl" />
+          </div>
+          <div>
+            <SkeletonLoader variant="rect" className="h-[450px] rounded-xl" />
+          </div>
         </div>
       </div>
     );
@@ -92,53 +89,193 @@ export default function DashboardOverviewPage() {
   const suspiciousPercentage = totalRiskCount ? Math.round(((stats?.suspicious_count ?? 0) / totalRiskCount) * 100) : 0;
   const highRiskPercentage = totalRiskCount ? Math.round(((stats?.high_risk_count ?? 0) / totalRiskCount) * 100) : 0;
 
+  // Table columns definition
+  const columns: Column<RecentEvent>[] = [
+    {
+      header: "Inspection Type",
+      accessorKey: "source_type",
+      cell: (event) => {
+        const isDoc = event.source_type === "DOCUMENT";
+        return (
+          <span className="inline-flex items-center gap-1.5 font-semibold text-text-primary">
+            {isDoc ? (
+              <FileSpreadsheet className="h-4 w-4 text-brand" />
+            ) : (
+              <LinkIcon className="h-4 w-4 text-intel" />
+            )}
+            {isDoc ? "DocShield" : "PhishShield"}
+          </span>
+        );
+      },
+    },
+    {
+      header: "Entity Identity",
+      accessorKey: "identity",
+      cell: (event) => (
+        <span className="font-mono text-caption text-text-secondary select-all truncate max-w-[220px] block">
+          {event.source_type === "DOCUMENT" ? event.original_filename : event.source_domain}
+        </span>
+      ),
+    },
+    {
+      header: "Score",
+      accessorKey: "risk_score",
+      align: "center",
+      cell: (event) => (
+        <span className="font-mono text-body font-bold text-text-primary">
+          {event.risk_score}
+        </span>
+      ),
+    },
+    {
+      header: "Risk Level",
+      accessorKey: "risk_level",
+      cell: (event) => (
+        <Badge variant={event.risk_level === "HIGH" ? "danger" : event.risk_level === "SUSPICIOUS" ? "warn" : "safe"} dot>
+          {event.risk_level}
+        </Badge>
+      ),
+    },
+    {
+      header: "Age",
+      accessorKey: "created_at",
+      align: "right",
+      cell: (event) => {
+        const diff = Date.now() - new Date(event.created_at).getTime();
+        const mins = Math.floor(diff / 60000);
+        if (mins < 1) return "Just now";
+        if (mins < 60) return `${mins}m ago`;
+        return `${Math.floor(mins / 60)}h ago`;
+      },
+    },
+  ];
+
+  // Render expanded detail view
+  const renderExpandedRow = (event: RecentEvent) => {
+    const isDoc = event.source_type === "DOCUMENT";
+    return (
+      <div className="px-6 py-5 space-y-4 text-caption border-t border-border-default/40">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <span className="text-label text-text-secondary">Entity Details</span>
+            <div className="space-y-1.5 font-mono text-[11px] leading-tight">
+              <div>
+                <span className="text-text-muted">UUID Hash: </span>
+                <span className="text-text-primary select-all">{event.event_id}</span>
+              </div>
+              {event.file_hash && (
+                <div>
+                  <span className="text-text-muted">SHA-256: </span>
+                  <span className="text-text-primary break-all select-all">{event.file_hash}</span>
+                </div>
+              )}
+              {event.metadata_hash && (
+                <div>
+                  <span className="text-text-muted">Meta Hash: </span>
+                  <span className="text-text-primary select-all">{event.metadata_hash}</span>
+                </div>
+              )}
+              {event.editor_tool && (
+                <div>
+                  <span className="text-text-muted">Editor Signature: </span>
+                  <span className="text-text-primary">{event.editor_tool}</span>
+                </div>
+              )}
+              {event.creator && (
+                <div>
+                  <span className="text-text-muted">Author Creator: </span>
+                  <span className="text-text-primary">{event.creator}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-2.5">
+            <span className="text-label text-text-secondary">Triggered Forensic Indicators</span>
+            {event.risk_indicators.length === 0 ? (
+              <p className="text-text-muted italic">No threat signatures matched.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {event.risk_indicators.map((ind, i) => (
+                  <Badge key={i} variant="danger" size="sm">
+                    <AlertTriangle className="h-3 w-3 mr-1" />
+                    {ind}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            {event.top_keywords && event.top_keywords.length > 0 && (
+              <div className="mt-3">
+                <span className="text-[10px] text-text-muted font-semibold uppercase tracking-wider block mb-1">
+                  High Risk Keyword Discovered
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {event.top_keywords.map((kw, i) => (
+                    <span
+                      key={i}
+                      className="bg-surface-raised border border-border-default px-1.5 py-0.5 rounded text-[10px] text-text-primary font-medium"
+                    >
+                      {kw}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 font-sans">
       {/* Live Threat Stats Bar */}
       <LiveStatsBar events={liveEvents} connectionStatus={wsStatus} />
 
       {/* Top Welcome Title bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-text-primary">
+          <h1 className="text-headline font-semibold text-text-primary">
             Forensic Telemetry Overview
           </h1>
-          <p className="text-sm text-text-secondary font-medium">
+          <p className="text-caption text-text-secondary">
             Dynamic statistics and correlation maps representing threats verified across SentinelX engine nodes.
           </p>
         </div>
 
-        <button
+        <Button
           onClick={() => fetchDashboardData(true)}
           disabled={isRefreshing}
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-surface hover:bg-white text-xs font-bold text-text-primary px-4 py-2.5 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 shrink-0"
+          variant="outline"
+          size="sm"
+          className="shrink-0 flex items-center gap-2"
         >
-          <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin text-accent-blue" : "text-text-secondary"}`} />
+          <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin text-brand" : "text-text-muted"}`} />
           {isRefreshing ? "Refreshing..." : "Refresh Feed"}
-        </button>
+        </Button>
       </div>
 
       {/* Stats Summary Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
+        <MetricBlock
           label="Aggregated Detections"
           value={stats?.total_events || 0}
           trend={{ value: "+8.3%", isPositive: true }}
           icon={<FileSpreadsheet className="h-4 w-4" />}
         />
-        <StatCard
+        <MetricBlock
           label="DocShield Scans"
           value={stats?.document_events || 0}
           trend={{ value: "+12.1%", isPositive: true }}
-          icon={<ShieldCheck className="h-4 w-4 text-accent-blue" />}
+          icon={<ShieldCheck className="h-4 w-4 text-brand" />}
         />
-        <StatCard
+        <MetricBlock
           label="PhishShield Audits"
           value={stats?.url_events || 0}
           trend={{ value: "+4.6%", isPositive: true }}
-          icon={<Link className="h-4 w-4 text-accent-teal" />}
+          icon={<LinkIcon className="h-4 w-4 text-intel" />}
         />
-        <StatCard
+        <MetricBlock
           label="Threat Campaigns DNA"
           value={stats?.active_campaigns || 0}
           trend={{ value: "Stable", isPositive: true }}
@@ -150,237 +287,77 @@ export default function DashboardOverviewPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left column - Live Forensic Events */}
         <div className="lg:col-span-2 space-y-6">
-          <GlassCard className="p-6 flex flex-col min-h-[500px]">
-            <div className="flex items-center justify-between mb-6">
+          <DataCard className="p-6 flex flex-col min-h-[500px]">
+            <div className="flex items-center justify-between mb-5">
               <div>
-                <h3 className="text-lg font-bold text-text-primary">Recent Forensic Events</h3>
-                <p className="text-xs text-text-secondary font-medium">Realtime inspection logs sorted by event timestamp.</p>
+                <h3 className="text-title text-text-primary">Recent Forensic Events</h3>
+                <p className="text-caption text-text-secondary">Realtime inspection logs sorted by event timestamp.</p>
               </div>
-              <span className="text-[11px] font-mono font-bold text-text-secondary flex items-center gap-1.5 bg-bg-base px-2.5 py-1 rounded-lg border border-border/40">
-                <Clock className="h-3 w-3 text-accent-blue" />
-                Live stream
+              <span className="font-mono text-[10px] font-semibold text-text-secondary flex items-center gap-1.5 bg-surface-raised px-2.5 py-1 rounded-lg border border-border-default/60">
+                <Clock className="h-3 w-3 text-brand" />
+                LIVE STREAM
               </span>
             </div>
 
             {events.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-text-secondary">
-                <ShieldCheck className="h-12 w-12 text-border mb-3" />
-                <p className="font-semibold text-sm">No recent anomalies detected</p>
-                <p className="text-xs max-w-xs mt-1">Uploaded documents or URLs verified as clean will appear in the historical archive.</p>
+              <div className="flex-grow flex flex-col items-center justify-center p-8 text-center text-text-muted">
+                <ShieldCheck className="h-12 w-12 text-border-default mb-3" />
+                <p className="font-semibold text-body text-text-primary">No recent anomalies detected</p>
+                <p className="text-caption max-w-xs mt-1">Uploaded documents or URLs verified as clean will appear in the historical archive.</p>
               </div>
             ) : (
-              <div className="overflow-x-auto -mx-6">
-                <table className="w-full text-left border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b border-border/40 text-[10px] font-bold text-text-secondary uppercase tracking-wider bg-bg-base/40">
-                      <th className="py-3 px-6 w-8"></th>
-                      <th className="py-3 px-4">Inspection Type</th>
-                      <th className="py-3 px-4">Entity Identity</th>
-                      <th className="py-3 px-4 text-center">Score</th>
-                      <th className="py-3 px-4">Risk Level</th>
-                      <th className="py-3 px-6 text-right">Age</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {events.map((event) => {
-                      const isExpanded = expandedEventId === event.event_id;
-                      const hasDocInfo = event.source_type === "DOCUMENT";
-                      return (
-                        <React.Fragment key={event.event_id}>
-                          {/* Main Row */}
-                          <tr
-                            onClick={() => toggleExpandEvent(event.event_id)}
-                            className={`border-b border-border/20 cursor-pointer hover:bg-bg-base/30 transition-colors ${
-                              isExpanded ? "bg-bg-base/20" : ""
-                            }`}
-                          >
-                            <td className="py-4 px-6 text-center text-text-secondary">
-                              {isExpanded ? (
-                                <ChevronUp className="h-4 w-4 stroke-[2.5]" />
-                              ) : (
-                                <ChevronDown className="h-4 w-4 stroke-[2.5]" />
-                              )}
-                            </td>
-                            <td className="py-4 px-4 font-semibold text-text-primary">
-                              <span className="inline-flex items-center gap-1.5">
-                                {hasDocInfo ? (
-                                  <FileSpreadsheet className="h-4 w-4 text-accent-blue" />
-                                ) : (
-                                  <Link className="h-4 w-4 text-accent-teal" />
-                                )}
-                                {hasDocInfo ? "DocShield" : "PhishShield"}
-                              </span>
-                            </td>
-                            <td className="py-4 px-4 max-w-[200px] truncate font-mono text-xs font-semibold text-text-primary">
-                              {hasDocInfo ? event.original_filename : event.source_domain}
-                            </td>
-                            <td className="py-4 px-4 text-center font-mono font-bold text-text-primary">
-                              {event.risk_score}
-                            </td>
-                            <td className="py-4 px-4">
-                              <RiskBadge
-                                variant={
-                                  event.risk_level === "HIGH"
-                                    ? "high"
-                                    : event.risk_level === "SUSPICIOUS"
-                                    ? "medium"
-                                    : "safe"
-                                }
-                              />
-                            </td>
-                            <td className="py-4 px-6 text-right text-xs text-text-secondary font-semibold">
-                              {(() => {
-                                const diff = Date.now() - new Date(event.created_at).getTime();
-                                const mins = Math.floor(diff / 60000);
-                                if (mins < 1) return "Just now";
-                                if (mins < 60) return `${mins}m ago`;
-                                return `${Math.floor(mins / 60)}h ago`;
-                              })()}
-                            </td>
-                          </tr>
-
-                          {/* Expandable Details Tray */}
-                          <AnimatePresence>
-                            {isExpanded && (
-                              <tr>
-                                <td colSpan={6} className="bg-bg-base/40 border-b border-border/30 p-0">
-                                  <motion.div
-                                    initial={{ opacity: 0, height: 0 }}
-                                    animate={{ opacity: 1, height: "auto" }}
-                                    exit={{ opacity: 0, height: 0 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="overflow-hidden px-12 py-5 space-y-4 text-xs font-medium"
-                                  >
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                      <div className="space-y-2">
-                                        <div className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">
-                                          Entity Details
-                                        </div>
-                                        <div className="space-y-1.5 font-mono text-[11px]">
-                                          <div>
-                                            <span className="text-text-secondary">UUID Hash: </span>
-                                            <span className="text-text-primary select-all">{event.event_id}</span>
-                                          </div>
-                                          {event.file_hash && (
-                                            <div>
-                                              <span className="text-text-secondary">SHA-256: </span>
-                                              <span className="text-text-primary break-all select-all">{event.file_hash}</span>
-                                            </div>
-                                          )}
-                                          {event.metadata_hash && (
-                                            <div>
-                                              <span className="text-text-secondary">Meta Hash: </span>
-                                              <span className="text-text-primary select-all">{event.metadata_hash}</span>
-                                            </div>
-                                          )}
-                                          {event.editor_tool && (
-                                            <div>
-                                              <span className="text-text-secondary">Editor Signature: </span>
-                                              <span className="text-text-primary">{event.editor_tool}</span>
-                                            </div>
-                                          )}
-                                          {event.creator && (
-                                            <div>
-                                              <span className="text-text-secondary">Author Creator: </span>
-                                              <span className="text-text-primary">{event.creator}</span>
-                                            </div>
-                                          )}
-                                        </div>
-                                      </div>
-
-                                      <div className="space-y-2.5">
-                                        <div className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">
-                                          Triggered Forensic Indicators
-                                        </div>
-                                        {event.risk_indicators.length === 0 ? (
-                                          <div className="text-text-secondary italic">No threat signatures matched.</div>
-                                        ) : (
-                                          <div className="flex flex-wrap gap-2">
-                                            {event.risk_indicators.map((ind, i) => (
-                                              <span
-                                                key={i}
-                                                className="inline-flex items-center gap-1 bg-risk-high/5 text-risk-high border border-risk-high/10 px-2 py-1 rounded text-[10px] font-bold font-mono"
-                                              >
-                                                <AlertTriangle className="h-3 w-3" />
-                                                {ind}
-                                              </span>
-                                            ))}
-                                          </div>
-                                        )}
-                                        {event.top_keywords && event.top_keywords.length > 0 && (
-                                          <div className="mt-3">
-                                            <div className="text-[9px] font-bold text-text-secondary uppercase tracking-wider mb-1">
-                                              High Risk Keyword Discovered
-                                            </div>
-                                            <div className="flex flex-wrap gap-1.5">
-                                              {event.top_keywords.map((kw, i) => (
-                                                <span
-                                                  key={i}
-                                                  className="bg-bg-base border border-border px-1.5 py-0.5 rounded text-[10px] text-text-primary font-semibold"
-                                                >
-                                                  {kw}
-                                                </span>
-                                              ))}
-                                            </div>
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </motion.div>
-                                </td>
-                              </tr>
-                            )}
-                          </AnimatePresence>
-                        </React.Fragment>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <IntelligenceTable
+                data={events}
+                columns={columns}
+                keyExtractor={(item) => item.event_id}
+                renderExpandedRow={renderExpandedRow}
+                emptyMessage="No historical inspection logs found."
+                className="border-none shadow-none bg-transparent rounded-none"
+              />
             )}
-          </GlassCard>
+          </DataCard>
         </div>
 
         {/* Right column - Risk Stats & Alerts */}
         <div className="space-y-6">
           {/* Risk Level Distribution Card */}
-          <GlassCard className="p-6">
-            <h3 className="text-lg font-bold text-text-primary mb-1">Risk Breakdown</h3>
-            <p className="text-xs text-text-secondary font-medium mb-6">Percentage allocation of verified scanned entities.</p>
+          <DataCard className="p-6">
+            <h3 className="text-title text-text-primary mb-1">Risk Breakdown</h3>
+            <p className="text-caption text-text-secondary mb-6">Percentage allocation of verified scanned entities.</p>
 
             <div className="space-y-5">
               {/* Clean */}
               <div className="space-y-1.5">
-                <div className="flex justify-between text-xs font-semibold">
-                  <span className="flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-full bg-risk-safe" />
+                <div className="flex justify-between text-caption font-semibold">
+                  <span className="flex items-center gap-1.5 text-text-secondary">
+                    <span className="h-2 w-2 rounded-full bg-risk-none" />
                     Clean / Validated
                   </span>
-                  <span>{cleanPercentage}%</span>
+                  <span className="text-text-primary">{cleanPercentage}%</span>
                 </div>
-                <div className="h-2 bg-border/40 rounded-full overflow-hidden">
+                <div className="h-2 bg-surface-raised border border-border-default/40 rounded-full overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${cleanPercentage}%` }}
                     transition={{ duration: 1, ease: "easeOut" }}
-                    className="h-full bg-risk-safe"
+                    className="h-full bg-risk-none"
                   />
                 </div>
-                <div className="text-[10px] text-text-secondary font-medium">
+                <span className="text-[10px] text-text-muted font-medium block">
                   {stats?.clean_count || 0} events flagged safe
-                </div>
+                </span>
               </div>
 
               {/* Suspicious */}
               <div className="space-y-1.5">
-                <div className="flex justify-between text-xs font-semibold">
-                  <span className="flex items-center gap-1.5">
+                <div className="flex justify-between text-caption font-semibold">
+                  <span className="flex items-center gap-1.5 text-text-secondary">
                     <span className="h-2 w-2 rounded-full bg-risk-medium" />
                     Suspicious Anomalies
                   </span>
-                  <span>{suspiciousPercentage}%</span>
+                  <span className="text-text-primary">{suspiciousPercentage}%</span>
                 </div>
-                <div className="h-2 bg-border/40 rounded-full overflow-hidden">
+                <div className="h-2 bg-surface-raised border border-border-default/40 rounded-full overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${suspiciousPercentage}%` }}
@@ -388,56 +365,56 @@ export default function DashboardOverviewPage() {
                     className="h-full bg-risk-medium"
                   />
                 </div>
-                <div className="text-[10px] text-text-secondary font-medium">
+                <span className="text-[10px] text-text-muted font-medium block">
                   {stats?.suspicious_count || 0} indicators mismatching standards
-                </div>
+                </span>
               </div>
 
               {/* High Risk */}
               <div className="space-y-1.5">
-                <div className="flex justify-between text-xs font-semibold">
-                  <span className="flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-full bg-risk-critical" />
+                <div className="flex justify-between text-caption font-semibold">
+                  <span className="flex items-center gap-1.5 text-text-secondary">
+                    <span className="h-2 w-2 rounded-full bg-risk-high" />
                     Confirmed High Risk
                   </span>
-                  <span>{highRiskPercentage}%</span>
+                  <span className="text-text-primary">{highRiskPercentage}%</span>
                 </div>
-                <div className="h-2 bg-border/40 rounded-full overflow-hidden">
+                <div className="h-2 bg-surface-raised border border-border-default/40 rounded-full overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${highRiskPercentage}%` }}
                     transition={{ duration: 1, ease: "easeOut" }}
-                    className="h-full bg-risk-critical"
+                    className="h-full bg-risk-high"
                   />
                 </div>
-                <div className="text-[10px] text-text-secondary font-medium">
+                <span className="text-[10px] text-text-muted font-medium block">
                   {stats?.high_risk_count || 0} events triggers critical policy violation
-                </div>
+                </span>
               </div>
             </div>
-          </GlassCard>
+          </DataCard>
 
           {/* Top Threat Indicators */}
-          <GlassCard className="p-6">
-            <h3 className="text-lg font-bold text-text-primary mb-1">Top Threat Indicators</h3>
-            <p className="text-xs text-text-secondary font-medium mb-6">Most frequently triggered signatures within the workspace.</p>
+          <DataCard className="p-6">
+            <h3 className="text-title text-text-primary mb-1">Top Threat Indicators</h3>
+            <p className="text-caption text-text-secondary mb-6">Most frequently triggered signatures within the workspace.</p>
 
             <div className="space-y-4">
               {stats?.top_indicators?.map((ind, idx) => (
-                <div key={idx} className="flex items-center justify-between text-xs font-semibold">
-                  <span className="flex items-center gap-2 max-w-[210px] truncate text-text-primary/90">
-                    <span className="h-5 w-5 flex items-center justify-center rounded bg-risk-high/5 border border-risk-high/10 text-risk-high font-mono text-[10px] font-bold">
+                <div key={idx} className="flex items-center justify-between text-[13px] font-medium">
+                  <span className="flex items-center gap-2 max-w-[210px] truncate text-text-primary">
+                    <span className="h-5 w-5 flex items-center justify-center rounded bg-risk-high-bg border border-risk-high/15 text-risk-high font-mono text-[10px] font-bold">
                       {idx + 1}
                     </span>
                     {ind.indicator}
                   </span>
-                  <span className="font-mono text-text-secondary bg-bg-base border border-border/40 px-2 py-0.5 rounded text-[11px] font-bold">
+                  <span className="font-mono text-text-secondary bg-surface-raised border border-border-default/50 px-2 py-0.5 rounded text-[11px] font-medium">
                     {ind.count} occurrences
                   </span>
                 </div>
               ))}
             </div>
-          </GlassCard>
+          </DataCard>
         </div>
       </div>
     </div>
