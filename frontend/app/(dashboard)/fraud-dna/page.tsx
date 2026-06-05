@@ -1,12 +1,21 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import fraudDnaApi from "@/lib/api/fraud-dna";
-import { CampaignsResponse, GraphResponse, ThreatSummary, GraphNode, CampaignAIResult, FraudCampaignDetail } from "@/lib/types";
+import {
+  CampaignsResponse,
+  GraphResponse,
+  ThreatSummary,
+  GraphNode,
+  GraphEdge,
+  CampaignAIResult,
+  FraudCampaignDetail
+} from "@/lib/types";
 import aiApi from "@/lib/api/ai";
-import GlassCard from "@/components/ui/GlassCard";
-import RiskBadge from "@/components/ui/RiskBadge";
-import SkeletonLoader from "@/components/ui/SkeletonLoader";
+import Card from "@/components/ui/Card";
+import Badge from "@/components/ui/Badge";
+import RiskScore from "@/components/ui/RiskScore";
+import DataPoint from "@/components/ui/DataPoint";
 import {
   Fingerprint,
   RefreshCw,
@@ -15,21 +24,18 @@ import {
   ChevronUp,
   Network,
   Sparkles,
-  Cpu
+  Cpu,
+  ShieldCheck,
+  ShieldAlert,
+  Calendar,
+  Clock,
+  CheckSquare,
+  AlertTriangle,
+  Maximize2,
+  ListFilter
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-
-// Node position map for mock nodes to render SVG connections
-const nodePositions: Record<string, { x: number; y: number }> = {
-  "evt-f89a23": { x: 20, y: 70 },
-  "evt-a78b45": { x: 25, y: 150 },
-  "evt-67d8f9": { x: 15, y: 160 },
-  "actor-invoice-spoofer": { x: 20, y: 110 },
-  
-  "evt-87f12e": { x: 80, y: 80 },
-  "evt-45b678": { x: 75, y: 170 },
-  "actor-id-forge": { x: 85, y: 140 }
-};
+import * as d3 from "d3";
 
 export default function FraudDnaPage() {
   const [campaigns, setCampaigns] = useState<CampaignsResponse | null>(null);
@@ -38,22 +44,29 @@ export default function FraudDnaPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isReclustering, setIsReclustering] = useState(false);
   const [expandedCampaignId, setExpandedCampaignId] = useState<string | null>(null);
-  const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
+  const [selectedNode, setSelectedNode] = useState<any | null>(null);
+  const [activeTab, setActiveTab] = useState<"fingerprints" | "campaigns" | "graph">("fingerprints");
+
+  // D3 force graph zoom & simulation state helpers
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const zoomBehaviorRef = useRef<any>(null);
+  const [hoveredNode, setHoveredNode] = useState<any | null>(null);
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
   const [aiCampaigns, setAiCampaigns] = useState<Record<string, CampaignAIResult>>({});
   const [loadingAiCampaigns, setLoadingAiCampaigns] = useState<Record<string, boolean>>({});
 
   const fetchCampaignAI = async (campaign: FraudCampaignDetail) => {
     if (aiCampaigns[campaign.campaign_id] || loadingAiCampaigns[campaign.campaign_id]) return;
-    
-    setLoadingAiCampaigns(prev => ({ ...prev, [campaign.campaign_id]: true }));
+
+    setLoadingAiCampaigns((prev) => ({ ...prev, [campaign.campaign_id]: true }));
     try {
       const res = await aiApi.analyzeCampaign(campaign);
-      setAiCampaigns(prev => ({ ...prev, [campaign.campaign_id]: res }));
+      setAiCampaigns((prev) => ({ ...prev, [campaign.campaign_id]: res }));
     } catch (err) {
       console.error("AI campaign metrics load error:", err);
     } finally {
-      setLoadingAiCampaigns(prev => ({ ...prev, [campaign.campaign_id]: false }));
+      setLoadingAiCampaigns((prev) => ({ ...prev, [campaign.campaign_id]: false }));
     }
   };
 
@@ -91,7 +104,6 @@ export default function FraudDnaPage() {
   };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchDnaData();
   }, []);
 
@@ -99,467 +111,1002 @@ export default function FraudDnaPage() {
     fetchDnaData(true);
   };
 
-  const getThreatVariant = (level: string) => {
-    switch (level) {
+  const getThreatVariant = (level: string): any => {
+    switch (level?.toUpperCase()) {
       case "CRITICAL":
         return "critical";
+      case "HIGH":
       case "ELEVATED":
         return "high";
+      case "SUSPICIOUS":
       case "WARNING":
-        return "medium";
+      case "WARN":
+        return "warn";
       default:
         return "safe";
     }
   };
 
-
-
-  // Compute campaign cluster centers and layout nodes dynamically
-  const computedPositions = React.useMemo(() => {
-    if (!graphData || !graphData.nodes || !campaigns) return {};
-
-    const positions: Record<string, { x: number; y: number }> = {};
-    
-    // Map event_id to campaign info
-    const eventToCampaign: Record<string, { campaignId: string; index: number; total: number }> = {};
-    const campaignCenters: Record<string, { x: number; y: number }> = {};
-
-    campaigns.campaigns.forEach((camp, campIdx) => {
-      // Place campaign centers in a circle/grid across the canvas
-      const angle = (campIdx / (campaigns.campaigns.length || 1)) * 2 * Math.PI;
-      campaignCenters[camp.campaign_id] = {
-        x: 50 + 28 * Math.cos(angle),
-        y: 250 + 110 * Math.sin(angle)
-      };
-
-      camp.events.forEach((evt, evtIdx) => {
-        eventToCampaign[evt.event_id] = {
-          campaignId: camp.campaign_id,
-          index: evtIdx,
-          total: camp.events.length
-        };
+  // Compile individual fingerprints/events list
+  const fingerprintsList = useMemo(() => {
+    if (!campaigns) return [];
+    const list: any[] = [];
+    campaigns.campaigns.forEach((camp) => {
+      camp.events.forEach((evt) => {
+        list.push({
+          ...evt,
+          campaign_id: camp.campaign_id,
+          campaign_risk: camp.risk_level,
+          common_indicators: camp.common_indicators
+        });
       });
     });
+    return list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [campaigns]);
 
-    // Unclustered/noise node centers
-    let unclusteredCount = 0;
-    const unclusteredNodes = graphData.nodes.filter(n => !eventToCampaign[n.id]);
+  // Expanded fingerprint row state
+  const [expandedFingerprintId, setExpandedFingerprintId] = useState<string | null>(null);
+
+  // Graph force simulation setup (D3)
+  useEffect(() => {
+    if (!graphData || !svgRef.current || activeTab !== "graph") return;
+
+    const svgElement = svgRef.current;
+    const parent = svgElement.parentElement;
+    const width = parent?.clientWidth || 600;
+    const height = parent?.clientHeight || 450;
+
+    // Deep copy data for D3 mutation
+    const nodes: any[] = graphData.nodes.map((n) => ({ ...n }));
+    const edges: any[] = graphData.edges.map((e) => ({ ...e }));
+
+    // Clear svg elements
+    const svg: any = d3.select(svgElement);
+    svg.selectAll("*").remove();
+
+    // Create main outer group for zoom/pan
+    const g = svg.append("g").attr("class", "graph-container-inner");
+
+    // Initialize Zoom
+    const zoom: any = d3
+      .zoom()
+      .scaleExtent([0.15, 3])
+      .on("zoom", (event) => {
+        g.attr("transform", event.transform);
+      });
     
-    graphData.nodes.forEach((node) => {
-      // Check if it's hardcoded first (like mock nodes)
-      if (nodePositions[node.id]) {
-        positions[node.id] = nodePositions[node.id];
-        return;
-      }
+    svg.call(zoom);
+    zoomBehaviorRef.current = { zoom, svg };
 
-      const campInfo = eventToCampaign[node.id];
-      if (campInfo) {
-        const center = campaignCenters[campInfo.campaignId];
-        const radiusX = campInfo.total > 1 ? 4 + Math.min(10, campInfo.total * 0.8) : 0;
-        const radiusY = campInfo.total > 1 ? 15 + Math.min(45, campInfo.total * 3) : 0;
-        const nodeAngle = (campInfo.index / campInfo.total) * 2 * Math.PI;
-        
-        positions[node.id] = {
-          x: Math.round(center.x + radiusX * Math.cos(nodeAngle)),
-          y: Math.round(center.y + radiusY * Math.sin(nodeAngle))
-        };
-      } else {
-        // Noise nodes - place around the outer border
-        const idx = unclusteredCount++;
-        const totalUnclustered = unclusteredNodes.length || 1;
-        const angle = (idx / totalUnclustered) * 2 * Math.PI;
-        positions[node.id] = {
-          x: Math.round(50 + 38 * Math.cos(angle)),
-          y: Math.round(250 + 160 * Math.sin(angle))
-        };
-      }
+    // Setup force simulation
+    const simulation = d3
+      .forceSimulation(nodes)
+      .force(
+        "link",
+        d3
+          .forceLink(edges)
+          .id((d: any) => d.id)
+          .distance(110)
+      )
+      .force("charge", d3.forceManyBody().strength(-280))
+      .force("center", d3.forceCenter(width / 2, height / 2))
+      .force(
+        "collide",
+        d3.forceCollide().radius((d: any) => (d.type === "ACTOR" ? 38 : 22))
+      );
+
+    // Draw links/edges
+    const link = g
+      .append("g")
+      .attr("class", "links")
+      .selectAll("line")
+      .data(edges)
+      .enter()
+      .append("line")
+      .attr("stroke", "var(--border-focus)")
+      .attr("stroke-opacity", 0.4)
+      .attr("stroke-width", (d: any) => Math.max(1.5, (d.weight || 0.5) * 4.5))
+      .attr("stroke-dasharray", (d: any) => (d.type === "ACTOR" ? "4,4" : "none"))
+      .attr("cursor", "pointer");
+
+    // Draw node groups
+    const node = g
+      .append("g")
+      .attr("class", "nodes")
+      .selectAll("g")
+      .data(nodes)
+      .enter()
+      .append("g")
+      .attr("class", "node-group")
+      .attr("cursor", "pointer")
+      .call(
+        d3
+          .drag<SVGGElement, any>()
+          .on("start", dragstarted)
+          .on("drag", dragged)
+          .on("end", dragended)
+      );
+
+    // Node circles styling
+    node
+      .append("circle")
+      .attr("r", (d: any) => (d.type === "ACTOR" ? 22 : 12))
+      .attr("fill", (d: any) => {
+        if (d.type === "ACTOR") return "var(--brand-muted)";
+        const variant = getThreatVariant(d.risk_level);
+        if (variant === "critical") return "rgba(239, 68, 68, 0.2)";
+        if (variant === "high") return "rgba(249, 115, 22, 0.2)";
+        if (variant === "warn") return "rgba(234, 179, 8, 0.2)";
+        return "rgba(34, 197, 94, 0.2)";
+      })
+      .attr("stroke", (d: any) => {
+        if (d.type === "ACTOR") return "var(--brand)";
+        const variant = getThreatVariant(d.risk_level);
+        if (variant === "critical") return "var(--critical)";
+        if (variant === "high") return "var(--high)";
+        if (variant === "warn") return "var(--warn)";
+        return "var(--safe)";
+      })
+      .attr("stroke-width", (d: any) => (d.type === "ACTOR" ? 2.5 : 2));
+
+    // Inner center dots for Event nodes
+    node
+      .filter((d: any) => d.type !== "ACTOR")
+      .append("circle")
+      .attr("r", 4.5)
+      .attr("fill", (d: any) => {
+        const variant = getThreatVariant(d.risk_level);
+        if (variant === "critical") return "var(--critical)";
+        if (variant === "high") return "var(--high)";
+        if (variant === "warn") return "var(--warn)";
+        return "var(--safe)";
+      });
+
+    // Add icon letter indicators inside Actor nodes
+    node
+      .filter((d: any) => d.type === "ACTOR")
+      .append("text")
+      .attr("text-anchor", "middle")
+      .attr("dy", ".3em")
+      .attr("fill", "var(--brand)")
+      .attr("font-size", "11px")
+      .attr("font-family", "var(--font-mono), monospace")
+      .attr("font-weight", "bold")
+      .text("ACT");
+
+    // Dynamic hover & click events on nodes
+    node
+      .on("mouseover", (event: any, d: any) => {
+        setHoveredNode(d);
+        const rect = svgElement.getBoundingClientRect();
+        setTooltipPos({
+          x: event.clientX - rect.left + 15,
+          y: event.clientY - rect.top + 15
+        });
+      })
+      .on("mousemove", (event: any) => {
+        const rect = svgElement.getBoundingClientRect();
+        setTooltipPos({
+          x: event.clientX - rect.left + 15,
+          y: event.clientY - rect.top + 15
+        });
+      })
+      .on("mouseout", () => {
+        setHoveredNode(null);
+      })
+      .on("click", (event: any, d: any) => {
+        event.stopPropagation();
+        setSelectedNode(d);
+
+        // Highlight selected node + connected nodes & links
+        const connectedNodeIds = new Set<string>([d.id]);
+        edges.forEach((edge: any) => {
+          if (edge.source.id === d.id) connectedNodeIds.add(edge.target.id);
+          if (edge.target.id === d.id) connectedNodeIds.add(edge.source.id);
+        });
+
+        node.style("opacity", (n: any) => (connectedNodeIds.has(n.id) ? 1.0 : 0.18));
+        link.style("opacity", (l: any) =>
+          (l.source.id === d.id || l.target.id === d.id) ? 1.0 : 0.08
+        );
+      });
+
+    // Click canvas to clear filter selection
+    svg.on("click", () => {
+      setSelectedNode(null);
+      node.style("opacity", 1.0);
+      link.style("opacity", 0.4);
     });
 
-    return positions;
-  }, [graphData, campaigns]);
+    simulation.on("tick", () => {
+      link
+        .attr("x1", (d: any) => d.source.x)
+        .attr("y1", (d: any) => d.source.y)
+        .attr("x2", (d: any) => d.target.x)
+        .attr("y2", (d: any) => d.target.y);
 
-  // Helper to determine node position dynamically if not in hardcoded positions
-  const getNodePosition = (nodeId: string) => {
-    if (nodePositions[nodeId]) return nodePositions[nodeId];
-    if (computedPositions[nodeId]) return computedPositions[nodeId];
-    if (!graphData || !graphData.nodes) return { x: 50, y: 150 };
-    const index = graphData.nodes.findIndex((n) => n.id === nodeId);
-    if (index === -1) return { x: 50, y: 150 };
-    const total = graphData.nodes.length || 1;
-    const angle = (index / total) * 2 * Math.PI;
-    return {
-      x: Math.round(50 + 35 * Math.cos(angle)),
-      y: Math.round(200 + 120 * Math.sin(angle))
+      node.attr("transform", (d: any) => `translate(${d.x},${d.y})`);
+    });
+
+    function dragstarted(event: any, d: any) {
+      if (!event.active) simulation.alphaTarget(0.3).restart();
+      d.fx = d.x;
+      d.fy = d.y;
+    }
+
+    function dragged(event: any, d: any) {
+      d.fx = event.x;
+      d.fy = event.y;
+    }
+
+    function dragended(event: any, d: any) {
+      if (!event.active) simulation.alphaTarget(0);
+      d.fx = null;
+      d.fy = null;
+    }
+
+    return () => {
+      simulation.stop();
     };
+  }, [graphData, activeTab]);
+
+  // Zoom control buttons handlers
+  const handleResetZoom = () => {
+    if (zoomBehaviorRef.current) {
+      const { zoom, svg } = zoomBehaviorRef.current;
+      svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
+    }
+  };
+
+  const handleFitZoom = () => {
+    if (zoomBehaviorRef.current && svgRef.current) {
+      const { zoom, svg } = zoomBehaviorRef.current;
+      const g = svg.select(".graph-container-inner");
+      if (g.empty()) return;
+      const bounds = (g.node() as SVGGraphicsElement).getBBox();
+      const parent = svgRef.current.parentElement;
+      const width = parent?.clientWidth || 600;
+      const height = parent?.clientHeight || 450;
+
+      const dx = bounds.width;
+      const dy = bounds.height;
+      if (dx === 0 || dy === 0) return;
+
+      const x = bounds.x + dx / 2;
+      const y = bounds.y + dy / 2;
+      const scale = Math.max(0.25, Math.min(1.8, 0.85 / Math.max(dx / width, dy / height)));
+      const translate = [width / 2 - scale * x, height / 2 - scale * y];
+
+      svg
+        .transition()
+        .duration(600)
+        .call(zoom.transform, d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale));
+    }
   };
 
   return (
     <div className="space-y-8">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--border)] pb-5">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-text-primary">
-            Fraud DNA Connected Clusters
-          </h1>
-          <p className="text-sm text-text-secondary font-medium">
-            Evaluate overlapping document fingerprints, shared EXIF editor tags, and metadata timestamps.
+          <div className="flex items-center gap-2.5">
+            <div className="h-9 w-9 rounded-lg bg-[var(--brand-muted)] text-[var(--brand)] flex items-center justify-center shadow-sm">
+              <Network className="h-5 w-5" />
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight text-[var(--text-1)]">
+              Fraud DNA Cluster Analysis
+            </h1>
+          </div>
+          <p className="text-sm text-[var(--text-3)] font-medium mt-1 pl-11">
+            Correlate files, domains, exif dates, and digital hashes into high-confidence campaign footprints.
           </p>
         </div>
 
         <button
           onClick={handleRecluster}
           disabled={isReclustering || isLoading}
-          className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border bg-surface hover:bg-white text-xs font-bold text-text-primary px-4 py-2.5 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 shrink-0"
+          className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-2)] text-xs font-bold text-[var(--text-1)] px-4 py-2.5 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 shrink-0 cursor-pointer"
         >
-          <RefreshCw className={`h-3.5 w-3.5 ${isReclustering ? "animate-spin text-accent-blue" : "text-text-secondary"}`} />
+          <RefreshCw
+            className={`h-3.5 w-3.5 ${
+              isReclustering ? "animate-spin text-[var(--brand)]" : "text-[var(--text-3)]"
+            }`}
+          />
           {isReclustering ? "Re-clustering..." : "Re-cluster Sandbox"}
         </button>
       </div>
 
       {isLoading ? (
-        <div className="space-y-8">
-          <SkeletonLoader variant="card" className="h-[120px]" />
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <SkeletonLoader key="c1" variant="card" className="lg:col-span-2 h-[450px]" />
-            <SkeletonLoader key="c2" variant="card" className="h-[450px]" />
-          </div>
+        <div className="min-h-[400px] flex flex-col items-center justify-center">
+          <div className="h-10 w-10 border-4 border-[var(--border-2)] border-t-[var(--brand)] animate-spin rounded-full mb-3" />
+          <p className="text-sm text-[var(--text-3)] font-semibold">Generating campaign graph nodes...</p>
         </div>
       ) : (
         <>
           {/* Top Threat summary panel */}
           {summary && (
-            <GlassCard className="p-6 border-l-4 border-l-risk-high">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+            <Card variant="elevated" className="p-6 border-l-4 border-l-[var(--high)]">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">
-                      Threat Intelligence Analysis Summary
+                    <span className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest font-semibold">
+                      Threat Intelligence Sandbox Summary
                     </span>
-                    <RiskBadge variant={getThreatVariant(summary.threat_level)} />
+                    <Badge variant={getThreatVariant(summary.threat_level)} dot size="sm">
+                      {summary.threat_level}
+                    </Badge>
                   </div>
-                  <p className="text-sm text-text-primary font-semibold leading-relaxed mt-2.5">
+                  <p className="text-sm text-[var(--text-2)] font-semibold leading-relaxed mt-2.5">
                     {summary.summary}
                   </p>
                 </div>
 
-                <div className="flex gap-4 sm:border-l border-border/40 sm:pl-6 shrink-0 font-semibold text-xs text-text-secondary">
+                <div className="flex gap-4 md:border-l border-[var(--border)] md:pl-6 shrink-0 font-semibold text-xs text-[var(--text-3)]">
                   <div className="text-center">
-                    <span className="block font-mono text-xl font-bold text-risk-critical">
+                    <span className="block font-mono text-xl font-bold text-[var(--critical)]">
                       {summary.high_risk_count}
                     </span>
                     <span>High Risk</span>
                   </div>
-                  <div className="text-center border-l border-border/40 pl-4">
-                    <span className="block font-mono text-xl font-bold text-risk-medium">
+                  <div className="text-center border-l border-[var(--border)] pl-4">
+                    <span className="block font-mono text-xl font-bold text-[var(--warn)]">
                       {summary.suspicious_count}
                     </span>
                     <span>Suspicious</span>
                   </div>
                 </div>
               </div>
-            </GlassCard>
+            </Card>
           )}
 
-          {/* Core Interactive Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-            {/* Left: Campaigns clusters list */}
-            <div className="lg:col-span-3 space-y-6">
-              <GlassCard className="p-6">
-                <h3 className="text-base font-bold text-text-primary mb-1">Identified Campaigns</h3>
-                <p className="text-xs text-text-secondary font-medium mb-6">Threat events pooled together based on shared DNA traits.</p>
+          {/* Navigation Tab Bar */}
+          <div className="flex border-b border-[var(--border)] gap-6">
+            {(["fingerprints", "campaigns", "graph"] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => {
+                  setActiveTab(tab);
+                  setSelectedNode(null);
+                }}
+                className={`pb-3 text-xs font-bold uppercase tracking-wider relative cursor-pointer ${
+                  activeTab === tab
+                    ? "text-[var(--brand)]"
+                    : "text-[var(--text-3)] hover:text-[var(--text-2)]"
+                }`}
+              >
+                {tab === "fingerprints"
+                  ? "Fingerprints Archive"
+                  : tab === "campaigns"
+                  ? "Identified Campaigns"
+                  : "DNA Network Graph"}
+                {activeTab === tab && (
+                  <motion.div
+                    layoutId="fraudDnaTabUnderline"
+                    className="absolute bottom-0 left-0 right-0 h-[2px] bg-[var(--brand)]"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
+              </button>
+            ))}
+          </div>
 
-                <div className="space-y-4">
-                  {campaigns?.campaigns.map((camp) => {
-                    const isExpanded = expandedCampaignId === camp.campaign_id;
-                    return (
-                      <div
-                        key={camp.campaign_id}
-                        className="border border-border/60 rounded-2xl bg-bg-base/30 overflow-hidden"
-                      >
-                        {/* Header bar */}
+          {/* Tab Content Areas */}
+          <AnimatePresence mode="wait">
+            {activeTab === "fingerprints" && (
+              <motion.div
+                key="fingerprints-tab"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="space-y-4"
+              >
+                <Card variant="default" className="p-6">
+                  <div className="flex justify-between items-center mb-6">
+                    <div>
+                      <h3 className="text-sm font-bold text-[var(--text-1)]">Forensic Logs</h3>
+                      <p className="text-xs text-[var(--text-3)] font-semibold mt-0.5">
+                        Individual forensic records matching visual anomalies or spoofed headers.
+                      </p>
+                    </div>
+                    <Badge variant="neutral" size="sm">
+                      {fingerprintsList.length} total events
+                    </Badge>
+                  </div>
+
+                  <div className="space-y-3">
+                    {fingerprintsList.map((evt) => {
+                      const isExpanded = expandedFingerprintId === evt.event_id;
+                      return (
                         <div
-                          onClick={() => toggleCampaignExpand(camp)}
-                          className="flex items-center justify-between p-4 cursor-pointer hover:bg-bg-base/60 transition-colors"
+                          key={evt.event_id}
+                          className="border border-[var(--border)] rounded-xl bg-[var(--surface-2)] overflow-hidden"
                         >
-                          <div className="flex items-center gap-3">
-                            <span className="h-8 w-8 rounded-xl bg-text-primary/5 text-text-primary flex items-center justify-center font-mono text-xs font-bold border border-border/60 shrink-0">
-                              {camp.event_count}
-                            </span>
-                            <div>
-                              <div className="text-xs font-bold text-text-primary font-mono uppercase">
-                                ID: {camp.campaign_id}
+                          <div
+                            onClick={() =>
+                              setExpandedFingerprintId(isExpanded ? null : evt.event_id)
+                            }
+                            className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-3 cursor-pointer hover:bg-[var(--surface-3)]/60 transition-colors"
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className="h-7 w-7 rounded-lg bg-[var(--surface-3)] text-[var(--text-2)] flex items-center justify-center">
+                                <Fingerprint className="h-4 w-4" />
+                              </span>
+                              <div>
+                                <span className="font-mono text-xs font-bold text-[var(--text-1)] select-all">
+                                  {evt.event_id}
+                                </span>
+                                <span className="text-xs text-[var(--text-3)] font-semibold ml-2">
+                                  {evt.label}
+                                </span>
                               </div>
-                              <div className="text-[10px] text-text-secondary font-semibold mt-0.5">
-                                Avg score: <span className="font-mono">{camp.avg_risk_score.toFixed(0)}</span>
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <Badge variant={evt.source_type === "DOCUMENT" ? "neutral" : "ai"} size="sm">
+                                {evt.source_type}
+                              </Badge>
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-xs font-bold text-[var(--text-2)]">
+                                  Score: {evt.risk_score}
+                                </span>
+                                <Badge variant={getThreatVariant(evt.risk_level)} size="sm">
+                                  {evt.risk_level}
+                                </Badge>
                               </div>
+                              {isExpanded ? (
+                                <ChevronUp className="h-4 w-4 text-[var(--text-3)]" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4 text-[var(--text-3)]" />
+                              )}
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-3">
-                            <RiskBadge
-                              variant={
-                                camp.risk_level === "HIGH"
-                                  ? "high"
-                                  : camp.risk_level === "SUSPICIOUS"
-                                  ? "medium"
-                                  : "safe"
-                              }
-                            />
-                            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          <AnimatePresence>
+                            {isExpanded && (
+                              <motion.div
+                                initial={{ height: 0 }}
+                                animate={{ height: "auto" }}
+                                exit={{ height: 0 }}
+                                className="border-t border-[var(--border)] bg-[var(--surface)] p-4 text-xs font-semibold text-[var(--text-2)] space-y-3"
+                              >
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                  <DataPoint
+                                    label="Document Entity ID"
+                                    value={evt.doc_id || "N/A"}
+                                    mono
+                                    copyable
+                                  />
+                                  <DataPoint
+                                    label="Classification Hint"
+                                    value={evt.document_type_hint || "N/A"}
+                                    mono
+                                  />
+                                  <DataPoint
+                                    label="Associated Campaign"
+                                    value={evt.campaign_id}
+                                    mono
+                                  />
+                                </div>
+                                <div>
+                                  <span className="t-label block mb-1 text-[var(--text-3)]">
+                                    Triggered Campaign Policies
+                                  </span>
+                                  <div className="flex flex-wrap gap-1.5 pt-1">
+                                    {evt.common_indicators.map((ind: string, idx: number) => (
+                                      <span
+                                        key={idx}
+                                        className="bg-[var(--high-bg)] text-[var(--high)] border border-[var(--high-border)] text-[10px] px-2 py-0.5 rounded font-mono font-medium"
+                                      >
+                                        {ind}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                                <div className="flex justify-between items-center pt-2 border-t border-[var(--border)] text-[10px] text-[var(--text-3)]">
+                                  <span className="flex items-center gap-1">
+                                    <Clock className="h-3.5 w-3.5" />
+                                    Seen: {new Date(evt.created_at).toLocaleString()}
+                                  </span>
+                                  <a
+                                    href={evt.source_type === "DOCUMENT" ? "/docshield" : "/phishshield"}
+                                    className="text-[var(--brand)] hover:underline flex items-center gap-1 font-bold"
+                                  >
+                                    Inspect Source Log &rarr;
+                                  </a>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Card>
+              </motion.div>
+            )}
+
+            {activeTab === "campaigns" && (
+              <motion.div
+                key="campaigns-tab"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="space-y-6"
+              >
+                {campaigns?.campaigns.map((camp) => {
+                  const isExpanded = expandedCampaignId === camp.campaign_id;
+                  return (
+                    <Card key={camp.campaign_id} variant="default" className="p-6 space-y-4">
+                      {/* Campaign Header */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--border)] pb-4">
+                        <div className="space-y-1">
+                          <span className="font-mono text-sm font-bold text-[var(--brand)] block">
+                            CAMPAIGN: {camp.campaign_id.toUpperCase()}
+                          </span>
+                          <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-[var(--text-3)]">
+                            <span className="flex items-center gap-1">
+                              <Maximize2 className="h-3.5 w-3.5" />
+                              {camp.event_count} associated events
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-3.5 w-3.5" />
+                              Seen: {new Date(camp.first_seen).toLocaleDateString()} &ndash;{" "}
+                              {new Date(camp.last_seen).toLocaleDateString()}
+                            </span>
                           </div>
                         </div>
 
-                        {/* Expandable info list */}
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            <span className="text-[10px] text-[var(--text-3)] block font-semibold uppercase tracking-wider">
+                              Avg Risk Score
+                            </span>
+                            <span className="font-mono text-sm font-bold text-[var(--text-1)]">
+                              {camp.avg_risk_score.toFixed(1)}
+                            </span>
+                          </div>
+                          <Badge variant={getThreatVariant(camp.risk_level)} size="md">
+                            {camp.risk_level}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      {/* Keywords & Indicators */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs font-semibold">
+                        <div>
+                          <span className="t-label block mb-2 text-[var(--text-3)]">Common Keywords</span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {camp.common_keywords.map((kw, i) => (
+                              <span
+                                key={i}
+                                className="bg-[var(--surface-3)] border border-[var(--border-2)] text-[10px] text-[var(--text-2)] px-2 py-0.5 rounded-md"
+                              >
+                                {kw}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <span className="t-label block mb-2 text-[var(--text-3)]">Common Indicators</span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {camp.common_indicators.map((ind, i) => (
+                              <span
+                                key={i}
+                                className="bg-[var(--high-bg)] text-[var(--high)] border border-[var(--high-border)] text-[9px] px-2 py-0.5 rounded font-mono font-medium"
+                              >
+                                {ind}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Table of Associated Scans */}
+                      <div className="pt-2">
+                        <span className="t-label block mb-2 text-[var(--text-3)]">Associated Scans</span>
+                        <div className="border border-[var(--border)] rounded-xl overflow-hidden bg-[var(--surface-2)]">
+                          <table className="w-full text-left border-collapse text-xs font-semibold">
+                            <thead>
+                              <tr className="border-b border-[var(--border)] bg-[var(--surface-3)]/60 text-[var(--text-3)]">
+                                <th className="p-3">Event ID</th>
+                                <th className="p-3">Entity Label</th>
+                                <th className="p-3">Type</th>
+                                <th className="p-3 text-right">Risk Score</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {camp.events.map((evt) => (
+                                <tr key={evt.event_id} className="border-b border-[var(--border)]/40 last:border-0 hover:bg-[var(--surface-3)]/40">
+                                  <td className="p-3 font-mono text-[var(--text-1)] select-all">{evt.event_id}</td>
+                                  <td className="p-3 font-mono text-[var(--text-2)]">{evt.label}</td>
+                                  <td className="p-3">
+                                    <Badge variant="neutral" size="sm">
+                                      {evt.source_type}
+                                    </Badge>
+                                  </td>
+                                  <td className="p-3 text-right font-mono font-bold text-[var(--text-1)]">
+                                    {evt.risk_score}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      {/* AI Intelligence Toggle */}
+                      <div className="pt-4 border-t border-[var(--border)]">
+                        <button
+                          onClick={() => toggleCampaignExpand(camp)}
+                          className="flex items-center gap-1.5 text-xs font-bold text-[var(--brand)] hover:underline cursor-pointer"
+                        >
+                          {isExpanded ? (
+                            <>
+                              <ChevronUp className="h-4 w-4" /> Hide AI Campaign Intel
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="h-4 w-4" /> Analyze with AI Campaign Oracle
+                            </>
+                          )}
+                        </button>
+
                         <AnimatePresence>
                           {isExpanded && (
                             <motion.div
                               initial={{ opacity: 0, height: 0 }}
                               animate={{ opacity: 1, height: "auto" }}
                               exit={{ opacity: 0, height: 0 }}
-                              transition={{ duration: 0.2 }}
-                              className="border-t border-border/40 px-5 py-4 space-y-4 bg-surface/50 text-xs font-medium text-text-secondary"
+                              className="mt-4"
                             >
-                              {/* Common parameters */}
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <div className="text-[9px] font-bold text-text-secondary uppercase mb-1">Common Keywords</div>
-                                  <div className="flex flex-wrap gap-1">
-                                    {camp.common_keywords.map((kw, i) => (
-                                      <span key={i} className="bg-bg-base border border-border/50 px-1.5 py-0.5 rounded text-[10px] text-text-primary font-semibold">
-                                        {kw}
-                                      </span>
-                                    ))}
-                                  </div>
+                              {loadingAiCampaigns[camp.campaign_id] ? (
+                                <div className="py-6 flex items-center justify-center gap-2 text-xs font-semibold text-[var(--text-3)] bg-[var(--ai-muted)] rounded-xl border border-dashed border-[var(--ai-border)]">
+                                  <div className="h-4 w-4 border-2 border-[var(--ai-border)] border-t-[var(--ai)] animate-spin rounded-full" />
+                                  <span>Generating Operation Intelligence Brief...</span>
                                 </div>
-                                <div>
-                                  <div className="text-[9px] font-bold text-text-secondary uppercase mb-1">Common Indicators</div>
-                                  <div className="flex flex-wrap gap-1">
-                                    {camp.common_indicators.map((ind, i) => (
-                                      <span key={i} className="bg-risk-high/5 text-risk-high border border-risk-high/15 px-1.5 py-0.5 rounded text-[9px] font-mono">
-                                        {ind}
+                              ) : aiCampaigns[camp.campaign_id] ? (
+                                <Card variant="ai" className="p-5 space-y-4">
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--ai-border)] pb-3">
+                                    <div>
+                                      <span className="text-[9px] font-bold text-[var(--ai-text)] uppercase tracking-wider block">
+                                        Campaign Name
                                       </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Nested events sublist */}
-                              <div className="space-y-2 mt-4">
-                                <div className="text-[9px] font-bold text-text-secondary uppercase">Associated Scans</div>
-                                <div className="space-y-1.5">
-                                  {camp.events.map((evt) => (
-                                    <div
-                                      key={evt.event_id}
-                                      className="flex items-center justify-between p-2.5 rounded-xl border border-border/30 bg-bg-base/30 text-xs"
-                                    >
-                                      <span className="font-mono text-text-primary font-bold">{evt.label}</span>
-                                      <div className="flex items-center gap-2">
-                                        <span className="font-mono font-bold text-[11px] text-text-secondary">score: {evt.risk_score}</span>
-                                        <RiskBadge variant={evt.risk_level === "HIGH" ? "high" : "medium"} />
-                                      </div>
+                                      <h4 className="text-sm font-bold text-[var(--text-1)] font-mono">
+                                        {aiCampaigns[camp.campaign_id].campaign_name}
+                                      </h4>
                                     </div>
-                                  ))}
-                                </div>
-                              </div>
 
-                              {/* AI Campaign Intelligence Layer */}
-                              <div className="border-t border-border/20 pt-4 mt-4">
-                                <div className="text-[10px] font-bold text-text-secondary uppercase tracking-widest flex items-center gap-1 mb-2 font-semibold">
-                                  <Sparkles className="h-3.5 w-3.5 text-accent-blue" /> Lumint AI Campaign Insight
-                                </div>
-                                
-                                {loadingAiCampaigns[camp.campaign_id] ? (
-                                  <div className="py-4 flex items-center gap-2 text-text-secondary font-semibold">
-                                    <span className="h-3.5 w-3.5 rounded-full border-2 border-slate-100 border-t-accent-blue animate-spin shrink-0" />
-                                    <span>Reconstructing campaign patterns with AI...</span>
-                                  </div>
-                                ) : aiCampaigns[camp.campaign_id] ? (
-                                  <div className="bg-bg-base/40 rounded-xl border border-border/40 p-4 space-y-4">
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/20 pb-3">
+                                    <div className="flex flex-wrap items-center gap-4 text-xs font-semibold">
                                       <div>
-                                        <div className="text-[10px] font-bold text-text-secondary uppercase">Campaign Name</div>
-                                        <div className="text-sm font-bold text-text-primary font-mono">{aiCampaigns[camp.campaign_id].campaign_name}</div>
+                                        <span className="text-[9px] font-bold text-[var(--text-3)] uppercase block">
+                                          Threat Scale
+                                        </span>
+                                        <span className="text-xs font-mono font-bold text-[var(--text-1)]">
+                                          {aiCampaigns[camp.campaign_id].estimated_scale}
+                                        </span>
                                       </div>
-                                      <div className="flex items-center gap-4 text-right">
-                                        <div>
-                                          <div className="text-[9px] font-bold text-text-secondary uppercase">Threat Level</div>
-                                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
-                                            aiCampaigns[camp.campaign_id].threat_level === "CRITICAL"
-                                              ? "bg-risk-critical/10 text-risk-critical border border-risk-critical/25"
-                                              : aiCampaigns[camp.campaign_id].threat_level === "HIGH"
-                                              ? "bg-risk-high/10 text-risk-high border border-risk-high/25"
-                                              : "bg-risk-medium/10 text-risk-medium border border-risk-medium/25"
-                                          }`}>
-                                            {aiCampaigns[camp.campaign_id].threat_level}
-                                          </span>
-                                        </div>
-                                        <div>
-                                          <div className="text-[9px] font-bold text-text-secondary uppercase">Scale</div>
-                                          <div className="text-xs font-bold text-text-primary font-semibold">{aiCampaigns[camp.campaign_id].estimated_scale}</div>
-                                        </div>
+                                      <div>
+                                        <span className="text-[9px] font-bold text-[var(--text-3)] uppercase block">
+                                          AI Threat
+                                        </span>
+                                        <Badge
+                                          variant={getThreatVariant(
+                                            aiCampaigns[camp.campaign_id].threat_level
+                                          )}
+                                          size="sm"
+                                        >
+                                          {aiCampaigns[camp.campaign_id].threat_level}
+                                        </Badge>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs font-semibold">
+                                    <div className="space-y-3.5">
+                                      <div>
+                                        <span className="text-[9px] font-bold text-[var(--text-3)] uppercase block mb-1">
+                                          Analyst Intelligence Brief
+                                        </span>
+                                        <p className="text-[var(--text-2)] leading-relaxed bg-[var(--surface)]/45 p-3 rounded-lg border border-[var(--border)]/30 font-sans font-medium">
+                                          {aiCampaigns[camp.campaign_id].analyst_brief}
+                                        </p>
+                                      </div>
+                                      <div>
+                                        <span className="text-[9px] font-bold text-[var(--text-3)] uppercase block mb-1">
+                                          Pattern Summary
+                                        </span>
+                                        <p className="text-[var(--text-2)] leading-relaxed font-sans font-medium">
+                                          {aiCampaigns[camp.campaign_id].pattern_summary}
+                                        </p>
                                       </div>
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-semibold">
-                                      <div className="space-y-3">
-                                        <div>
-                                          <div className="text-[9px] font-bold text-text-secondary uppercase mb-1">Analyst Brief</div>
-                                          <p className="text-text-secondary font-semibold leading-relaxed">{aiCampaigns[camp.campaign_id].analyst_brief}</p>
-                                        </div>
-                                        <div>
-                                          <div className="text-[9px] font-bold text-text-secondary uppercase mb-1">Pattern Summary</div>
-                                          <p className="text-text-secondary font-semibold leading-relaxed">{aiCampaigns[camp.campaign_id].pattern_summary}</p>
+                                    <div className="space-y-4 md:border-l border-[var(--border)] md:pl-5">
+                                      <div>
+                                        <span className="text-[9px] font-bold text-[var(--text-3)] uppercase block mb-1.5">
+                                          MITRE ATT&CK TTP Mapping
+                                        </span>
+                                        <div className="flex flex-wrap gap-1">
+                                          {aiCampaigns[camp.campaign_id].ttps.map((ttp, idx) => (
+                                            <span
+                                              key={idx}
+                                              className="bg-[var(--surface)] border border-[var(--border)] text-[10px] text-[var(--text-1)] px-2 py-0.5 rounded font-mono font-bold"
+                                            >
+                                              {ttp}
+                                            </span>
+                                          ))}
                                         </div>
                                       </div>
-
-                                      <div className="space-y-3 md:border-l md:border-border/30 md:pl-4">
-                                        <div>
-                                          <div className="text-[9px] font-bold text-text-secondary uppercase mb-1">MITRE ATT&CK TTPs</div>
-                                          <div className="flex flex-wrap gap-1">
-                                            {aiCampaigns[camp.campaign_id].ttps.map((ttp, idx) => (
-                                              <span key={idx} className="bg-bg-base border border-border/50 text-[10px] text-text-primary px-1.5 py-0.5 rounded font-mono font-semibold">
-                                                {ttp}
-                                              </span>
-                                            ))}
-                                          </div>
-                                        </div>
-                                        <div>
-                                          <div className="text-[9px] font-bold text-text-secondary uppercase mb-1">Recommended Mitigations</div>
-                                          <ul className="space-y-1">
-                                            {aiCampaigns[camp.campaign_id].recommended_actions.map((act, idx) => (
-                                              <li key={idx} className="text-text-primary font-semibold flex items-start gap-1.5">
-                                                <span className="h-1 w-1 rounded-full bg-accent-blue mt-1.5 shrink-0" />
+                                      <div>
+                                        <span className="text-[9px] font-bold text-[var(--text-3)] uppercase block mb-1.5">
+                                          Recommended Mitigations
+                                        </span>
+                                        <ul className="space-y-1.5">
+                                          {aiCampaigns[camp.campaign_id].recommended_actions.map(
+                                            (act, idx) => (
+                                              <li
+                                                key={idx}
+                                                className="text-[var(--text-2)] font-sans font-medium flex items-start gap-1.5"
+                                              >
+                                                <CheckSquare className="h-3.5 w-3.5 text-[var(--ai)] mt-0.5 shrink-0" />
                                                 <span>{act}</span>
                                               </li>
-                                            ))}
-                                          </ul>
-                                        </div>
+                                            )
+                                          )}
+                                        </ul>
                                       </div>
-                                    </div>
-                                    
-                                    <div className="flex items-center justify-between border-t border-border/20 pt-3 text-[9px] font-semibold text-text-secondary font-semibold">
-                                      <div className="flex items-center gap-1">
-                                        <Cpu className="h-3 w-3 text-accent-blue" />
-                                        <span>Model: <span className="font-mono text-text-primary">{aiCampaigns[camp.campaign_id].model_used}</span></span>
-                                      </div>
-                                      {aiCampaigns[camp.campaign_id].latency_ms > 0 && (
-                                        <div>
-                                          Latency: <span className="font-mono text-text-primary">{aiCampaigns[camp.campaign_id].latency_ms}ms</span>
-                                        </div>
-                                      )}
                                     </div>
                                   </div>
-                                ) : (
-                                  <div className="text-text-secondary italic text-[11px] font-semibold">AI report unavailable.</div>
-                                )}
-                              </div>
+
+                                  {/* Info Footer */}
+                                  <div className="flex items-center justify-between border-t border-[var(--ai-border)] pt-3 text-[9px] text-[var(--text-3)] font-semibold">
+                                    <div className="flex items-center gap-1">
+                                      <Cpu className="h-3.5 w-3.5 text-[var(--ai)]" />
+                                      <span>
+                                        Model:{" "}
+                                        <span className="font-mono font-bold text-[var(--text-1)]">
+                                          {aiCampaigns[camp.campaign_id].model_used}
+                                        </span>
+                                      </span>
+                                    </div>
+                                    {aiCampaigns[camp.campaign_id].latency_ms > 0 && (
+                                      <span>
+                                        Latency:{" "}
+                                        <span className="font-mono font-bold text-[var(--text-1)]">
+                                          {aiCampaigns[camp.campaign_id].latency_ms}ms
+                                        </span>
+                                      </span>
+                                    )}
+                                  </div>
+                                </Card>
+                              ) : (
+                                <div className="p-4 bg-[var(--surface-3)] text-xs text-[var(--text-3)] rounded-xl italic">
+                                  No AI results found.
+                                </div>
+                              )}
                             </motion.div>
                           )}
                         </AnimatePresence>
                       </div>
-                    );
-                  })}
-                </div>
-              </GlassCard>
-            </div>
+                    </Card>
+                  );
+                })}
+              </motion.div>
+            )}
 
-            {/* Right: SVG DNA cluster graph canvas */}
-            <div className="lg:col-span-2 space-y-6">
-              <GlassCard className="p-6 flex flex-col h-[520px]">
-                <div className="mb-4">
-                  <h3 className="text-base font-bold text-text-primary">Connected Network Map</h3>
-                  <p className="text-xs text-text-secondary font-medium mt-0.5">Click actor templates or event nodes to verify correlations.</p>
-                </div>
-
-                {/* SVG Visual Canvas */}
-                <div className="flex-1 bg-bg-base/50 rounded-2xl border border-border/60 relative overflow-hidden min-h-[300px]">
-                  {/* Grid background on canvas */}
-                  <div className="absolute inset-0 grid-bg opacity-30 pointer-events-none" />
-
-                  {/* Draw SVG connections */}
-                  <svg className="absolute inset-0 w-full h-full pointer-events-none">
-                    {graphData?.edges.map((edge, idx) => {
-                      const pos1 = getNodePosition(edge.source);
-                      const pos2 = getNodePosition(edge.target);
-                      if (!pos1 || !pos2) return null;
-                      return (
-                        <g key={idx}>
-                          <line
-                            x1={`${pos1.x}%`}
-                            y1={`${pos1.y}px`}
-                            x2={`${pos2.x}%`}
-                            y2={`${pos2.y}px`}
-                            stroke="rgba(10, 132, 255, 0.25)"
-                            strokeWidth="1.5"
-                          />
-                        </g>
-                      );
-                    })}
-                  </svg>
-
-                  {/* Floating HTML Nodes */}
-                  {graphData?.nodes.map((node) => {
-                    const pos = getNodePosition(node.id);
-                    if (!pos) return null;
-                    const isSelected = selectedNode?.id === node.id;
-                    const isActor = node.type === "ACTOR";
-
-                    return (
-                      <button
-                        key={node.id}
-                        onClick={() => setSelectedNode(node)}
-                        style={{ left: `${pos.x}%`, top: `${pos.y}px` }}
-                        className={`absolute -translate-x-1/2 -translate-y-1/2 flex items-center justify-center p-2 rounded-xl transition-all border shadow-sm ${
-                          isSelected
-                            ? "bg-text-primary text-white border-text-primary scale-110 z-10"
-                            : isActor
-                            ? "bg-accent-blue/15 text-accent-blue border-accent-blue/40"
-                            : "bg-surface text-text-primary border-border/80"
-                        }`}
-                      >
-                        {isActor ? (
-                          <Network className="h-4.5 w-4.5" />
-                        ) : (
-                          <Fingerprint className="h-4.5 w-4.5" />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Node Metadata tray */}
-                <div className="mt-4 border-t border-border/40 pt-4 text-xs font-semibold">
-                  {selectedNode ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-text-secondary uppercase">
-                          Selected Node Metadata
-                        </span>
-                        <span className="font-mono text-[10px] text-text-secondary bg-bg-base px-2 py-0.5 rounded border">
-                          {selectedNode.type}
-                        </span>
+            {activeTab === "graph" && (
+              <motion.div
+                key="graph-tab"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="grid grid-cols-1 lg:grid-cols-10 gap-8 items-start"
+              >
+                {/* SVG Visual Canvas Area - 7 columns */}
+                <div className="lg:col-span-7 space-y-4">
+                  <Card variant="default" className="p-4 flex flex-col h-[520px] relative">
+                    <div className="flex justify-between items-center mb-4">
+                      <div>
+                        <h3 className="text-sm font-bold text-[var(--text-1)]">Connected Threat Network</h3>
+                        <p className="text-xs text-[var(--text-3)] font-semibold mt-0.5">
+                          Drag nodes to reposition. Hover for summary, click to filter relationships.
+                        </p>
                       </div>
-                      <div className="text-text-primary font-bold text-sm">
-                        {selectedNode.label}
+
+                      {/* Zoom controls */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={handleFitZoom}
+                          className="px-2.5 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-2)] hover:bg-[var(--border-2)] text-[10px] font-bold cursor-pointer transition-all flex items-center gap-1 select-none"
+                        >
+                          <Maximize2 className="h-3 w-3" />
+                          Fit Graph
+                        </button>
+                        <button
+                          onClick={handleResetZoom}
+                          className="px-2.5 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-2)] hover:bg-[var(--border-2)] text-[10px] font-bold cursor-pointer transition-all flex items-center gap-1 select-none"
+                        >
+                          <RefreshCw className="h-3 w-3" />
+                          Reset View
+                        </button>
                       </div>
-                      <div className="flex gap-4 text-text-secondary mt-1">
-                        <div>
-                          Verdict: <span className="text-text-primary">{selectedNode.risk_level}</span>
+                    </div>
+
+                    {/* Canvas frame */}
+                    <div className="flex-1 bg-[var(--surface-2)] rounded-xl border border-[var(--border)] relative overflow-hidden">
+                      {/* Grid overlay */}
+                      <div className="absolute inset-0 bg-[radial-gradient(var(--border-2)_1.5px,transparent_1.5px)] [background-size:20px_20px] opacity-40 pointer-events-none" />
+
+                      <svg ref={svgRef} className="w-full h-full block" />
+
+                      {/* Floating hover tooltip card */}
+                      {hoveredNode && (
+                        <div
+                          style={{
+                            position: "absolute",
+                            left: `${tooltipPos.x}px`,
+                            top: `${tooltipPos.y}px`
+                          }}
+                          className="w-[160px] pointer-events-none z-50 bg-[var(--surface)] border border-[var(--border)] rounded-lg shadow-[var(--shadow-3)] p-3 space-y-1.5 text-[10px] font-semibold text-[var(--text-2)]"
+                        >
+                          <div className="flex justify-between items-center gap-2">
+                            <span className="font-mono font-bold text-[var(--text-1)] truncate block flex-1">
+                              {hoveredNode.label}
+                            </span>
+                            <Badge variant={hoveredNode.type === "ACTOR" ? "neutral" : "ai"} size="sm">
+                              {hoveredNode.type}
+                            </Badge>
+                          </div>
+                          {hoveredNode.type !== "ACTOR" && (
+                            <div className="flex items-center gap-1">
+                              <span>Risk Score:</span>
+                              <span className="font-mono font-bold text-[var(--text-1)]">
+                                {hoveredNode.risk_score}
+                              </span>
+                            </div>
+                          )}
+                          <div>
+                            <span className="text-[var(--text-4)] text-[9px] uppercase tracking-wider block font-bold">
+                              Node ID
+                            </span>
+                            <span className="font-mono text-[var(--text-3)] truncate block">
+                              {hoveredNode.id}
+                            </span>
+                          </div>
                         </div>
-                        <div>
-                          Score: <span className="text-text-primary font-mono">{selectedNode.risk_score}</span>
+                      )}
+
+                      {/* Legend bottom left */}
+                      <div className="absolute bottom-3 left-3 bg-[var(--surface)] border border-[var(--border)] rounded-lg p-3 space-y-2 text-[10px] font-semibold text-[var(--text-2)] shadow-md pointer-events-none select-none">
+                        <div className="font-bold text-[var(--text-3)] uppercase tracking-wider">
+                          Graph Legend
+                        </div>
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-2">
+                            <span className="h-3 w-3 rounded-full border-[1.5px] border-[var(--brand)] bg-[var(--brand-muted)]" />
+                            <span>Actor Node</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="h-3 w-3 rounded-full bg-[var(--critical)]/25 border-[1.5px] border-[var(--critical)]" />
+                            <span>Critical Threat</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="h-3 w-3 rounded-full bg-[var(--high)]/25 border-[1.5px] border-[var(--high)]" />
+                            <span>High Threat</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="h-3 w-3 rounded-full bg-[var(--warn)]/25 border-[1.5px] border-[var(--warn)]" />
+                            <span>Suspicious Target</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="h-3 w-3 rounded-full bg-[var(--safe)]/25 border-[1.5px] border-[var(--safe)]" />
+                            <span>Clean Node</span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  ) : (
-                    <div className="text-text-secondary italic text-center py-2 flex items-center justify-center gap-1.5">
-                      <Info className="h-4 w-4" /> Tap nodes in the grid canvas to verify matching signatures.
-                    </div>
-                  )}
+                  </Card>
                 </div>
-              </GlassCard>
-            </div>
-          </div>
+
+                {/* Details Sidebar - 3 columns */}
+                <div className="lg:col-span-3">
+                  <Card variant="elevated" className="p-6 h-[520px] flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between border-b border-[var(--border)] pb-3 mb-4">
+                        <h4 className="text-xs font-bold text-[var(--text-3)] uppercase tracking-wider">
+                          Forensic Inspector
+                        </h4>
+                        <span className="h-5 w-5 bg-[var(--surface-2)] text-[var(--text-3)] rounded-full flex items-center justify-center">
+                          <Info className="h-3.5 w-3.5" />
+                        </span>
+                      </div>
+
+                      {selectedNode ? (
+                        <div className="space-y-5 text-xs font-semibold">
+                          <div className="space-y-1">
+                            <span className="text-[10px] text-[var(--text-4)] uppercase tracking-wider block font-bold">
+                              Node Label
+                            </span>
+                            <div className="text-sm font-bold text-[var(--text-1)] font-mono break-all leading-normal select-all">
+                              {selectedNode.label}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <DataPoint
+                              label="Type"
+                              value={
+                                <Badge variant={selectedNode.type === "ACTOR" ? "neutral" : "ai"} size="sm">
+                                  {selectedNode.type}
+                                </Badge>
+                              }
+                            />
+                            {selectedNode.type !== "ACTOR" && (
+                              <DataPoint
+                                label="Risk Score"
+                                value={
+                                  <span className="font-mono text-sm font-bold text-[var(--text-1)]">
+                                    {selectedNode.risk_score}
+                                  </span>
+                                }
+                              />
+                            )}
+                          </div>
+
+                          {selectedNode.doc_id && (
+                            <DataPoint
+                              label="Document ID"
+                              value={selectedNode.doc_id}
+                              mono
+                              copyable
+                            />
+                          )}
+
+                          {selectedNode.type === "ACTOR" ? (
+                            <div className="space-y-1">
+                              <span className="text-[10px] text-[var(--text-4)] uppercase tracking-wider block font-bold">
+                                Actor Correlation
+                              </span>
+                              <p className="text-[var(--text-2)] leading-relaxed bg-[var(--surface-2)] p-3 rounded-lg border border-[var(--border)] font-sans">
+                                Threat campaigns targeting Indian UPI and invoice templates frequently share metadata clusters mapped to this signature.
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="space-y-1">
+                              <span className="text-[10px] text-[var(--text-4)] uppercase tracking-wider block font-bold">
+                                Risk Level
+                              </span>
+                              <Badge variant={getThreatVariant(selectedNode.risk_level)} size="sm">
+                                {selectedNode.risk_level}
+                              </Badge>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-center text-[var(--text-3)] py-12">
+                          <Network className="h-10 w-10 text-[var(--text-4)] mb-3 animate-pulse" />
+                          <p className="font-bold text-sm text-[var(--text-1)]">No node selected</p>
+                          <p className="text-xs max-w-[180px] mt-1.5 leading-normal">
+                            Tap any actor template or event node on the network graph canvas to inspect matching properties.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {selectedNode && selectedNode.type !== "ACTOR" && (
+                      <div className="pt-4 border-t border-[var(--border)]">
+                        <a
+                          href={selectedNode.source_type === "DOCUMENT" ? "/docshield" : "/phishshield"}
+                          className="w-full text-center inline-block px-4 py-2.5 rounded-lg bg-[var(--text-1)] text-[var(--text-inverse)] hover:bg-[var(--text-1)]/95 font-bold text-xs cursor-pointer select-none transition-all"
+                        >
+                          Analyze Source Logs &rarr;
+                        </a>
+                      </div>
+                    )}
+                  </Card>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </>
       )}
     </div>
