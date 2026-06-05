@@ -38,7 +38,17 @@
     "tailwindcss": "^4",
     "typescript": "^5"
   },
-  "engines": {
-    "node": ">=20.0.0"
+  "optionalDependencies": {
+    "lightningcss-linux-x64-gnu": "1.32.0",
+    "lightningcss-linux-x64-musl": "1.32.0",
+    "@tailwindcss/oxide-linux-x64-gnu": "4.3.0",
+    "@tailwindcss/oxide-linux-x64-musl": "4.3.0",
+    "@next/swc-darwin-arm64": "16.2.7",
+    "@next/swc-darwin-x64": "16.2.7",
+    "@next/swc-linux-arm64-gnu": "16.2.7",
+    "@next/swc-linux-arm64-musl": "16.2.7",
+    "@next/swc-linux-x64-gnu": "16.2.7",
+    "@next/swc-linux-x64-musl": "16.2.7",
+    "@next/swc-win32-arm64-msvc": "16.2.7"
   }
 }
