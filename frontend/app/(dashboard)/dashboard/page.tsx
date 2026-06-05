@@ -49,7 +49,10 @@ export default function DashboardOverviewPage() {
   };
 
   useEffect(() => {
-    fetchDashboardData();
+    const timer = setTimeout(() => {
+      fetchDashboardData();
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   if (isLoading) {
@@ -152,7 +155,6 @@ export default function DashboardOverviewPage() {
 
   // Render expanded detail view
   const renderExpandedRow = (event: RecentEvent) => {
-    const isDoc = event.source_type === "DOCUMENT";
     return (
       <div className="px-6 py-5 space-y-4 text-caption border-t border-border-default/40">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

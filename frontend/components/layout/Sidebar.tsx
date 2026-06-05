@@ -40,12 +40,12 @@ const LumintLogo = ({ collapsed }: { collapsed: boolean }) => (
   <div className="flex items-center gap-2.5 select-none font-display">
     <div className="relative flex h-8 w-8 items-center justify-center shrink-0">
       <div className="absolute inset-0 rounded-lg bg-brand/10 opacity-60 blur-sm" />
-      <div className="relative h-7 w-7 rounded-lg bg-brand flex items-center justify-center shadow-md">
-        <Zap className="h-4 w-4 text-white" strokeWidth={2.5} />
+      <div className="relative h-8 w-8 rounded-lg bg-brand flex items-center justify-center shadow-md">
+        <Zap className="h-4.5 w-4.5 text-white" strokeWidth={2.5} />
       </div>
     </div>
     {!collapsed && (
-      <span className="text-display text-[22px] tracking-tight text-text-primary leading-none font-semibold">
+      <span className="text-[22px] tracking-tight text-text-primary leading-normal font-semibold">
         Lumint
       </span>
     )}

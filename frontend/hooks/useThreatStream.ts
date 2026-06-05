@@ -18,14 +18,15 @@ export function useThreatStream(simulate = false, simulationRate = 1.0) {
   const [events, setEvents] = useState<ThreatEvent[]>([]);
   const [status, setStatus] = useState<ConnectionStatus>("disconnected");
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<any>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectCountRef = useRef(0);
+  const connectRef = useRef<() => void>(() => {});
 
   const connect = useCallback(() => {
     if (wsRef.current) {
       try {
         wsRef.current.close();
-      } catch (e) {}
+      } catch {}
     }
 
     setStatus("connecting");
@@ -78,7 +79,7 @@ export function useThreatStream(simulate = false, simulationRate = 1.0) {
       reconnectCountRef.current += 1;
       
       reconnectTimeoutRef.current = setTimeout(() => {
-        connect();
+        connectRef.current();
       }, delay);
     };
 
@@ -86,17 +87,24 @@ export function useThreatStream(simulate = false, simulationRate = 1.0) {
       console.error("WebSocket error:", err);
       try {
         ws.close();
-      } catch (e) {}
+      } catch {}
     };
   }, [simulate, simulationRate]);
 
   useEffect(() => {
-    connect();
+    connectRef.current = connect;
+  }, [connect]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      connect();
+    }, 0);
     return () => {
+      clearTimeout(timer);
       if (wsRef.current) {
         try {
           wsRef.current.close();
-        } catch (e) {}
+        } catch {}
       }
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);

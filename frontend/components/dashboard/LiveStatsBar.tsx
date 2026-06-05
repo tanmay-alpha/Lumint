@@ -1,5 +1,5 @@
 import React from "react";
-import { Activity, ShieldAlert, AlertTriangle, RefreshCw, Zap } from "lucide-react";
+import { Activity, ShieldAlert, RefreshCw } from "lucide-react";
 import { ThreatEvent, ConnectionStatus } from "@/hooks/useThreatStream";
 
 interface LiveStatsBarProps {

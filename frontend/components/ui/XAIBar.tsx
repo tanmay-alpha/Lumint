@@ -3,7 +3,7 @@
 import React from "react";
 import { FeatureBar, FeatureBarContribution } from "./FeatureBar";
 
-export interface XAIBarFeature extends FeatureBarContribution {}
+export type XAIBarFeature = FeatureBarContribution;
 export interface XAIBarProps {
   features: XAIBarFeature[];
   title?: string;

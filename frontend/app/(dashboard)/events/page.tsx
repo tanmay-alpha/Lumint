@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import { 
-  History, 
   Search, 
   Filter, 
   FileText, 
@@ -15,7 +14,6 @@ import {
   ChevronDown, 
   ChevronUp,
   Activity,
-  Zap,
   Play,
   Pause,
   Trash2,

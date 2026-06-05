@@ -1,5 +1,5 @@
 import React from "react";
-import { ShieldAlert, Globe, FileText, Smartphone, AlertTriangle, RefreshCw, Zap } from "lucide-react";
+import { Globe, FileText, Smartphone, RefreshCw, Zap } from "lucide-react";
 import { ThreatEvent } from "@/hooks/useThreatStream";
 
 interface ThreatEventCardProps {

@@ -7,6 +7,7 @@
   ],
   "scripts": {
     "build": "npm run build --workspace=frontend",
-    "dev": "npm run dev --workspace=frontend"
+    "dev": "node start-dev.js",
+    "dev:frontend": "npm run dev --workspace=frontend"
   }
 }

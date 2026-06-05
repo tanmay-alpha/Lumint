@@ -3,7 +3,7 @@
 import React from "react";
 import { AIInsightCard, AIInsightCardProps } from "./AIInsightCard";
 
-export interface AIAnalystCardProps extends AIInsightCardProps {}
+export type AIAnalystCardProps = AIInsightCardProps;
 
 export const AIAnalystCard = (props: AIAnalystCardProps) => {
   return <AIInsightCard {...props} />;

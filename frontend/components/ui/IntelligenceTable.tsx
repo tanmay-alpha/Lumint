@@ -123,8 +123,8 @@ export function IntelligenceTable<T>({
                         </td>
                       )}
                       {columns.map((col, cIdx) => {
-                        const value = typeof item === "object" && item !== null && col.accessorKey in (item as any) 
-                          ? (item as any)[col.accessorKey] 
+                        const value = typeof item === "object" && item !== null && col.accessorKey in (item as Record<string, unknown>) 
+                          ? (item as Record<string, unknown>)[col.accessorKey as string] 
                           : null;
                         return (
                           <td

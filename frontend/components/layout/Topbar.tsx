@@ -23,13 +23,12 @@ export const Topbar = ({
     // Check initial theme preference
     const stored = localStorage.getItem("theme");
     const docTheme = document.documentElement.getAttribute("data-theme");
-    if (stored === "dark" || docTheme === "dark") {
-      setTheme("dark");
-      document.documentElement.setAttribute("data-theme", "dark");
-    } else {
-      setTheme("light");
-      document.documentElement.setAttribute("data-theme", "light");
-    }
+    const activeTheme = (stored === "dark" || docTheme === "dark") ? "dark" : "light";
+    document.documentElement.setAttribute("data-theme", activeTheme);
+    
+    requestAnimationFrame(() => {
+      setTheme(activeTheme);
+    });
   }, []);
 
   const toggleTheme = () => {

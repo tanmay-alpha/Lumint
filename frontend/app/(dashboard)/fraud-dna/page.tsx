@@ -19,6 +19,18 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
+// Node position map for mock nodes to render SVG connections
+const nodePositions: Record<string, { x: number; y: number }> = {
+  "evt-f89a23": { x: 20, y: 70 },
+  "evt-a78b45": { x: 25, y: 150 },
+  "evt-67d8f9": { x: 15, y: 160 },
+  "actor-invoice-spoofer": { x: 20, y: 110 },
+  
+  "evt-87f12e": { x: 80, y: 80 },
+  "evt-45b678": { x: 75, y: 170 },
+  "actor-id-forge": { x: 85, y: 140 }
+};
+
 export default function FraudDnaPage() {
   const [campaigns, setCampaigns] = useState<CampaignsResponse | null>(null);
   const [graphData, setGraphData] = useState<GraphResponse | null>(null);
@@ -100,17 +112,7 @@ export default function FraudDnaPage() {
     }
   };
 
-  // Node position map for mock nodes to render SVG connections
-  const nodePositions: Record<string, { x: number; y: number }> = {
-    "evt-f89a23": { x: 20, y: 70 },
-    "evt-a78b45": { x: 25, y: 150 },
-    "evt-67d8f9": { x: 15, y: 160 },
-    "actor-invoice-spoofer": { x: 20, y: 110 },
-    
-    "evt-87f12e": { x: 80, y: 80 },
-    "evt-45b678": { x: 75, y: 170 },
-    "actor-id-forge": { x: 85, y: 140 }
-  };
+
 
   // Compute campaign cluster centers and layout nodes dynamically
   const computedPositions = React.useMemo(() => {
