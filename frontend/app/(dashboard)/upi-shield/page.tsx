@@ -313,7 +313,7 @@ export default function UPIShieldPage() {
                         <span className="text-label text-text-muted block mb-1">
                           Forensic Verdict
                         </span>
-                        <Badge variant={result.risk_level === "CRITICAL" ? "critical" : result.risk_level === "HIGH" ? "danger" : result.risk_level === "SUSPICIOUS" ? "warn" : "safe"} dot>
+                        <Badge variant={result.risk_level === "CRITICAL" ? "critical" : result.risk_level === "HIGH" ? "high" : result.risk_level === "SUSPICIOUS" ? "warn" : "safe"} dot>
                           {result.risk_level} LEVEL VERDICT
                         </Badge>
                       </div>
@@ -477,7 +477,7 @@ export default function UPIShieldPage() {
                           
                           <div className="flex items-center gap-2">
                             <span className="text-label text-text-muted">Confidence:</span>
-                            <Badge variant={aiResult.confidence > 80 ? "safe" : aiResult.confidence > 60 ? "warn" : "danger"}>
+                             <Badge variant={aiResult.confidence > 80 ? "safe" : aiResult.confidence > 60 ? "warn" : "high"}>
                               {aiResult.confidence}%
                             </Badge>
                           </div>

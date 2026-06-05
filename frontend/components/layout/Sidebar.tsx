@@ -126,11 +126,7 @@ export const Sidebar = ({
       {/* Footer */}
       <div className="p-4 border-t border-border-muted bg-surface-raised/40">
         {(!collapsed || isMobile) ? (
-          <div className="flex flex-col gap-1.5">
-            <span className="font-mono text-[9px] text-text-muted uppercase tracking-wider block">
-              RESEARCH EDITION · v1.0.0
-            </span>
-          </div>
+          <div className="flex flex-col gap-1.5" />
         ) : (
           <div className="flex items-center justify-center h-4">
             <span className="h-1.5 w-1.5 rounded-full bg-intel" />

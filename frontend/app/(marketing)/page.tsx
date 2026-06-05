@@ -37,7 +37,7 @@ const HeroPreviewCard = ({
   label: string;
   value: string;
   badge: string;
-  badgeRisk: "danger" | "warn" | "safe" | "critical" | "low" | "default";
+  badgeRisk: "danger" | "high" | "warn" | "safe" | "critical" | "low" | "default";
   delay: number;
   rotate: number;
 }) => (
@@ -52,7 +52,7 @@ const HeroPreviewCard = ({
       {label}
     </span>
     <span className="text-data text-text-primary block font-semibold truncate mb-2">{value}</span>
-    <Badge variant={badgeRisk} dot>
+    <Badge variant={badgeRisk === "danger" ? "high" : badgeRisk === "low" ? "safe" : badgeRisk === "default" ? "neutral" : badgeRisk} dot>
       {badge}
     </Badge>
   </motion.div>
@@ -368,18 +368,18 @@ export default function LandingPage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5 }}
-              className="rounded-[24px] bg-text-primary p-12 text-center text-text-inverse relative overflow-hidden"
+              className="rounded-[24px] bg-brand-subtle border border-[var(--brand-border)] p-12 text-center text-text-primary relative overflow-hidden"
             >
-              <div className="absolute inset-0 bg-gradient-to-tr from-brand/20 to-transparent pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-tr from-brand/5 to-transparent pointer-events-none" />
               
               <div className="relative z-10">
-                <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-white/10 mb-6 border border-white/10">
-                  <Shield className="h-7 w-7 text-white" />
+                <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-brand/10 mb-6 border border-brand/20">
+                  <Shield className="h-7 w-7 text-brand" />
                 </div>
-                <h2 className="text-display text-white mb-4" style={{ fontSize: 38 }}>
+                <h2 className="text-display text-text-primary mb-4" style={{ fontSize: 38 }}>
                   Start analyzing threats
                 </h2>
-                <p className="text-body text-white/70 mb-8 max-w-xl mx-auto leading-relaxed" style={{ fontSize: 15 }}>
+                <p className="text-body text-text-secondary mb-8 max-w-xl mx-auto leading-relaxed" style={{ fontSize: 15 }}>
                   Lumint is open-source and ready to use. Launch the platform, upload a document or URL,
                   and get an AI-powered forensic report in seconds.
                 </p>

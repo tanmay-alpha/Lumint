@@ -6,7 +6,7 @@ import { PhishingAnalysisResult, PhishingAIResult } from "@/lib/types";
 import aiApi from "@/lib/api/ai";
 import GlassCard from "@/components/ui/GlassCard";
 import RiskBadge from "@/components/ui/RiskBadge";
-import ScoreRing from "@/components/ui/ScoreRing";
+import RiskScore from "@/components/ui/RiskScore";
 import {
   Link2,
   AlertTriangle,
@@ -140,7 +140,7 @@ export default function PhishShieldPage() {
                   Global Scorer Verdict
                 </span>
 
-                <ScoreRing score={result.risk_score} size={130} className="mb-6" />
+                <RiskScore score={result.risk_score} size="md" className="mb-6" />
 
                 <RiskBadge variant={getRiskVariant(result.risk_level)} className="mb-4" />
 

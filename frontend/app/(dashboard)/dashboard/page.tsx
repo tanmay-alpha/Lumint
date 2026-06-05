@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import client from "@/lib/api/client";
 import { DashboardStats, RecentEvent } from "@/lib/types";
-import { MetricBlock } from "@/components/ui/MetricBlock";
+import { MetricCard } from "@/components/ui/MetricCard";
 import { DataCard } from "@/components/ui/DataCard";
 import { Badge } from "@/components/ui/Badge";
 import { SkeletonLoader } from "@/components/ui/SkeletonLoader";
@@ -134,7 +134,7 @@ export default function DashboardOverviewPage() {
       header: "Risk Level",
       accessorKey: "risk_level",
       cell: (event) => (
-        <Badge variant={event.risk_level === "HIGH" ? "danger" : event.risk_level === "SUSPICIOUS" ? "warn" : "safe"} dot>
+        <Badge variant={event.risk_level === "CRITICAL" ? "critical" : event.risk_level === "HIGH" ? "high" : event.risk_level === "SUSPICIOUS" ? "warn" : "safe"} dot>
           {event.risk_level}
         </Badge>
       ),
@@ -199,7 +199,7 @@ export default function DashboardOverviewPage() {
             ) : (
               <div className="flex flex-wrap gap-2">
                 {event.risk_indicators.map((ind, i) => (
-                  <Badge key={i} variant="danger" size="sm">
+                  <Badge key={i} variant="high" size="sm">
                     <AlertTriangle className="h-3 w-3 mr-1" />
                     {ind}
                   </Badge>
@@ -259,25 +259,25 @@ export default function DashboardOverviewPage() {
 
       {/* Stats Summary Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <MetricBlock
+        <MetricCard
           label="Aggregated Detections"
           value={stats?.total_events || 0}
           trend={{ value: "+8.3%", isPositive: true }}
           icon={<FileSpreadsheet className="h-4 w-4" />}
         />
-        <MetricBlock
+        <MetricCard
           label="DocShield Scans"
           value={stats?.document_events || 0}
           trend={{ value: "+12.1%", isPositive: true }}
           icon={<ShieldCheck className="h-4 w-4 text-brand" />}
         />
-        <MetricBlock
+        <MetricCard
           label="PhishShield Audits"
           value={stats?.url_events || 0}
           trend={{ value: "+4.6%", isPositive: true }}
           icon={<LinkIcon className="h-4 w-4 text-intel" />}
         />
-        <MetricBlock
+        <MetricCard
           label="Threat Campaigns DNA"
           value={stats?.active_campaigns || 0}
           trend={{ value: "Stable", isPositive: true }}

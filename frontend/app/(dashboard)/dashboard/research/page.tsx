@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import client from "@/lib/api/client";
 import GlassCard from "@/components/ui/GlassCard";
-import XAIBar from "@/components/ui/XAIBar";
+import FeatureContribution from "@/components/ui/FeatureContribution";
 import SkeletonLoader from "@/components/ui/SkeletonLoader";
 import {
   Beaker,
@@ -976,7 +976,7 @@ export default function ResearchDashboardPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Explainable AI Bars */}
               <GlassCard className="lg:col-span-2 space-y-6">
-                <XAIBar
+                <FeatureContribution
                   features={shapFeatures}
                   title={`Global SHAP Feature Attribution (${activeModule.toUpperCase()})`}
                 />

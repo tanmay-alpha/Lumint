@@ -6,7 +6,7 @@ import { documentApi } from "@/lib/api/documents";
 import { DocumentAnalysisResult } from "@/lib/types";
 import GlassCard from "@/components/ui/GlassCard";
 import RiskBadge from "@/components/ui/RiskBadge";
-import ScoreRing from "@/components/ui/ScoreRing";
+import RiskScore from "@/components/ui/RiskScore";
 import {
   FileText,
   FileCheck,
@@ -189,7 +189,7 @@ export default function DocShieldPage() {
                         </span>
                         <RiskBadge variant={getRiskVariant(result.risk_level ?? "NONE")} />
                       </div>
-                      <ScoreRing score={result.risk_score ?? 0} size={84} />
+                      <RiskScore score={result.risk_score ?? 0} size="sm" />
                     </div>
                   </div>
                 </GlassCard>
