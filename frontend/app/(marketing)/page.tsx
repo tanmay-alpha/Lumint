@@ -120,10 +120,10 @@ export default function LandingPage() {
               GitHub
             </a>
             <a
-              href="https://www.linkedin.com/in/tanmay-mangal/"
+              href="https://www.linkedin.com/in/tanmaymangal/"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[#0969DA] dark:text-[#388BFD] hover:underline font-semibold transition-colors"
+              className="hover:text-text-primary transition-colors"
             >
               LinkedIn
             </a>
@@ -422,10 +422,10 @@ export default function LandingPage() {
               GitHub
             </a>
             <a
-              href="https://www.linkedin.com/in/tanmay-mangal/"
+              href="https://www.linkedin.com/in/tanmaymangal/"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[#0969DA] dark:text-[#388BFD] hover:underline font-semibold transition-colors"
+              className="hover:text-text-primary transition-colors"
             >
               LinkedIn
             </a>
