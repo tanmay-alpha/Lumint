@@ -553,7 +553,18 @@ Based on the above forensic data, produce your analyst report as structured JSON
             sender = detection_result.get("sender", "")
             receiver = detection_result.get("receiver", "")
             amount = detection_result.get("amount", 0.0)
+            vlm_vis = detection_result.get("vlm_visual_analysis")
             
+            vlm_sec = ""
+            if vlm_vis:
+                vlm_sec = f"""
+            --- VLM Visual Analysis ---
+            Visual Verdict: {vlm_vis.get('visual_verdict')}
+            Confidence: {vlm_vis.get('visual_confidence')}%
+            Anomalies: {", ".join(vlm_vis.get('anomalies_detected', []))}
+            Analyst Note: {vlm_vis.get('visual_analyst_note')}
+            """
+
             user_prompt = f"""
             --- Extracted Receipt Context ---
             Raw OCR Text: {ocr_text}
@@ -562,7 +573,8 @@ Based on the above forensic data, produce your analyst report as structured JSON
             Receiver ID: {receiver}
             Transaction Amount: {amount}
             ---------------------------------
-            Compute fraud indicators, look for typical UPI screenshot generation tool patterns (e.g. mismatched reference numbers, invalid bank domains, or suspicious payee handles), and explain the threat vectors.
+            {vlm_sec}
+            Compute fraud indicators, look for typical UPI screenshot generation tool patterns (e.g. mismatched reference numbers, invalid bank domains, or suspicious payee handles, or visual inconsistencies flagged by VLM), and explain the threat vectors.
             """
             
             raw = await ask_groq(system=UPI_SYSTEM_PROMPT, user=user_prompt, json_mode=True)

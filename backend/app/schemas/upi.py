@@ -19,6 +19,11 @@ class UPIAnalyzeResponse(BaseModel):
     ai_fraud_explanation: Optional[str] = None
     raw_ocr_text: Optional[str] = None
     metadata_json: Optional[Any] = None
+    vlm_result: Optional[Any] = None
+    enhanced_score: Optional[float] = None
+    enhanced_verdict: Optional[str] = None
+    signal_breakdown: Optional[Any] = None
+
 
 class UTRVerificationRequest(BaseModel):
     utr_number: str

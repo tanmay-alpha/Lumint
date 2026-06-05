@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from ai.client import ask_groq
 from ml.llm.local_inference import LumintFraudLLM
 
@@ -28,7 +28,14 @@ You must respond with a JSON object containing EXACTLY these keys:
 }
 """
 
-async def analyze_upi_screenshot_ai(ocr_text: str, utr_number: str, sender: str, receiver: str, amount: float) -> Dict[str, Any]:
+async def analyze_upi_screenshot_ai(
+    ocr_text: str,
+    utr_number: str,
+    sender: str,
+    receiver: str,
+    amount: float,
+    vlm_result: Optional[dict] = None
+) -> Dict[str, Any]:
     """
     Query LumintFraudLLM (local with Groq fallback) to evaluate fraud indicators in a UPI screenshot.
     """
@@ -39,6 +46,14 @@ async def analyze_upi_screenshot_ai(ocr_text: str, utr_number: str, sender: str,
         "receiver": receiver,
         "amount": amount
     }
+    if vlm_result:
+        detection_result["vlm_visual_analysis"] = {
+            "visual_verdict": vlm_result.get("visual_verdict"),
+            "visual_confidence": vlm_result.get("visual_confidence"),
+            "anomalies_detected": vlm_result.get("anomalies_detected", []),
+            "visual_analyst_note": vlm_result.get("visual_analyst_note")
+        }
+        
     try:
         response = await llm.analyze(detection_result, module="upi")
         if not response or "risk_score" not in response:

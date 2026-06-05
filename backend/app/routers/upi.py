@@ -73,13 +73,16 @@ async def analyze_screenshot(
     Upload GPAY/PhonePe payment screenshot to run layout verification,
     UTR mapping, ELA forensics, brand color checks, and optional AI threat briefs.
     """
-    # 1. Save uploaded file to a temporary file
+    # 1. Read file bytes for VLM analysis
+    file_bytes = await file.read()
+    await file.seek(0)
+
     suffix = Path(file.filename or "screenshot.png").suffix.lower()
     if suffix not in (".png", ".jpg", ".jpeg"):
         suffix = ".png" # default fallback
         
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-        shutil.copyfileobj(file.file, tmp)
+        tmp.write(file_bytes)
         tmp_path = Path(tmp.name)
         
     from fastapi.concurrency import run_in_threadpool
@@ -92,7 +95,19 @@ async def analyze_screenshot(
         except Exception:
             pass
             
-    # 3. Parse fields for DB and response mapping
+    # 3. Run VLM screenshot vision analyst and 4-signal fusion
+    from ml.vlm.vision_analyzer import LumintVisionAnalyzer
+    from ml.vlm.fusion import fuse_cmfa_and_vlm
+    
+    vlm_analyzer = LumintVisionAnalyzer()
+    vlm_result = await vlm_analyzer.analyze(file_bytes, res["app_detected"])
+    
+    fusion_result = fuse_cmfa_and_vlm(res, vlm_result)
+    enhanced_score = fusion_result["enhanced_score"]
+    enhanced_verdict = fusion_result["enhanced_verdict"]
+    signal_breakdown = fusion_result["signal_breakdown"]
+            
+    # 4. Parse fields for DB and response mapping
     utr_val = res["utr"]["normalized"] if (res["utr"] and res["utr"]["normalized"]) else "000000000000"
     is_valid_utr = res["utr"]["valid"] if res["utr"] else False
     
@@ -103,7 +118,7 @@ async def analyze_screenshot(
         except ValueError:
             pass
             
-    # 4. Integrate AI check if requested
+    # 5. Integrate AI check if requested
     ai_report = None
     if run_ai:
         ai_report = await analyze_upi_screenshot_ai(
@@ -111,21 +126,28 @@ async def analyze_screenshot(
             utr_number=utr_val,
             sender=res["sender_upi_id"],
             receiver=res["receiver_upi_id"],
-            amount=amount_val
+            amount=amount_val,
+            vlm_result=vlm_result
         )
-        risk_score = ai_report.get("risk_score", res["forgery_score"])
-        risk_level = ai_report.get("risk_level", res["verdict"])
-        ai_fraud_explanation = ai_report.get("ai_fraud_explanation", f"Forensic analysis: {res['verdict']}")
+        risk_score = int(enhanced_score)
+        risk_level = enhanced_verdict
+        ai_fraud_explanation = ai_report.get("ai_fraud_explanation", f"Forensic analysis: {enhanced_verdict}")
         font_anomalies_detected = ai_report.get("font_anomalies_detected", not res["font"]["font_consistent"])
         suspicious_handle_flagged = ai_report.get("suspicious_handle_flagged", any(ind["rule"] == "suspicious_keywords" for ind in res["indicators"]))
     else:
-        risk_score = res["forgery_score"]
-        risk_level = res["verdict"]
+        risk_score = int(enhanced_score)
+        risk_level = enhanced_verdict
         
         # Build explanation listing triggered indicators
         explanation_parts = []
         for ind in res["indicators"]:
             explanation_parts.append(f"- {ind['detail']} (Contribution: +{ind['score']})")
+        
+        # Append VLM anomalies to explanation if present
+        vlm_anomalies = vlm_result.get("anomalies_detected", [])
+        if vlm_anomalies:
+            explanation_parts.append(f"- VLM Visual Anomalies: {', '.join(vlm_anomalies)}")
+            
         if explanation_parts:
             ai_fraud_explanation = "Forensic analysis flagged the following indicators:\n" + "\n".join(explanation_parts)
         else:
@@ -134,7 +156,7 @@ async def analyze_screenshot(
         font_anomalies_detected = not res["font"]["font_consistent"]
         suspicious_handle_flagged = any(ind["rule"] == "suspicious_keywords" for ind in res["indicators"])
 
-    # 5. Populate and commit to database (Backgrounded)
+    # 6. Populate and commit to database (Backgrounded)
     event_timestamp = datetime.now(timezone.utc)
     event_data = {
         "event_type": "screenshot",
@@ -169,7 +191,11 @@ async def analyze_screenshot(
             "color_authentic": res["color"]["color_authentic"],
             "distance": res["color"]["distance"]
         },
-        "feature_contributions": res["feature_contributions"]
+        "feature_contributions": res["feature_contributions"],
+        "vlm_result": vlm_result,
+        "enhanced_score": enhanced_score,
+        "enhanced_verdict": enhanced_verdict,
+        "signal_breakdown": signal_breakdown
     }
 
     background_tasks.add_task(
@@ -194,7 +220,11 @@ async def analyze_screenshot(
         risk_level=risk_level,
         ai_fraud_explanation=ai_fraud_explanation,
         raw_ocr_text=res["ocr"]["text"],
-        metadata_json=meta_json
+        metadata_json=meta_json,
+        vlm_result=vlm_result,
+        enhanced_score=enhanced_score,
+        enhanced_verdict=enhanced_verdict,
+        signal_breakdown=signal_breakdown
     )
     if ground_truth is not None:
         from ml.drift.registry import DriftRegistry

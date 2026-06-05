@@ -14,9 +14,10 @@ try:
     from faker import Faker
     fake = Faker('en_IN')
 except ImportError:
+    from datetime import datetime
     class Fake:
         def name(self): return "Ramesh Kumar"
-        def date_time_this_year(self): return "05 Jun 2026, 10:24 AM"
+        def date_time_this_year(self): return datetime(2026, 6, 3, 10, 24)
     fake = Fake()
 
 # Core brand colors and metadata

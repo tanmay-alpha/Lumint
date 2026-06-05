@@ -80,10 +80,14 @@ def test_lora_mock_training(tmp_path, monkeypatch):
     # let's mock the training outputs
     run_lora_training()
     
-    # Verify that adapter files exist at C:\Users\TANMAY\Lumint\backend\ml\llm\lora_adapter
-    # because they were created in the earlier setup run.
-    assert Path("ml/llm/lora_adapter/adapter_config.json").exists()
-    assert Path("ml/llm/lora_adapter/adapter_model.bin").exists()
+    # Verify that adapter files exist at ml/llm/lora_adapter or backend/ml/llm/lora_adapter
+    path1 = Path("ml/llm/lora_adapter/adapter_config.json")
+    path2 = Path("backend/ml/llm/lora_adapter/adapter_config.json")
+    assert path1.exists() or path2.exists()
+    
+    bin1 = Path("ml/llm/lora_adapter/adapter_model.bin")
+    bin2 = Path("backend/ml/llm/lora_adapter/adapter_model.bin")
+    assert bin1.exists() or bin2.exists()
 
 @pytest.mark.anyio
 async def test_two_tier_inference_routing():
