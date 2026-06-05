@@ -6,8 +6,8 @@
 \usepackage{cite}
 \usepackage{url}
 \usepackage{hyperref}
-\usepackage{algorithmic}
-\usepackage{algorithm}
+\usepackage[ruled,vlined,linesnumbered]{algorithm2e}
+\newtheorem{theorem}{Theorem}
 \usepackage{xcolor}
 \usepackage{array}
 
@@ -80,10 +80,17 @@ Combining distinct data modalities has been shown to improve fraud detection. Jh
 
 \begin{figure}[!t]
 \centering
-\includegraphics[width=0.9\linewidth]{figures/architecture.pdf}
+\includegraphics[width=0.9\linewidth]{figures/figure1_architecture.pdf}
 \caption{Lumint architecture showing the three parallel shields, probability calibration, the logistic meta-learner, and the LLM explanation layer.}
 \label{fig:architecture}
 \end{figure}
+
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=0.95\linewidth]{figures/figure2_cmfa_distributions.pdf}
+\caption{Empirical distributions of the three CMFA signals (Brand Palette Distance, Text Height Variance, and ELA Hotspot Density) across genuine and forged samples in the UPI-FraudBench-2026 dataset. The dashed vertical green lines denote the optimal detection thresholds.}
+\label{fig:cmfa_distributions}
+\end{figure*}
 
 \section{Methodology}
 \label{sec:methodology}
@@ -108,11 +115,11 @@ D_{\text{ELA}}(x, y) = |I_{\text{orig}}(x, y) - I_{\text{recon}}(x, y)|
 where $I_{\text{orig}}$ is the original image intensity and $I_{\text{recon}}$ is the re-compressed image intensity at 95\% quality.
 
 \subsubsection{UPIShield}
-UPIShield extracts 8 features from transaction receipt screenshots. These features capture OCR text extraction confidence, layout heuristics, brand colors, and transaction ID formats. It validates the 12-digit transaction ID using the following regular expression pattern:
-\begin{equation}
-\text{Pattern}_{\text{UTR}} = \text{\texttt{\^{}([0-9]\{12\})\$ }}
-\end{equation}
-If the extracted transaction ID fails this regex, it is flagged as invalid.
+UPIShield validates the authenticity of transaction receipt screenshots using the Cross-Modal Forensic Alignment (CMFA) algorithm. The formal procedural flow is detailed in Algorithm~\ref{alg:cmfa}.
+
+\input{algorithms/cmfa}
+
+\input{sections/cmfa_theory}
 
 \subsection{Machine Learning Models}
 We evaluate three classifiers for each shield: Logistic Regression (LR), Random Forest (RF), and Gradient Boosting (GB). These models are trained using Stratified 5-Fold Cross-Validation. To handle class imbalance, we apply SMOTE (Synthetic Minority Over-sampling Technique)~\cite{smote} to the training folds only. SMOTE synthesizes minority samples along the line segments joining k-nearest neighbors:
@@ -133,7 +140,23 @@ The cross-modal fusion layer uses a Logistic Regression meta-learner. The meta-l
 \begin{equation}
 L_{\text{score}} = \sigma(w_1 p_1 + w_2 p_2 + w_3 p_3 + b) \times 100
 \end{equation}
-where $p_1, p_2, p_3$ are the calibrated probabilities from PhishShield, DocShield, and UPIShield respectively, $w_i$ are the learned meta-learner weights, $b$ is the bias term, and $\sigma(z) = 1 / (1 + e^{-z})$ is the logistic sigmoid function.
+where $p_1, p_2, p_3$ are the calibrated probabilities from PhishShield, DocShield, and UPIShield respectively, $w_i$ are the learned meta-learner weights, $b$ is the bias term, and $\sigma(z) = 1 / (1 + e^{-z}$) is the logistic sigmoid function.
+
+\begin{theorem}
+\label{thm:fusion_superiority}
+Let $f_1$, $f_2$, and $f_3$ be three statistically independent forensic signals with respective Cohen's $d$ effect sizes $d_1, d_2, d_3 > 0$. The combined fusion signal $F = \sum_{i=1}^3 w_i f_i$ under optimal weighting has a fused effect size $d_{\text{fusion}} = \sqrt{d_1^2 + d_2^2 + d_3^2}$. It follows that $d_{\text{fusion}} > \max(d_1, d_2, d_3)$, proving that the fused multi-modal decision boundary achieves strictly superior statistical separation than any single signal.
+\end{theorem}
+\begin{IEEEproof}
+Let the genuine and forged distributions for each signal $f_i$ have mean difference $\Delta \mu_i = \mu_{i, \text{forged}} - \mu_{i, \text{genuine}}$ and common variance $\sigma_i^2 = 1$ without loss of generality. Under statistical independence, the variance of the fused linear combination $F = \sum_i w_i f_i$ is $\sigma_F^2 = \sum_i w_i^2 \sigma_i^2 = \sum_i w_i^2$. The mean separation of the fused signal is $\Delta \mu_F = \sum_i w_i \Delta \mu_i$. The combined Cohen's $d$ effect size is:
+\begin{equation}
+    d_{\text{fusion}} = \frac{\Delta \mu_F}{\sigma_F} = \frac{\sum_{i=1}^3 w_i d_i}{\sqrt{\sum_{i=1}^3 w_i^2}}
+\end{equation}
+Applying the Cauchy-Schwarz inequality, the maximum of this ratio is achieved when the weights are chosen proportional to the effect sizes, i.e., $w_i \propto d_i$. Substituting $w_i = d_i$ yields:
+\begin{equation}
+    d_{\text{fusion}} = \frac{\sum_i d_i^2}{\sqrt{\sum_i d_i^2}} = \sqrt{\sum_{i=1}^3 d_i^2}
+\end{equation}
+Since $d_i > 0$ for all $i$, we have $d_{\text{fusion}} = \sqrt{d_1^2 + d_2^2 + d_3^2} > \sqrt{d_j^2} = d_j$ for any $j \in \{1, 2, 3\}$, concluding the proof.
+\end{IEEEproof}
 
 \subsection{SHAP Explainability and LLM Translation}
 To explain model decisions, we use additive feature attribution via SHAP~\cite{shap}:
@@ -142,7 +165,14 @@ g(z') = \phi_0 + \sum_{i=1}^{M} \phi_i z'_i
 \end{equation}
 where $g$ is the explanation model, $z' \in \{0, 1\}^M$ is a coalition vector of active features, and $\phi_i \in \mathbb{R}$ is the SHAP value for feature $i$.
 
-The top five features with the highest absolute SHAP values are extracted and formatted into a JSON payload. This payload, along with the raw feature values and the classifier's output probability, is sent to the Groq API running LLaMA 3.3 70B. The LLM translates these metrics into a structured natural language report that details the identified fraud indicators, their severity, and recommended actions for human analysts.
+The top five features with the highest absolute SHAP values are extracted and formatted into a JSON payload. This payload, along with the raw feature values and the classifier's output probability, is sent to the Groq API running LLaMA 3.3 70B. The LLM translates these metrics into a structured natural language report that details the identified fraud indicators, their severity, and recommended actions for human analysts. The global feature attribution and impact of CMFA and VLM features on the fused model output are visualized in the SHAP beeswarm plot in Fig.~\ref{fig:shap_beeswarm}.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=0.9\linewidth]{figures/figure4_shap_beeswarm.pdf}
+\caption{SHAP beeswarm plot illustrating the impact of primary CMFA and VLM features on the fused decision model, where points are individual samples color-coded by feature value.}
+\label{fig:shap_beeswarm}
+\end{figure}
 
 \section{Experiments}
 \label{sec:experiments}
@@ -165,7 +195,14 @@ We report Precision, Recall, F1-Score, Area Under the ROC Curve (AUC-ROC), and M
 Lumint is implemented in Python 3.11 using scikit-learn (v1.4.0)~\cite{scikit-learn}, imbalanced-learn (v0.12.0), SHAP (v0.45.0)~\cite{shap}, and joblib (v1.3.0). The LLM explainer connects to LLaMA 3.3 70B via the Groq SDK. The system was evaluated on a Windows 11 laptop equipped with an Intel Core i7-13700H CPU and 16GB of RAM.
 
 \subsection{Main Results}
-Table~\ref{tab:main_results} reports the performance of each model configuration on our evaluation datasets. For the synthetic test sets, all three classifiers achieve perfect classification performance (F1-score = 1.0000). The bootstrap confidence intervals reflect this deterministic performance.
+Table~\ref{tab:main_results} reports the performance of each model configuration on our evaluation datasets. For the synthetic test sets, all three classifiers achieve perfect classification performance (F1-score = 1.0000). The bootstrap confidence intervals reflect this deterministic performance. The ROC curves comparing our proposed fusion models and baseline classifiers are plotted in Fig.~\ref{fig:roc_curves}.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=0.9\linewidth]{figures/figure3_roc_curves.pdf}
+\caption{ROC curves comparing CMFA classifiers (Gradient Boosting, Random Forest, Logistic Regression) against the FakePay baseline and UTR-only heuristics.}
+\label{fig:roc_curves}
+\end{figure}
 
 \begin{table*}[!t]
 \centering
@@ -285,7 +322,14 @@ Real & Synth & Cross-Dataset & 0.9316 & 0.5900 & 0.7224 & 0.8246 & 0.6565 \\
 \label{sec:drift}
 Deployed fraud models are subject to concept drift as adversarial patterns evolve. We monitor the prediction error stream using three parallel detectors: ADWIN~\cite{adwin}, Page-Hinkley (PHT)~\cite{page_hinkley}, and DDM~\cite{ddm}. A majority-vote consensus (at least 2 of 3 detectors agreeing) triggers a model refresh alert, reducing false positives from individual detectors.
 
-We simulate two canonical drift scenarios on a stream of $N=3000$ samples. In the \emph{abrupt} scenario, the error rate shifts from $p_{\text{err}}=0.05$ to $p_{\text{err}}=0.40$ instantaneously at $t=1000$. In the \emph{gradual} scenario ($N=5000$), the error rate increases linearly from 0.05 to 0.40 between $t=1000$ and $t=2000$. Table~\ref{tab:drift} reports detection delays and false alarm counts.
+We simulate two canonical drift scenarios on a stream of $N=3000$ samples. In the \emph{abrupt} scenario, the error rate shifts from $p_{\text{err}}=0.05$ to $p_{\text{err}}=0.40$ instantaneously at $t=1000$. In the \emph{gradual} scenario ($N=5000$), the error rate increases linearly from 0.05 to 0.40 between $t=1000$ and $t=2000$. Table~\ref{tab:drift} reports detection delays and false alarm counts. The timeline of drift detection and corresponding delays is visualized in Fig.~\ref{fig:concept_drift}.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=0.9\linewidth]{figures/figure5_concept_drift.pdf}
+\caption{Concept drift detection timeline comparing ADWIN, Page-Hinkley Test (PHT), and DDM on an incoming stream with drift injected at sample $t=1000$.}
+\label{fig:concept_drift}
+\end{figure}
 
 \begin{table}[!h]
 \centering

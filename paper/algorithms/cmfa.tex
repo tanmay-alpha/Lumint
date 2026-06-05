@@ -1,0 +1,44 @@
+\begin{algorithm}[H]
+\caption{Cross-Modal Forensic Alignment (CMFA)}
+\label{alg:cmfa}
+\KwIn{Screenshot image $I \in \mathbb{R}^{H \times W \times 3}$,
+      app class $a \in \{\text{PhonePe, GPay, Paytm, BHIM}\}$}
+\KwOut{Forgery score $s \in [0, 1]$, 
+       signal vector $\mathbf{f} \in \mathbb{R}^3$}
+
+\BlankLine
+\tcp{Signal 1 — Brand Palette Distance}
+Extract dominant colors $D = \{\mathbf{d}_1, \dots, \mathbf{d}_5\}$ via 3D RGB color histogram bucketing (bucket size = $32$ per channel)\;
+Compute minimum Euclidean distance to reference brand template $T_a$:
+$\delta_{\text{color}} = \min_{\mathbf{d} \in D} \|\mathbf{d} - T_a\|_2$\;
+Normalize color signal via sigmoid function:
+$f_1 = \frac{1}{1 + e^{-\delta_{\text{color}} / 85.0}}$\;
+
+\BlankLine
+\tcp{Signal 2 — Text Contour Height Variance}
+Convert image to grayscale: $I_{\text{gray}} = \text{Grayscale}(I)$\;
+Apply Otsu's thresholding to generate binary image: $B = \text{Otsu}(I_{\text{gray}})$\;
+Extract contour bounding boxes: $\mathcal{C} = \{(x_i, y_i, w_i, h_i)\}_{i=1}^N$\;
+Filter contours where $8 < h_i < 40$ and $3 < w_i < 200$\;
+Compute sample variance of heights: $\sigma^2_{\text{height}} = \text{Var}(\{h_1, \dots, h_N\})$\;
+Normalize and clamp height variance:
+$f_2 = \min\left(1.0, \frac{\sigma^2_{\text{height}}}{110.0}\right)$\;
+
+\BlankLine
+\tcp{Signal 3 — ELA Grid Density}
+Compress image at target quality $Q=90$: $I_c = \text{JPEG}(I, Q=90)$\;
+Compute absolute Error Level Analysis (ELA) map: $E = |I - I_c|$\;
+Partition ELA map $E$ into a $12 \times 12$ uniform grid of blocks: $\{G_{ij}\}_{i,j=1}^{12}$\;
+Count high-frequency error hotspot blocks:
+$h = \left| \{G_{ij} : \text{mean}(G_{ij}) > 127\} \right|$\;
+Compute density score:
+$f_3 = \frac{h}{144}$\;
+
+\BlankLine
+\tcp{Unified Risk Score Fusion}
+Assemble signal vector $\mathbf{f} = [f_1, f_2, f_3]^T$\;
+Compute calibrated final forgery score $s$ using learned weights $\mathbf{w}$ from Logistic Regression meta-learner:
+$s = \frac{1}{1 + e^{-\mathbf{w}^T \mathbf{f}}}$\;
+
+\Return{$s$, $\mathbf{f}$}\;
+\end{algorithm}
