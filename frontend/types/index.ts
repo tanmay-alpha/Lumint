@@ -1,4 +1,4 @@
-// Type declarations matching the SentinelX FastAPI backend models
+// Type declarations matching the Lumint FastAPI backend models
 
 export interface IndicatorCount {
   indicator: string;

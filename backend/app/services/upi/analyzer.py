@@ -12,19 +12,65 @@ from app.services.upi.font_consistency import check_font_consistency
 
 logger = logging.getLogger("lumint.services.upi.analyzer")
 
-def parse_amount(text: str) -> Optional[str]:
-    """Extract standard INR amounts from OCR text."""
-    text_clean = text.lower()
-    # rs. 15,200.00 or INR 500 or amount: 1200
-    amount_matches = re.findall(r'(?:rs\.?|inr|amount|paid)\s*([\d,]+(?:\.\d{2})?)', text_clean)
-    if amount_matches:
-        return amount_matches[0].strip()
-    
-    # Try general decimal regex as fallback if RS/INR is not near it
-    decimal_matches = re.findall(r'\b\d{1,3}(?:,\d{2,3})*(?:\.\d{2})\b', text_clean)
-    if decimal_matches:
-        return decimal_matches[0]
+def parse_amount(text: str) -> Optional[float]:
+    """
+    Extract the transaction amount from OCR text using priority-ordered patterns.
+    Returns a float (e.g. 1200.0) or None if not found.
+
+    Priority:
+      1. ₹ symbol directly followed by digits (e.g. ₹1,200.00)
+      2. Rs. / RS. prefix (e.g. Rs. 15,200.00)
+      3. INR prefix (e.g. INR 500)
+      4. Amount/Paid label (e.g. amount: 1200)
+      5. 3+ digit comma-formatted decimal fallback (e.g. 15,200.00)
+    """
+    # Normalise — keep ₹ intact, lowercase rest
+    text_lower = text.lower()
+
+    def _to_float(raw: str) -> Optional[float]:
+        cleaned = raw.replace(",", "").strip()
+        try:
+            return float(cleaned)
+        except ValueError:
+            return None
+
+    # 1. ₹ symbol (highest priority)
+    m = re.search(r'₹\s*([\d,]+(?:\.\d{1,2})?)', text)
+    if m:
+        val = _to_float(m.group(1))
+        if val is not None:
+            return val
+
+    # 2. Rs. prefix (case-insensitive)
+    m = re.search(r'rs\.?\s*([\d,]+(?:\.\d{1,2})?)', text_lower)
+    if m:
+        val = _to_float(m.group(1))
+        if val is not None:
+            return val
+
+    # 3. INR prefix
+    m = re.search(r'inr\s*([\d,]+(?:\.\d{1,2})?)', text_lower)
+    if m:
+        val = _to_float(m.group(1))
+        if val is not None:
+            return val
+
+    # 4. Amount / Paid label
+    m = re.search(r'(?:amount|paid|total)[:\s]+([\d,]+(?:\.\d{1,2})?)', text_lower)
+    if m:
+        val = _to_float(m.group(1))
+        if val is not None:
+            return val
+
+    # 5. General comma-formatted decimal fallback (e.g. 15,200.00)
+    matches = re.findall(r'\b\d{1,3}(?:,\d{2,3})*(?:\.\d{2})\b', text_lower)
+    if matches:
+        val = _to_float(matches[0])
+        if val is not None:
+            return val
+
     return None
+
 
 def parse_vpas(text: str) -> List[str]:
     """Extract virtual payment addresses (VPAs) from text."""

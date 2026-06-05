@@ -166,7 +166,7 @@ export async function apiRequest<T>(
     setLiveMode(true);
     return await response.json() as T;
   } catch (error) {
-    console.warn(`SentinelX API fallback to Mock on path ${path}:`, error);
+    console.warn(`Lumint API fallback to Mock on path ${path}:`, error);
     setLiveMode(false);
     
     if (mockGenerator) {

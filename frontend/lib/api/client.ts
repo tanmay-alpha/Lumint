@@ -122,7 +122,7 @@ export async function fetchApi<T>(
     }
     return (await response.json()) as T;
   } catch (error) {
-    console.warn(`SentinelX API fallback to mock on path: ${path}`, error);
+    console.warn(`Lumint API fallback to mock on path: ${path}`, error);
     if (mockFallback !== undefined) {
       // Simulate artificial latency
       await new Promise((resolve) => setTimeout(resolve, 800));

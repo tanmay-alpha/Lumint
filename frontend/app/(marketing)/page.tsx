@@ -120,12 +120,10 @@ export default function LandingPage() {
               GitHub
             </a>
             <a
-              href="https://www.linkedin.com/in/tanmaymangal/"
-              target="_blank"
-              rel="noopener noreferrer"
+              href="/paper"
               className="hover:text-text-primary transition-colors"
             >
-              LinkedIn
+              Paper
             </a>
           </div>
           <Link href="/dashboard">

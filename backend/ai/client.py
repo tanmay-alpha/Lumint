@@ -5,6 +5,7 @@ Groq LLM wrapper with retry logic, structured latency logging, and graceful fall
 Never raises on timeout — always returns a typed error dict for the caller to handle.
 """
 
+import asyncio
 import json
 import logging
 import os
@@ -22,7 +23,7 @@ _client: Groq | None = None
 MODEL_ID = "llama-3.3-70b-versatile"
 TEMPERATURE = 0.15          # Low for consistent, analyst-tone responses
 MAX_TOKENS = 1024
-DEFAULT_TIMEOUT = 15.0      # seconds
+DEFAULT_TIMEOUT = 20.0      # seconds — increased for slow Groq cold starts
 MAX_RETRIES = 2
 
 
@@ -119,7 +120,7 @@ async def ask_groq(
                 MODEL_ID, latency_ms, attempt + 1, max_retries + 1,
             )
             if attempt < max_retries:
-                time.sleep(0.5 * (2 ** attempt))   # 0.5s, 1s backoff
+                await asyncio.sleep(0.5 * (2 ** attempt))   # 0.5s, 1s async backoff
                 continue
             return {
                 "_error": "timeout",
@@ -146,7 +147,7 @@ async def ask_groq(
                 MODEL_ID, latency_ms, str(exc)[:200],
             )
             if attempt < max_retries:
-                time.sleep(0.5 * (2 ** attempt))
+                await asyncio.sleep(0.5 * (2 ** attempt))
                 continue
             return {
                 "_error": "api_error",

@@ -69,7 +69,7 @@ export const documentApi = {
 
       return (await response.json()) as DocumentAnalysisResult;
     } catch (error) {
-      console.warn("SentinelX DocShield API fallback to mock analysis result:", error);
+      console.warn("Lumint DocShield API fallback to mock analysis result:", error);
       // Simulate artificial latency
       await new Promise((resolve) => setTimeout(resolve, 1500));
       return MOCK_ANALYSIS_RESULT;

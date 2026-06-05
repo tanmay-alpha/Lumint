@@ -87,7 +87,7 @@ export const documentsService = {
               risk_level: "CLEAN",
               metadata: {
                 title: file.name.replace(".pdf", ""),
-                author: "SentinelX User",
+                author: "Lumint User",
                 creator: "Google Docs",
                 producer: "Skia/PDF m120",
                 creation_date: new Date().toISOString(),

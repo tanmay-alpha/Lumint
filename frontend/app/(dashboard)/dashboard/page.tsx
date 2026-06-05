@@ -241,7 +241,7 @@ export default function DashboardOverviewPage() {
             Forensic Telemetry Overview
           </h1>
           <p className="text-caption text-text-secondary">
-            Dynamic statistics and correlation maps representing threats verified across SentinelX engine nodes.
+            Dynamic statistics and correlation maps representing threats verified across Lumint engine nodes.
           </p>
         </div>
 

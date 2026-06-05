@@ -59,7 +59,7 @@ export default function LiveStatsBar({ events, connectionStatus }: LiveStatsBarP
           </div>
           <div className="flex-1 min-w-0">
             <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider block leading-none">
-              威胁遥测流 · Threat Stream
+              THREAT STREAM
             </span>
             <span className="text-xs font-bold text-[var(--color-text-primary)] capitalize">
               {connectionStatus === "connected" ? "Live Feed Connected" : connectionStatus === "connecting" ? "Reconnecting..." : "Offline"}

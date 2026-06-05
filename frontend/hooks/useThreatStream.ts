@@ -31,8 +31,18 @@ export function useThreatStream(simulate = false, simulationRate = 1.0) {
 
     setStatus("connecting");
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    // Fallback to local 8000 port
-    const host = process.env.NEXT_PUBLIC_WS_HOST || "localhost:8000";
+    
+    // Derive WS host from NEXT_PUBLIC_API_URL (strip http(s):// prefix)
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+    let host: string;
+    if (apiUrl) {
+      // Convert https://api.example.com  → api.example.com
+      //         http://localhost:8000    → localhost:8000
+      host = apiUrl.replace(/^https?:\/\//, "");
+    } else {
+      // Hard fallback: check NEXT_PUBLIC_WS_HOST or default to localhost
+      host = process.env.NEXT_PUBLIC_WS_HOST || "localhost:8000";
+    }
     
     const path = simulate 
       ? `/ws/threats/simulate?rate=${simulationRate}` 

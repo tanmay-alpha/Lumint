@@ -1,4 +1,4 @@
-// Strict TypeScript Interfaces for SentinelX Frontend & Backend Contracts
+// Strict TypeScript Interfaces for Lumint Frontend & Backend Contracts
 
 export type RiskLevel = "CLEAN" | "SUSPICIOUS" | "HIGH" | "CRITICAL" | "NONE" | "NORMAL" | "ELEVATED";
 
