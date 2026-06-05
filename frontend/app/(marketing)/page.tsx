@@ -6,429 +6,540 @@ import { motion } from "framer-motion";
 import {
   ArrowRight,
   Shield,
-  Link2,
-  GitBranch,
+  FileSearch,
+  ShieldAlert,
+  Network,
   Smartphone,
-  FileText,
-  Zap,
   BookOpen,
-  CheckCircle,
+  Check,
+  Zap,
 } from "lucide-react";
-import { DataCard } from "@/components/ui/DataCard";
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 
 // ─── Animation helpers ─────────────────────────────────────────────────────
-const fadeUp = {
-  hidden:  { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+const fadeUpVariants = {
+  hidden: { opacity: 0, y: 15 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.4,
+      ease: "easeOut" as const,
+    },
+  },
 };
-const stagger = { visible: { transition: { staggerChildren: 0.08 } } };
 
-// ─── Floating hero composition card ───────────────────────────────────────
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+    },
+  },
+};
+
+const noveltyContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const noveltyItem = {
+  hidden: { opacity: 0, x: -20 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: {
+      duration: 0.4,
+      ease: "easeOut" as const,
+    },
+  },
+};
+
+// ─── Floating hero preview card ───────────────────────────────────────────
 const HeroPreviewCard = ({
   label,
   value,
-  badge,
+  badgeText,
   badgeRisk,
+  score,
   delay,
   rotate,
+  topPos,
+  leftPos,
+  rightPos,
+  floatYRange,
+  floatDuration,
 }: {
   label: string;
   value: string;
-  badge: string;
-  badgeRisk: "danger" | "high" | "warn" | "safe" | "critical" | "low" | "default";
+  badgeText: string;
+  badgeRisk: "safe" | "warn" | "high" | "critical";
+  score: number;
   delay: number;
   rotate: number;
-}) => (
-  <motion.div
-    initial={{ opacity: 0, y: 20, rotate: 0 }}
-    animate={{ opacity: 1, y: 0, rotate }}
-    transition={{ duration: 0.6, delay }}
-    className="bg-surface/90 backdrop-blur-md border border-border-default rounded-xl px-4 py-3.5 shadow-md min-w-[200px]"
-    style={{ transform: `rotate(${rotate}deg)` }}
-  >
-    <span className="text-label text-text-muted block mb-1">
-      {label}
-    </span>
-    <span className="text-data text-text-primary block font-semibold truncate mb-2">{value}</span>
-    <Badge variant={badgeRisk === "danger" ? "high" : badgeRisk === "low" ? "safe" : badgeRisk === "default" ? "neutral" : badgeRisk} dot>
-      {badge}
-    </Badge>
-  </motion.div>
-);
+  topPos?: string;
+  leftPos?: string;
+  rightPos?: string;
+  floatYRange: number[];
+  floatDuration: number;
+}) => {
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 40, rotate: 0 }}
+      animate={{ opacity: 1, x: 0, rotate }}
+      transition={{ duration: 0.4, ease: "easeOut", delay }}
+      className="absolute select-none pointer-events-none"
+      style={{
+        top: topPos,
+        left: leftPos,
+        right: rightPos,
+      }}
+    >
+      <motion.div
+        animate={{ y: floatYRange }}
+        transition={{
+          duration: floatDuration,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+        className="card-elevated backdrop-blur-md bg-surface/85 border border-border-default/60 rounded-xl px-5 py-4 shadow-xl min-w-[290px] max-w-[320px]"
+      >
+        <div className="flex items-center justify-between gap-3 mb-2.5">
+          <span className="text-[11px] font-sans font-semibold tracking-wider text-text-secondary uppercase">
+            {label}
+          </span>
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[12px] font-medium text-text-primary">
+              Score: {score}
+            </span>
+            <span
+              className={`inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[9px] font-bold tracking-wider uppercase ${
+                badgeRisk === "safe"
+                  ? "bg-risk-none-bg text-risk-none"
+                  : badgeRisk === "warn"
+                  ? "bg-risk-medium-bg text-risk-medium"
+                  : badgeRisk === "high"
+                  ? "bg-risk-high-bg text-risk-high"
+                  : "bg-risk-critical-bg text-risk-critical"
+              }`}
+            >
+              {badgeText}
+            </span>
+          </div>
+        </div>
+        <p className="text-[13px] text-text-primary font-mono tracking-tight font-medium truncate">
+          {value}
+        </p>
+      </motion.div>
+    </motion.div>
+  );
+};
 
-const FeatureCard = ({
+// ─── Module display card ──────────────────────────────────────────────────
+const ModuleCard = ({
   icon: Icon,
   title,
   description,
   href,
+  colorClass,
 }: {
   icon: React.ElementType;
   title: string;
   description: string;
   href: string;
+  colorClass: string;
 }) => (
-  <DataCard className="flex flex-col gap-4 group cursor-pointer h-full border border-border-default/60 hover:border-brand/40 transition-all duration-300">
-    <div className="h-11 w-11 rounded-xl bg-brand-subtle flex items-center justify-center text-brand">
-      <Icon className="h-[22px] w-[22px]" />
-    </div>
-    <div>
-      <h3 className="text-title text-text-primary mb-2">{title}</h3>
-      <p className="text-body text-text-secondary leading-relaxed">{description}</p>
-    </div>
-    <div className="mt-auto pt-4 flex flex-col gap-3">
-      <Link
-        href={href}
-        className="flex items-center gap-1 text-[13px] font-semibold text-brand hover:gap-2 transition-all"
-      >
-        Open module <ArrowRight className="h-3.5 w-3.5" />
-      </Link>
-      <div className="pt-3 border-t border-border-muted/65">
-        <span className="font-mono text-[10px] text-text-muted">
-          Powered by LLaMA 3.3 70B · Groq
-        </span>
+  <motion.div
+    variants={fadeUpVariants}
+    className="card-elevated hover:shadow-xl transition-all duration-300 p-6 flex flex-col justify-between group cursor-pointer h-full border border-border-default/50"
+  >
+    <div className="space-y-4">
+      <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${colorClass}`}>
+        <Icon className="h-5 w-5" />
+      </div>
+      <div>
+        <h3 className="text-[16px] font-sans font-semibold text-text-primary mb-2">
+          {title}
+        </h3>
+        <p className="text-[14px] text-text-secondary leading-relaxed line-clamp-3">
+          {description}
+        </p>
       </div>
     </div>
-  </DataCard>
+    <div className="mt-6 pt-4 border-t border-border-muted flex items-center justify-between">
+      <span className="font-mono text-[10px] text-text-muted">
+        Powered by LLaMA 3.3 70B · Groq
+      </span>
+      <Link href={href} className="flex items-center gap-1 text-[13px] font-semibold text-brand">
+        <span className="group-hover:translate-x-0.5 transition-transform duration-200 flex items-center gap-1">
+          Open module <ArrowRight className="h-3.5 w-3.5" />
+        </span>
+      </Link>
+    </div>
+  </motion.div>
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LANDING PAGE
 // ─────────────────────────────────────────────────────────────────────────────
 export default function LandingPage() {
+  const [scrolled, setScrolled] = React.useState(false);
+
+  React.useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 15);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
-    <div className="relative min-h-screen bg-canvas text-text-primary flex flex-col font-sans">
-      {/* ── NAVBAR ── */}
-      <nav className="fixed top-0 inset-x-0 z-50 border-b border-border-default bg-surface/80 backdrop-blur-[12px]">
-        <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-lg bg-brand flex items-center justify-center shadow-sm">
-              <Zap className="h-4.5 w-4.5 text-white" strokeWidth={2.5} />
-            </div>
-            <span className="text-display text-[22px] tracking-tight font-semibold text-text-primary leading-none">Lumint</span>
+    <div className="relative min-h-screen bg-canvas text-text-primary flex flex-col font-sans overflow-x-hidden">
+      {/* ── SECTION 1 — NAV ── */}
+      <nav
+        className={`fixed top-0 inset-x-0 z-50 h-[56px] transition-all duration-300 ${
+          scrolled
+            ? "bg-[rgba(244,246,249,0.85)] dark:bg-[rgba(12,14,20,0.85)] backdrop-blur-[12px] border-b border-border-default/40 shadow-sm"
+            : "bg-transparent border-b border-transparent"
+        }`}
+      >
+        <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Shield className="h-4.5 w-4.5 text-brand" strokeWidth={2.5} />
+            <span className="font-sans font-semibold text-[16px] text-text-primary tracking-tight leading-none">
+              Lumint
+            </span>
           </div>
-          <div className="hidden md:flex items-center gap-6 text-[13px] text-text-secondary font-medium">
-            <a href="#modules" className="hover:text-text-primary transition-colors">Modules</a>
-            <a href="#research" className="hover:text-text-primary transition-colors">Research</a>
+
+          <div className="hidden md:flex items-center gap-6 text-[14px] text-text-secondary font-medium">
+            <a href="#modules" className="hover:text-text-primary transition-colors">
+              Modules
+            </a>
+            <a href="#research" className="hover:text-text-primary transition-colors">
+              Research
+            </a>
+            <Link href="/dashboard/research" className="hover:text-text-primary transition-colors">
+              Paper
+            </Link>
             <a
-              href="https://github.com/tanmay-alpha"
+              href="https://github.com/tanmay-alpha/lumint"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-text-primary transition-colors"
             >
               GitHub
             </a>
-            <a
-              href="/paper"
-              className="hover:text-text-primary transition-colors"
-            >
-              Paper
-            </a>
           </div>
+
           <Link href="/dashboard">
-            <Button variant="solid" size="sm" className="flex items-center gap-1.5 font-semibold text-[13px]">
-              Launch Platform <ArrowRight className="h-3.5 w-3.5" />
+            <Button
+              variant="solid"
+              className="h-8 px-4 rounded-[8px] bg-brand text-white hover:bg-brand-hover text-[13px] font-semibold flex items-center justify-center transition-colors"
+            >
+              Launch Platform →
             </Button>
           </Link>
         </div>
       </nav>
 
-      <main className="flex-grow pt-14">
-        {/* ── HERO ── */}
-        <section className="relative min-h-[92vh] flex items-center overflow-hidden">
-          {/* Decorative grid & background patterns */}
-          <div className="absolute inset-0 mesh-grid-bg opacity-[0.018] pointer-events-none" />
-          <div className="absolute inset-0 hero-mesh-bg pointer-events-none" />
-          
-          <div className="absolute top-20 right-20 w-96 h-96 rounded-full bg-brand/5 dark:bg-brand/10 opacity-30 blur-3xl pointer-events-none" />
-          <div className="absolute bottom-20 left-10 w-80 h-80 rounded-full bg-intel/5 dark:bg-intel/10 opacity-30 blur-3xl pointer-events-none" />
+      {/* ── SECTION 2 — HERO ── */}
+      <section
+        className="relative min-h-screen flex items-center justify-center pt-[56px] pb-16 overflow-hidden"
+        style={{
+          background: `
+            radial-gradient(circle at 20% 50%, rgba(37,99,235,0.06) 0%, transparent 50%),
+            radial-gradient(circle at 80% 20%, rgba(8,145,178,0.05) 0%, transparent 40%),
+            radial-gradient(circle at 60% 80%, rgba(124,58,237,0.04) 0%, transparent 40%),
+            var(--bg)
+          `,
+        }}
+      >
+        <div className="absolute inset-0 mesh-grid-bg opacity-[0.015] pointer-events-none" />
 
-          <div className="max-w-7xl mx-auto px-6 w-full grid grid-cols-1 lg:grid-cols-2 items-center gap-16 py-20 relative z-10">
-            {/* Left — copy */}
-            <motion.div
-              initial="hidden"
-              animate="visible"
-              variants={stagger}
-              className="space-y-6"
-            >
-              {/* Badge */}
-              <motion.div variants={fadeUp}>
-                <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-brand-subtle text-brand text-[12px] font-semibold">
-                  <Zap className="h-3.5 w-3.5" strokeWidth={2.5} />
-                  Research Publication Platform · v1.0.0
-                </span>
-              </motion.div>
-
-              {/* Headline */}
-              <motion.h1 variants={fadeUp} className="text-display tracking-tight leading-[1.05] text-text-primary" style={{ fontSize: 54 }}>
-                Illuminate the threat.{" "}
-                <span className="text-brand italic font-serif">Before it strikes.</span>
-              </motion.h1>
-
-              {/* Body */}
-              <motion.p
-                variants={fadeUp}
-                className="text-body text-text-secondary leading-relaxed max-w-lg"
-                style={{ fontSize: 16 }}
-              >
-                Lumint is a unified multimodal fraud intelligence platform built for India&apos;s
-                digital payment ecosystem — detecting fraud across documents, URLs, UPI screenshots,
-                and campaign networks using LLM-powered explainability.
-              </motion.p>
-
-              {/* CTAs */}
-              <motion.div variants={fadeUp} className="flex items-center gap-4 flex-wrap">
-                <Link href="/dashboard">
-                  <Button variant="solid" size="lg" className="flex items-center gap-2 font-semibold">
-                    Launch Platform <ArrowRight className="h-4.5 w-4.5" />
-                  </Button>
-                </Link>
-                <a href="#research">
-                  <Button variant="outline" size="lg" className="flex items-center gap-2 font-semibold">
-                    <BookOpen className="h-4.5 w-4.5" />
-                    Read Research
-                  </Button>
-                </a>
-              </motion.div>
-
-              {/* Trust stats */}
-              <motion.div variants={fadeUp} className="flex items-center gap-5 flex-wrap pt-4 border-t border-border-muted/70">
-                {[
-                  { value: "4 modules",     label: "Detection modalities" },
-                  { value: "LLaMA 3.3 70B", label: "AI engine" },
-                  { value: "Open source",   label: "Research ready" },
-                ].map(({ value, label }) => (
-                  <div key={label} className="flex items-center gap-2 text-caption">
-                    <CheckCircle className="h-4.5 w-4.5 text-risk-none shrink-0" />
-                    <span className="font-semibold text-text-primary">{value}</span>
-                    <span className="text-text-muted">{label}</span>
-                  </div>
-                ))}
-              </motion.div>
-            </motion.div>
-
-            {/* Right — floating preview cards */}
-            <div className="relative hidden lg:flex items-center justify-center h-[420px]">
-              <div className="relative w-full h-full max-w-[400px]">
-                <motion.div
-                  animate={{ y: [0, -8, 0] }}
-                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                  className="absolute top-8 right-0"
-                >
-                  <HeroPreviewCard
-                    label="DocShield result"
-                    value="Invoiced forgery detected"
-                    badge="HIGH THREAT"
-                    badgeRisk="danger"
-                    delay={0.3}
-                    rotate={2}
-                  />
-                </motion.div>
-                <motion.div
-                  animate={{ y: [0, -6, 0] }}
-                  transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-                  className="absolute top-1/2 left-0 -translate-y-1/2"
-                >
-                  <HeroPreviewCard
-                    label="PhishShield verdict"
-                    value="hdfc-kyc-verify.com"
-                    badge="PHISHING LINK"
-                    badgeRisk="critical"
-                    delay={0.5}
-                    rotate={-3}
-                  />
-                </motion.div>
-                <motion.div
-                  animate={{ y: [0, -10, 0] }}
-                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-                  className="absolute bottom-6 right-4"
-                >
-                  <HeroPreviewCard
-                    label="UPI Shield scan"
-                    value="UTR Format invalid ✗"
-                    badge="FORGED SCREENSHOT"
-                    badgeRisk="danger"
-                    delay={0.7}
-                    rotate={1.5}
-                  />
-                </motion.div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ── MODULES ── */}
-        <section id="modules" className="py-24 px-6 max-w-7xl mx-auto border-t border-border-muted/50">
+        <div className="max-w-7xl mx-auto px-6 w-full flex flex-col lg:flex-row items-center justify-between gap-16 relative z-10">
+          {/* Centered content block */}
           <motion.div
             initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.2 }}
-            variants={stagger}
-            className="space-y-14"
+            animate="visible"
+            variants={containerVariants}
+            className="flex-1 flex flex-col items-center lg:items-start text-center lg:text-left space-y-6"
           >
-            <motion.div variants={fadeUp} className="max-w-2xl">
-              <h2 className="text-headline text-text-primary mb-4" style={{ fontSize: 38 }}>
-                Four detection modalities. One platform.
-              </h2>
-              <p className="text-body text-text-secondary leading-relaxed" style={{ fontSize: 16 }}>
-                Each module is independently capable yet designed to work as a unified pipeline —
-                cross-correlating signals across all modalities via the Fraud DNA graph.
-              </p>
+            {/* Pill Badge */}
+            <motion.div variants={fadeUpVariants} className="inline-block">
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-brand-subtle text-brand border border-brand-border/30 text-[12px] font-sans font-medium">
+                <Zap className="h-3.5 w-3.5" strokeWidth={2.5} />
+                Research Publication Platform · v1.0.0
+              </span>
             </motion.div>
 
-            <motion.div variants={stagger} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              <motion.div variants={fadeUp}>
-                <FeatureCard
-                  icon={FileText}
-                  title="DocShield"
-                  description="Detect tampered invoices, forged salary slips, and edited government IDs using ELA forensics and font analysis."
-                  href="/docshield"
-                />
-              </motion.div>
-              <motion.div variants={fadeUp}>
-                <FeatureCard
-                  icon={Link2}
-                  title="PhishShield"
-                  description="Identify lookalike bank domains, UPI phishing URLs, and KYC scam links with SHAP-explained risk scores."
-                  href="/phishshield"
-                />
-              </motion.div>
-              <motion.div variants={fadeUp}>
-                <FeatureCard
-                  icon={GitBranch}
-                  title="Fraud DNA"
-                  description="Visualize fraud campaign networks — cluster events by shared indicators, domains, and file hashes."
-                  href="/fraud-dna"
-                />
-              </motion.div>
-              <motion.div variants={fadeUp}>
-                <FeatureCard
-                  icon={Smartphone}
-                  title="UPI Shield"
-                  description="Verify PhonePe, Google Pay, and Paytm payment screenshots using OCR, ELA, and LLM forensic analysis."
-                  href="/upi-shield"
-                />
-              </motion.div>
+            {/* Headline */}
+            <motion.h1
+              variants={fadeUpVariants}
+              className="font-serif text-[44px] md:text-[52px] text-text-primary tracking-tight leading-[1.1] max-w-xl"
+            >
+              Illuminate the threat.
+              <span className="text-brand italic block mt-1 font-serif">
+                Before it strikes.
+              </span>
+            </motion.h1>
+
+            {/* Subheadline */}
+            <motion.p
+              variants={fadeUpVariants}
+              className="font-sans text-[16px] text-text-secondary max-w-lg leading-relaxed"
+            >
+              Lumint is a unified multimodal fraud intelligence framework for India&apos;s digital
+              payment ecosystem — combining document forensics, phishing detection, and UPI
+              screenshot analysis with LLM explainability.
+            </motion.p>
+
+            {/* CTAs Row */}
+            <motion.div
+              variants={fadeUpVariants}
+              className="flex items-center justify-center lg:justify-start gap-2 pt-2"
+            >
+              <Link href="/dashboard">
+                <Button
+                  variant="solid"
+                  className="h-10 px-5 flex items-center justify-center rounded-[8px] bg-brand hover:bg-brand-hover text-white text-[14px] font-semibold transition-colors"
+                >
+                  Launch Platform →
+                </Button>
+              </Link>
+              <Link href="/dashboard/research">
+                <Button
+                  variant="outline"
+                  className="h-10 px-5 flex items-center justify-center rounded-[8px] border border-border-default hover:bg-surface-raised text-text-primary text-[14px] font-semibold transition-colors"
+                >
+                  📄 Read Research Paper
+                </Button>
+              </Link>
+            </motion.div>
+
+            {/* Trust stats row */}
+            <motion.div
+              variants={fadeUpVariants}
+              className="pt-4 mt-6 border-t border-border-default/50 w-full max-w-md"
+            >
+              <div className="flex items-center justify-center lg:justify-start gap-2.5 text-[13px] text-text-secondary/80 font-sans">
+                <span>4 detection modalities</span>
+                <span className="text-text-muted font-bold">·</span>
+                <span>LLaMA 3.3 70B AI engine</span>
+                <span className="text-text-muted font-bold">·</span>
+                <span>Open source</span>
+              </div>
             </motion.div>
           </motion.div>
-        </section>
 
-        {/* ── RESEARCH ── */}
-        <section id="research" className="py-24 px-6 bg-surface-raised border-y border-border-default">
-          <div className="max-w-7xl mx-auto">
+          {/* Floating preview cards (desktop only) */}
+          <div className="hidden lg:flex flex-1 relative items-center justify-center h-[450px] w-full max-w-[420px]">
+            {/* Card 1: top right, slightly tilted 2deg */}
+            <HeroPreviewCard
+              label="DocShield"
+              score={87}
+              badgeText="HIGH RISK"
+              badgeRisk="high"
+              value="invoice_9821.pdf · ELA anomaly detected"
+              delay={0.1}
+              rotate={2}
+              topPos="20px"
+              rightPos="10px"
+              floatYRange={[0, -6, 0]}
+              floatDuration={4}
+            />
+
+            {/* Card 2: middle, no tilt */}
+            <HeroPreviewCard
+              label="PhishShield"
+              score={94}
+              badgeText="PHISHING"
+              badgeRisk="critical"
+              value="hdfc-kyc-verify.com"
+              delay={0.25}
+              rotate={0}
+              topPos="160px"
+              leftPos="-10px"
+              floatYRange={[-3, 3, -3]}
+              floatDuration={4.5}
+            />
+
+            {/* Card 3: bottom right, tilted -1.5deg */}
+            <HeroPreviewCard
+              label="UPI Shield"
+              score={12}
+              badgeText="GENUINE"
+              badgeRisk="safe"
+              value="₹1,500 · UTR: 398273645192"
+              delay={0.4}
+              rotate={-1.5}
+              topPos="290px"
+              rightPos="0px"
+              floatYRange={[2, -4, 2]}
+              floatDuration={3.8}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* ── SECTION 3 — FEATURE MODULES ── */}
+      <section id="modules" className="py-24 px-6 max-w-7xl mx-auto border-t border-border-default/40 w-full">
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.15 }}
+          variants={staggerContainer}
+          className="space-y-16"
+        >
+          <div className="text-center space-y-3">
+            <h2 className="font-sans text-[28px] md:text-[36px] font-bold text-text-primary tracking-tight">
+              Four detection modalities. One platform.
+            </h2>
+            <p className="font-sans text-[15px] md:text-[16px] text-text-secondary max-w-xl mx-auto leading-relaxed">
+              Each module operates independently but shares signals via the Fraud DNA graph.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+            <ModuleCard
+              icon={FileSearch}
+              title="DocShield"
+              description="Detect tampered invoices, forged salary slips, and edited government IDs using ELA forensics and font analysis."
+              href="/docshield"
+              colorClass="bg-brand/10 text-brand"
+            />
+            <ModuleCard
+              icon={ShieldAlert}
+              title="PhishShield"
+              description="Identify lookalike bank domains, UPI phishing URLs, and KYC scam links with SHAP-explained risk scores."
+              href="/phishshield"
+              colorClass="bg-warn/10 text-warn"
+            />
+            <ModuleCard
+              icon={Network}
+              title="Fraud DNA"
+              description="Visualize fraud campaign networks — cluster events by shared indicators, domains, and file hashes."
+              href="/fraud-dna"
+              colorClass="bg-ai/10 text-ai-accent"
+            />
+            <ModuleCard
+              icon={Smartphone}
+              title="UPI Shield"
+              description="Verify PhonePe, Google Pay, and Paytm payment screenshots using OCR, ELA, and LLM forensic analysis."
+              href="/upi-shield"
+              colorClass="bg-intel/10 text-intel"
+            />
+          </div>
+        </motion.div>
+      </section>
+
+      {/* ── SECTION 4 — RESEARCH NOVELTY ── */}
+      <section id="research" className="py-24 px-6 border-t border-border-default/40 bg-surface-raised w-full">
+        <div className="max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+            {/* Left Column */}
+            <div className="lg:col-span-5 space-y-4">
+              <h2 className="font-serif text-[28px] md:text-[32px] text-text-primary leading-tight">
+                Novel contributions confirmed by literature review
+              </h2>
+              <div className="h-1 w-12 bg-brand rounded-full" />
+            </div>
+
+            {/* Right Column */}
             <motion.div
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, amount: 0.2 }}
-              variants={stagger}
-              className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start"
+              variants={noveltyContainer}
+              className="lg:col-span-7 space-y-4"
             >
-              <motion.div variants={fadeUp} className="space-y-4">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-subtle text-brand text-[12px] font-semibold">
-                  <BookOpen className="h-3.5 w-3.5" />
-                  Academic Excellence
-                </span>
-                <h2 className="text-headline text-text-primary leading-tight" style={{ fontSize: 38 }}>
-                  Novelty claims confirmed by literature review
-                </h2>
-                <p className="text-body text-text-secondary leading-relaxed" style={{ fontSize: 15 }}>
-                  Three confirmed research gaps from systematic review of 2024–2025 papers make Lumint
-                  a strong candidate for ACM CIKM, IEEE Access, and AMLTA conference tracks.
-                </p>
-              </motion.div>
-              <motion.div variants={stagger} className="space-y-3.5">
-                {[
-                  "First system combining document forensics + URL phishing + UPI screenshot detection in one pipeline",
-                  "First use of LLM (Groq/LLaMA) to generate natural-language explanations for fraud scores — not just scores",
-                  "SHAP + LLM fusion: machine explainability + human-readable narrative in the same system",
-                  "India-specific: UTR format validation, PhonePe/GPay screenshot forensics — no paper covers this combination",
-                  "Cross-modal correlation: same attacker's document + phishing domain linked via Fraud DNA graph",
-                  "Working open-source system (GitHub) — most papers are theoretical; this has a real demo",
-                ].map((claim, i) => (
-                  <motion.div
-                    key={i}
-                    variants={fadeUp}
-                    className="flex items-start gap-3.5 p-4 rounded-xl bg-surface border border-border-default/60 shadow-sm"
-                  >
-                    <CheckCircle className="h-5 w-5 text-risk-none mt-0.5 shrink-0" />
-                    <span className="text-body text-text-secondary leading-relaxed">{claim}</span>
-                  </motion.div>
-                ))}
-              </motion.div>
+              {[
+                "First system combining doc + URL + UPI screenshot forensics in one pipeline",
+                "First LLM-generated natural language explanations for fraud scores",
+                "SHAP + LLM fusion — machine XAI to human analyst narrative",
+                "Cross-modal CMFA: brand palette, font variance, ELA grid density correlation",
+              ].map((claim, idx) => (
+                <motion.div
+                  key={idx}
+                  variants={noveltyItem}
+                  className="flex items-start gap-3.5 p-4 rounded-xl bg-surface border border-border-default/60 shadow-sm"
+                >
+                  <div className="h-5 w-5 rounded-full bg-safe-bg flex items-center justify-center text-safe mt-0.5 shrink-0">
+                    <Check className="h-3.5 w-3.5" />
+                  </div>
+                  <span className="font-sans text-[14px] text-text-secondary leading-relaxed">
+                    {claim}
+                  </span>
+                </motion.div>
+              ))}
             </motion.div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* ── CTA ── */}
-        <section className="py-28 px-6">
-          <div className="max-w-4xl mx-auto">
-            <motion.div
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
-              className="rounded-[24px] bg-brand-subtle border border-[var(--brand-border)] p-12 text-center text-text-primary relative overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-gradient-to-tr from-brand/5 to-transparent pointer-events-none" />
-              
-              <div className="relative z-10">
-                <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-brand/10 mb-6 border border-brand/20">
-                  <Shield className="h-7 w-7 text-brand" />
-                </div>
-                <h2 className="text-display text-text-primary mb-4" style={{ fontSize: 38 }}>
-                  Start analyzing threats
-                </h2>
-                <p className="text-body text-text-secondary mb-8 max-w-xl mx-auto leading-relaxed" style={{ fontSize: 15 }}>
-                  Lumint is open-source and ready to use. Launch the platform, upload a document or URL,
-                  and get an AI-powered forensic report in seconds.
-                </p>
-                <div className="flex items-center justify-center gap-4 flex-wrap">
-                  <Link href="/dashboard">
-                    <Button variant="solid" size="lg" className="bg-brand text-white border-transparent hover:bg-brand-hover">
-                      Launch Platform <ArrowRight className="h-4.5 w-4.5" />
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            </motion.div>
+      {/* ── SECTION 5 — CTA ── */}
+      <section className="py-20 px-6 border-t border-brand-border/30 bg-brand-subtle/25 dark:bg-brand-subtle/5 w-full">
+        <div className="max-w-4xl mx-auto text-center space-y-6">
+          <h2 className="font-serif text-[32px] md:text-[38px] text-text-primary">
+            Start analyzing threats
+          </h2>
+          <p className="text-[14px] md:text-[15px] font-sans text-text-secondary max-w-lg mx-auto leading-relaxed">
+            Lumint is open-source and ready for research verification. Launch the dashboard to test
+            multimodal fraud forensic analysis.
+          </p>
+          <div className="flex justify-center pt-2">
+            <Link href="/dashboard">
+              <Button
+                variant="solid"
+                className="h-10 px-5 flex items-center justify-center rounded-[8px] bg-brand hover:bg-brand-hover text-white text-[14px] font-semibold transition-colors"
+              >
+                Launch Platform →
+              </Button>
+            </Link>
           </div>
-        </section>
-      </main>
+        </div>
+      </section>
 
-      {/* ── FOOTER ── */}
-      <footer className="border-t border-border-default bg-surface py-10 px-6 mt-auto">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-5 text-caption text-text-muted">
-          <div className="flex items-center gap-2.5 select-none">
-            <div className="h-7 w-7 rounded-lg bg-text-primary flex items-center justify-center">
-              <Zap className="h-4 w-4 text-white" strokeWidth={2.5} />
-            </div>
-            <span className="text-display text-[18px] font-semibold text-text-primary leading-none">Lumint</span>
-            <span className="font-mono text-[10px] border border-border-default px-1.5 py-0.5 rounded text-text-muted">
+      {/* ── SECTION 6 — FOOTER ── */}
+      <footer className="border-t border-border-default/40 bg-surface h-16 flex items-center w-full mt-auto">
+        <div className="max-w-7xl mx-auto px-6 w-full flex items-center justify-between text-[13px] text-text-secondary/80 font-sans">
+          <div className="flex items-center gap-2 select-none">
+            <span className="font-semibold text-text-primary">Lumint</span>
+            <span className="font-mono text-[10px] px-1.5 py-0.2 bg-surface-raised border border-border-default/50 rounded text-text-muted">
               v1.0.0
             </span>
           </div>
-          <div className="flex items-center gap-6 font-medium">
-            <a href="#modules" className="hover:text-text-primary transition-colors">Modules</a>
-            <a href="#research" className="hover:text-text-primary transition-colors">Research</a>
+          <div className="hidden md:block">
+            Built for research publication
+          </div>
+          <div className="flex items-center gap-4">
             <a
-              href="https://github.com/tanmay-alpha"
+              href="https://github.com/tanmay-alpha/lumint"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-text-primary transition-colors"
             >
               GitHub
             </a>
-            <a
-              href="https://www.linkedin.com/in/tanmaymangal/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-text-primary transition-colors"
-            >
-              LinkedIn
-            </a>
+            <Link href="/dashboard/research" className="hover:text-text-primary transition-colors">
+              Paper
+            </Link>
           </div>
-          <span>© {new Date().getFullYear()} Lumint Research. All rights reserved.</span>
         </div>
       </footer>
     </div>

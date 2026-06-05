@@ -29,7 +29,8 @@ function MiniSparkline({ data }: { data: number[] }) {
   });
 
   return (
-    <svg width={W} height={H} aria-hidden="true" className="shrink-0 opacity-70">
+    <svg width={W} height={H} aria-hidden="true" className="shrink-0 opacity-70 cursor-help">
+      <title>Historical trend (synthetic)</title>
       <polyline
         points={pts.join(" ")}
         fill="none"

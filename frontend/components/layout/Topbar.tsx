@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Menu, Bell, Zap, Sun, Moon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
+import Badge from "@/components/ui/Badge";
 
 export interface TopbarProps {
   isOnline: boolean | null;
@@ -61,22 +62,20 @@ export const Topbar = ({
 
       <div className="flex items-center gap-3.5">
         {/* API Connection Health */}
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface-raised/60 border border-border-default/40">
-          <span className={twMerge(
-            "h-1.5 w-1.5 rounded-full shrink-0",
-            isOnline === null ? "bg-border-strong animate-pulse" : isOnline ? "bg-risk-none risk-dot-pulse" : "bg-risk-high"
-          )} />
-          <span className="font-mono text-[10px] text-text-secondary font-medium tracking-wide">
-            {isOnline === null ? "CHECKING" : isOnline ? "API ONLINE" : "API OFFLINE"}
-          </span>
-        </div>
+        <Badge
+          variant={isOnline === null ? "neutral" : isOnline ? "safe" : "critical"}
+          dot={true}
+          size="md"
+        >
+          {isOnline === null ? "CHECKING" : isOnline ? "API ONLINE" : "API OFFLINE"}
+        </Badge>
 
         {/* AI Ready Indicator */}
         {isOnline && (
-          <span className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md bg-ai-subtle border border-ai-border/40 text-ai-text uppercase tracking-wide">
-            <Zap className="h-3 w-3 shrink-0" strokeWidth={2.5} />
+          <Badge variant="ai" size="md" className="gap-1">
+            <Zap className="h-3 w-3 shrink-0 text-[var(--ai)]" strokeWidth={2.5} />
             AI READY
-          </span>
+          </Badge>
         )}
 
         {/* Theme Toggle Button */}

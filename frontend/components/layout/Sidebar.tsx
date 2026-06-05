@@ -5,31 +5,55 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  Shield,
-  Link2,
-  GitBranch,
+  FileSearch,
+  ShieldAlert,
+  Network,
   Smartphone,
   Activity,
   Settings,
   ChevronLeft,
   ChevronRight,
   Zap,
+  Moon,
+  Sun,
+  Shield,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { twMerge } from "tailwind-merge";
 
-const NAV_ITEMS = [
-  { name: "Dashboard",    href: "/dashboard",             icon: LayoutDashboard, desc: "Threat telemetry overview" },
-  { name: "DocShield",    href: "/docshield",             icon: Shield,          desc: "Document forensics" },
-  { name: "PhishShield",  href: "/phishshield",           icon: Link2,           desc: "URL & domain analysis" },
-  { name: "Fraud DNA",    href: "/fraud-dna",             icon: GitBranch,       desc: "Campaign network graph" },
-  { name: "UPI Shield",   href: "/upi-shield",            icon: Smartphone,      desc: "Payment screenshot scan" },
-  { name: "Activity",     href: "/events",                icon: Activity,        desc: "Event timeline" },
-  { name: "Research",     href: "/dashboard/research",    icon: Zap,             desc: "Statistical analysis & paper" },
-  { name: "Settings",     href: "/settings",              icon: Settings,        desc: "Configuration" },
+const NAV_GROUPS = [
+  {
+    title: "OVERVIEW",
+    items: [
+      { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, desc: "Threat telemetry overview" },
+    ],
+  },
+  {
+    title: "ANALYSIS",
+    items: [
+      { name: "DocShield", href: "/docshield", icon: FileSearch, desc: "Document forensics" },
+      { name: "PhishShield", href: "/phishshield", icon: ShieldAlert, desc: "URL & domain analysis" },
+      { name: "Fraud DNA", href: "/fraud-dna", icon: Network, desc: "Campaign network graph" },
+      { name: "UPI Shield", href: "/upi-shield", icon: Smartphone, desc: "Payment screenshot scan" },
+    ],
+  },
+  {
+    title: "INTELLIGENCE",
+    items: [
+      { name: "Activity", href: "/events", icon: Activity, desc: "Event timeline" },
+      { name: "Research", href: "/dashboard/research", icon: Zap, desc: "Statistical analysis & paper" },
+    ],
+  },
+  {
+    title: "SYSTEM",
+    items: [
+      { name: "Settings", href: "/settings", icon: Settings, desc: "Configuration" },
+    ],
+  },
 ] as const;
 
 export interface SidebarProps {
+  isOnline: boolean | null;
   collapsed: boolean;
   setCollapsed: (v: boolean) => void;
   mobileOpen: boolean;
@@ -37,22 +61,89 @@ export interface SidebarProps {
 }
 
 const LumintLogo = ({ collapsed }: { collapsed: boolean }) => (
-  <div className="flex items-center gap-2.5 select-none font-display">
-    <div className="relative flex h-8 w-8 items-center justify-center shrink-0">
+  <div className="flex items-center gap-2.5 select-none font-sans">
+    <div className="relative flex h-9 w-9 items-center justify-center shrink-0">
       <div className="absolute inset-0 rounded-lg bg-brand/10 opacity-60 blur-sm" />
-      <div className="relative h-8 w-8 rounded-lg bg-brand flex items-center justify-center shadow-md">
-        <Zap className="h-4.5 w-4.5 text-white" strokeWidth={2.5} />
+      <div className="relative h-9 w-9 rounded-lg bg-brand flex items-center justify-center shadow-md">
+        <Shield className="h-5 w-5 text-white" strokeWidth={2.5} />
       </div>
     </div>
     {!collapsed && (
-      <span className="text-[22px] tracking-tight text-text-primary leading-normal font-semibold">
-        Lumint
-      </span>
+      <div className="flex flex-col">
+        <span className="text-[18px] tracking-tight text-text-primary leading-tight font-semibold">
+          Lumint
+        </span>
+        <span className="text-[10px] tracking-wider uppercase font-semibold text-text-muted mt-0.5 leading-none">
+          Research Platform
+        </span>
+      </div>
     )}
   </div>
 );
 
+const SystemStatus = ({
+  collapsed,
+  isOnline,
+}: {
+  collapsed: boolean;
+  isOnline: boolean | null;
+}) => {
+  const [theme, setTheme] = React.useState<"light" | "dark">("light");
+
+  React.useEffect(() => {
+    const stored = localStorage.getItem("theme");
+    const docTheme = document.documentElement.getAttribute("data-theme");
+    const activeTheme = stored === "dark" || docTheme === "dark" ? "dark" : "light";
+    setTheme(activeTheme);
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === "light" ? "dark" : "light";
+    setTheme(nextTheme);
+    document.documentElement.setAttribute("data-theme", nextTheme);
+    localStorage.setItem("theme", nextTheme);
+  };
+
+  const statusText = isOnline === null ? "Checking" : isOnline ? "API Online" : "API Offline";
+  const statusColor =
+    isOnline === null ? "bg-text-muted" : isOnline ? "bg-safe" : "bg-risk-high";
+
+  if (collapsed) {
+    return (
+      <div className="flex flex-col items-center gap-4 py-2">
+        <span className={`h-2 w-2 rounded-full ${statusColor} ${isOnline ? "animate-pulse" : ""}`} />
+        <button
+          onClick={toggleTheme}
+          className="text-text-muted hover:text-text-primary transition-colors"
+          title={theme === "light" ? "Dark Mode" : "Light Mode"}
+        >
+          {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-between px-3 py-2.5 w-full bg-surface-raised/40 border border-border-default/45 rounded-lg">
+      <div className="flex items-center gap-2">
+        <span className={`h-2 w-2 rounded-full ${statusColor} ${isOnline ? "animate-pulse" : ""}`} />
+        <span className="font-sans text-[10px] font-semibold text-text-secondary tracking-wide uppercase">
+          {statusText}
+        </span>
+      </div>
+      <button
+        onClick={toggleTheme}
+        className="h-7 w-7 flex items-center justify-center rounded-md border border-border-default bg-surface hover:bg-surface-raised text-text-muted hover:text-text-primary transition-all shadow-sm"
+        title={theme === "light" ? "Switch to Dark" : "Switch to Light"}
+      >
+        {theme === "light" ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />}
+      </button>
+    </div>
+  );
+};
+
 export const Sidebar = ({
+  isOnline,
   collapsed,
   setCollapsed,
   mobileOpen,
@@ -60,8 +151,12 @@ export const Sidebar = ({
 }: SidebarProps) => {
   const pathname = usePathname();
 
-  const renderNavItem = (item: (typeof NAV_ITEMS)[number], isMobile = false) => {
-    const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
+  const renderNavItem = (
+    item: (typeof NAV_GROUPS)[number]["items"][number],
+    isMobile = false
+  ) => {
+    const isActive =
+      pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
     return (
       <Link
         key={item.href}
@@ -71,28 +166,27 @@ export const Sidebar = ({
           "relative flex items-center gap-3 rounded-lg transition-all duration-150 group",
           collapsed && !isMobile ? "px-3 py-3 justify-center" : "px-3.5 py-2.5",
           isActive
-            ? "bg-brand-subtle text-accent border border-brand/10"
+            ? "bg-[var(--brand-muted)] text-brand border border-brand/10"
             : "text-text-secondary hover:bg-surface-raised hover:text-text-primary border border-transparent"
         )}
       >
         {isActive && (
-          <motion.span
-            layoutId="active-indicator"
-            className="absolute left-0 top-1/4 h-1/2 w-[3px] rounded-r-full bg-brand"
-            transition={{ type: "spring", stiffness: 380, damping: 30 }}
-          />
+          <span className="absolute left-0 top-0 h-full w-[2px] bg-brand" />
         )}
 
         <item.icon
           className={twMerge(
             "h-[18px] w-[18px] shrink-0 transition-colors",
-            isActive ? "text-accent" : "text-text-muted group-hover:text-text-primary"
+            isActive ? "text-brand" : "text-text-muted group-hover:text-text-primary"
           )}
         />
 
         {(!collapsed || isMobile) && (
           <div className="flex flex-col overflow-hidden whitespace-nowrap">
-            <span className={twMerge("text-[13px] font-semibold leading-tight", isActive && "text-accent")}>
+            <span className={twMerge(
+              "text-[13px] font-medium font-sans leading-tight",
+              isActive ? "text-brand" : "text-text-primary"
+            )}>
               {item.name}
             </span>
             <span className="text-[10px] text-text-muted font-normal leading-tight mt-0.5">
@@ -114,24 +208,34 @@ export const Sidebar = ({
   const content = (isMobile = false) => (
     <div className="flex flex-col h-full bg-surface border-r border-border-default">
       {/* Header / Logo */}
-      <div className={twMerge("px-4.5 py-4 border-b border-border-muted flex items-center justify-between", collapsed && !isMobile && "px-3.5 justify-center")}>
+      <div
+        className={twMerge(
+          "px-4.5 py-4 border-b border-border-muted flex items-center justify-between",
+          collapsed && !isMobile && "px-3.5 justify-center"
+        )}
+      >
         <LumintLogo collapsed={collapsed && !isMobile} />
       </div>
 
       {/* Nav Link list */}
-      <nav className={twMerge("flex-1 py-4 space-y-1 overflow-y-auto", collapsed && !isMobile ? "px-2" : "px-3")}>
-        {NAV_ITEMS.map((item) => renderNavItem(item, isMobile))}
+      <nav className="flex-1 py-4 overflow-y-auto space-y-4">
+        {NAV_GROUPS.map((group) => (
+          <div key={group.title} className="space-y-1">
+            {(!collapsed || isMobile) && (
+              <div className="font-sans text-[8px] font-semibold tracking-wider text-text-muted uppercase px-3.5 select-none block border-b border-border-default/20 pb-0.5 mb-1.5">
+                {group.title}
+              </div>
+            )}
+            <div className={twMerge("space-y-1", collapsed && !isMobile ? "px-2" : "px-3")}>
+              {group.items.map((item) => renderNavItem(item, isMobile))}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t border-border-muted bg-surface-raised/40">
-        {(!collapsed || isMobile) ? (
-          <div className="flex flex-col gap-1.5" />
-        ) : (
-          <div className="flex items-center justify-center h-4">
-            <span className="h-1.5 w-1.5 rounded-full bg-intel" />
-          </div>
-        )}
+      <div className={twMerge("p-3 border-t border-border-muted bg-surface-raised/40", collapsed && !isMobile && "px-1")}>
+        <SystemStatus collapsed={collapsed && !isMobile} isOnline={isOnline} />
       </div>
     </div>
   );
@@ -145,7 +249,7 @@ export const Sidebar = ({
         className="hidden lg:block shrink-0 relative z-30 h-screen select-none"
       >
         {content()}
-        
+
         {/* Toggle button */}
         <button
           onClick={() => setCollapsed(!collapsed)}

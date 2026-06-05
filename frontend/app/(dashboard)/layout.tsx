@@ -46,6 +46,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Sidebar Component */}
       <Sidebar
+        isOnline={isOnline}
         collapsed={collapsed}
         setCollapsed={setCollapsed}
         mobileOpen={mobileOpen}

@@ -54,13 +54,13 @@ export function IntelligenceTable<T>({
       <div className="w-full overflow-x-auto">
         <table className="w-full border-collapse text-left">
           <thead>
-            <tr className="border-b border-border-default bg-surface-raised/50 select-none">
-              {hasExpand && <th className="w-10 px-4 py-3.5" />}
+            <tr className="border-b border-border-default bg-surface-raised/30 select-none">
+              {hasExpand && <th className="w-10 px-4 py-3" />}
               {columns.map((col, idx) => (
                 <th
                   key={idx}
                   className={twMerge(
-                    "px-4.5 py-3.5 text-label text-text-secondary font-semibold uppercase tracking-wider text-[11px] whitespace-nowrap",
+                    "px-4.5 py-3 font-sans text-[11px] font-normal tracking-wider text-text-muted uppercase whitespace-nowrap",
                     col.align === "center" && "text-center",
                     col.align === "right" && "text-right",
                     col.className
@@ -103,9 +103,9 @@ export function IntelligenceTable<T>({
                     <tr
                       onClick={() => onRowClick && onRowClick(item)}
                       className={twMerge(
-                        "transition-colors duration-150 group",
-                        onRowClick ? "cursor-pointer hover:bg-surface-raised/50" : "hover:bg-surface-raised/20",
-                        isExpanded && "bg-surface-raised/35"
+                        "transition-colors duration-100 group",
+                        onRowClick ? "cursor-pointer hover:bg-[var(--surface-2)]" : "hover:bg-[var(--surface-2)]",
+                        isExpanded && "bg-[var(--surface-2)]"
                       )}
                     >
                       {hasExpand && (
