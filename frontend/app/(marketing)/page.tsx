@@ -119,14 +119,6 @@ export default function LandingPage() {
             >
               GitHub
             </a>
-            <a
-              href="https://www.linkedin.com/in/tanmay-mangal/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-text-primary transition-colors"
-            >
-              LinkedIn
-            </a>
           </div>
           <Link href="/dashboard">
             <Button variant="solid" size="sm" className="flex items-center gap-1.5 font-semibold text-[13px]">
@@ -420,14 +412,6 @@ export default function LandingPage() {
               className="hover:text-text-primary transition-colors"
             >
               GitHub
-            </a>
-            <a
-              href="https://www.linkedin.com/in/tanmay-mangal/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-text-primary transition-colors"
-            >
-              LinkedIn
             </a>
           </div>
           <span>© {new Date().getFullYear()} Lumint Research. All rights reserved.</span>
