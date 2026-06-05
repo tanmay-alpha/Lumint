@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useRef, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { UploadCloud, X, File, Image as ImageIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -40,6 +40,22 @@ export const UploadZone = ({
   const [isDragging, setIsDragging] = useState(false);
   const [selected, setSelected] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [thumbUrl, setThumbUrl] = useState<string | null>(null);
+
+  // Manage object URL for image preview
+  useEffect(() => {
+    if (!selected) {
+      setThumbUrl(null);
+      return;
+    }
+    if (selected.type.startsWith("image/")) {
+      const url = URL.createObjectURL(selected);
+      setThumbUrl(url);
+      return () => {
+        URL.revokeObjectURL(url);
+      };
+    }
+  }, [selected]);
 
   const handleFile = useCallback(
     (file: File) => {
@@ -82,19 +98,21 @@ export const UploadZone = ({
     <div className={twMerge("w-full", className)}>
       <motion.div
         onClick={() => !disabled && !isLoading && inputRef.current?.click()}
-        onDragOver={(e) => { e.preventDefault(); if (!disabled && !isLoading) setIsDragging(true); }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          if (!disabled && !isLoading) setIsDragging(true);
+        }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={onDrop}
-        animate={isDragging ? { scale: 1.02 } : { scale: 1 }}
+        animate={isDragging ? { scale: 1.01 } : { scale: 1 }}
         transition={{ type: "spring", stiffness: 400, damping: 30 }}
         className={twMerge(
-          "relative flex flex-col items-center justify-center gap-3 rounded-[16px] border-2 border-dashed",
-          "cursor-pointer transition-all duration-200 min-h-[180px] p-8 text-center",
+          "relative flex flex-col items-center justify-center gap-3 rounded-[var(--r-3)] cursor-pointer transition-all duration-200 min-h-[190px] p-6 text-center group",
           isDragging
-             ? "border-[var(--color-accent)] bg-[var(--color-accent-subtle)]"
-             : selected
-             ? "border-[var(--color-border-strong)] bg-[var(--color-surface)]"
-             : "border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-accent)] hover:bg-[var(--color-accent-subtle)]",
+            ? "border-2 border-solid border-[var(--brand)] bg-[var(--brand-muted)]/35 dark:bg-[var(--brand-muted)]/20"
+            : selected
+            ? "border-2 border-dashed border-[var(--border-2)] bg-[var(--surface-raised)]"
+            : "border-2 border-dashed border-[var(--border-2)] bg-[var(--surface)] hover:border-[var(--brand)] hover:bg-[var(--surface-raised)]",
           (disabled || isLoading) && "opacity-50 cursor-not-allowed"
         )}
       >
@@ -108,11 +126,11 @@ export const UploadZone = ({
         />
 
         {isLoading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--color-surface)]/80 rounded-[16px] backdrop-blur-sm z-10">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--surface)]/80 rounded-[var(--r-3)] backdrop-blur-[2px] z-10">
             <div className="relative flex items-center justify-center">
-              <div className="h-10 w-10 rounded-full border-4 border-[var(--color-border)] border-t-[var(--color-accent)] animate-spin" />
+              <div className="h-10 w-10 rounded-full border-4 border-[var(--border)] border-t-[var(--brand)] animate-spin" />
             </div>
-            <p className="mt-4 text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wider animate-pulse">
+            <p className="mt-4 text-[11px] font-bold text-[var(--text-2)] uppercase tracking-wider animate-pulse font-sans">
               Analyzing Forensic Fingerprints...
             </p>
           </div>
@@ -122,22 +140,32 @@ export const UploadZone = ({
           {selected ? (
             <motion.div
               key="selected"
-              initial={{ opacity: 0, scale: 0.9 }}
+              initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="flex flex-col items-center gap-3 w-full"
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="flex flex-col items-center gap-2.5 w-full"
             >
-              {/* Icon */}
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--color-accent-subtle)] text-[var(--color-accent)]">
-                {isImage ? <ImageIcon className="h-6 w-6" /> : <File className="h-6 w-6" />}
-              </div>
+              {/* Thumbnail / Icon */}
+              {isImage && thumbUrl ? (
+                <div className="relative group/thumb shadow-md rounded-lg overflow-hidden border border-[var(--border-2)]">
+                  <img
+                    src={thumbUrl}
+                    alt="Uploaded screenshot preview"
+                    className="h-24 w-18 object-cover transition-transform duration-200 group-hover/thumb:scale-105"
+                  />
+                </div>
+              ) : (
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--brand-muted)]/30 text-[var(--brand)]">
+                  {isImage ? <ImageIcon className="h-6 w-6" /> : <File className="h-6 w-6" />}
+                </div>
+              )}
 
               {/* File name + size */}
-              <div className="flex flex-col items-center gap-1">
-                <span className="font-mono text-[13px] text-[var(--color-text-primary)] break-all max-w-[280px]">
+              <div className="flex flex-col items-center gap-0.5">
+                <span className="font-mono text-[12px] font-semibold text-[var(--text-1)] break-all max-w-[280px]">
                   {selected.name}
                 </span>
-                <span className="text-[11px] text-[var(--color-text-muted)]">
+                <span className="text-[11px] text-[var(--text-3)] font-mono">
                   {formatBytes(selected.size)}
                 </span>
               </div>
@@ -145,9 +173,9 @@ export const UploadZone = ({
               {/* Remove button */}
               <button
                 onClick={clearFile}
-                className="flex items-center gap-1 text-[11px] text-[var(--color-danger)] hover:underline"
+                className="flex items-center gap-1 text-[11px] text-[var(--high)] hover:underline mt-1 font-medium"
               >
-                <X className="h-3 w-3" /> Remove
+                <X className="h-3.5 w-3.5" /> Remove file
               </button>
             </motion.div>
           ) : (
@@ -156,19 +184,19 @@ export const UploadZone = ({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="flex flex-col items-center gap-3"
+              className="flex flex-col items-center gap-2.5"
             >
               <motion.div
-                animate={isDragging ? { y: -4 } : { y: 0 }}
-                className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--color-accent-subtle)] text-[var(--color-accent)]"
+                animate={isDragging ? { y: -3 } : { y: 0 }}
+                className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--surface-3)] text-[var(--text-3)] group-hover:text-[var(--text-2)] transition-colors duration-200"
               >
-                <UploadCloud className="h-7 w-7" />
+                <UploadCloud className="h-7 w-7 transition-transform duration-200 group-hover:scale-105" />
               </motion.div>
               <div className="flex flex-col gap-1">
-                <span className="text-[15px] font-medium text-[var(--color-text-secondary)]">
+                <span className="text-[14px] font-semibold text-[var(--text-2)] group-hover:text-[var(--text-1)] transition-colors duration-200">
                   {label}
                 </span>
-                <span className="text-[12px] text-[var(--color-text-muted)]">
+                <span className="text-[11px] text-[var(--text-4)]">
                   {defaultSubLabel}
                 </span>
               </div>
@@ -179,9 +207,9 @@ export const UploadZone = ({
 
       {/* Progress bar */}
       {progress > 0 && progress < 100 && (
-        <div className="mt-3 progress-track">
+        <div className="mt-3 h-1.5 w-full bg-[var(--surface-3)] rounded-full overflow-hidden border border-[var(--border)]">
           <motion.div
-            className="progress-fill"
+            className="h-full bg-[var(--brand)] rounded-full"
             initial={{ width: "0%" }}
             animate={{ width: `${progress}%` }}
             transition={{ ease: "easeOut" }}
@@ -191,7 +219,7 @@ export const UploadZone = ({
 
       {/* Error */}
       {error && (
-        <p className="mt-2 text-[12px] text-[var(--color-danger)]">{error}</p>
+        <p className="mt-2 text-[12px] text-[var(--high)] font-semibold">{error}</p>
       )}
     </div>
   );
