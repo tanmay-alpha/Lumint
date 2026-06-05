@@ -286,7 +286,7 @@ export default function ResearchDashboardPage() {
           <div class="authors">
             <strong>Tanmay Mangal</strong><br/>
             Department of Computer Science and Engineering<br/>
-            GitHub: github.com/tanmay-alpha/lumint
+            GitHub: github.com/tanmay-alpha
           </div>
 
           <div class="abstract-box">

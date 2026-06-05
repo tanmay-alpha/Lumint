@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import UploadZone from "@/components/UploadZone";
+import UploadZone from "@/components/ui/UploadZone";
 import { documentApi } from "@/lib/api/documents";
 import { DocumentAnalysisResult } from "@/lib/types";
 import GlassCard from "@/components/ui/GlassCard";

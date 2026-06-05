@@ -10,8 +10,10 @@ export interface UploadZoneProps {
   maxSizeMB?: number;
   label?: string;
   subLabel?: string;
-  onFileSelected: (file: File) => void;
+  onFileSelected?: (file: File) => void;
+  onFileAccepted?: (file: File) => void;
   disabled?: boolean;
+  isLoading?: boolean;
   progress?: number; // 0–100, shows progress bar when > 0
   className?: string;
 }
@@ -28,7 +30,9 @@ export const UploadZone = ({
   label = "Drop file here or click to browse",
   subLabel,
   onFileSelected,
+  onFileAccepted,
   disabled = false,
+  isLoading = false,
   progress = 0,
   className,
 }: UploadZoneProps) => {
@@ -45,9 +49,10 @@ export const UploadZone = ({
         return;
       }
       setSelected(file);
-      onFileSelected(file);
+      if (onFileSelected) onFileSelected(file);
+      if (onFileAccepted) onFileAccepted(file);
     },
-    [maxSizeMB, onFileSelected]
+    [maxSizeMB, onFileSelected, onFileAccepted]
   );
 
   const onDrop = (e: React.DragEvent) => {
@@ -76,8 +81,8 @@ export const UploadZone = ({
   return (
     <div className={twMerge("w-full", className)}>
       <motion.div
-        onClick={() => !disabled && inputRef.current?.click()}
-        onDragOver={(e) => { e.preventDefault(); if (!disabled) setIsDragging(true); }}
+        onClick={() => !disabled && !isLoading && inputRef.current?.click()}
+        onDragOver={(e) => { e.preventDefault(); if (!disabled && !isLoading) setIsDragging(true); }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={onDrop}
         animate={isDragging ? { scale: 1.02 } : { scale: 1 }}
@@ -90,7 +95,7 @@ export const UploadZone = ({
              : selected
              ? "border-[var(--color-border-strong)] bg-[var(--color-surface)]"
              : "border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-accent)] hover:bg-[var(--color-accent-subtle)]",
-          disabled && "opacity-50 cursor-not-allowed"
+          (disabled || isLoading) && "opacity-50 cursor-not-allowed"
         )}
       >
         <input
@@ -99,8 +104,19 @@ export const UploadZone = ({
           accept={accept}
           onChange={onInputChange}
           className="sr-only"
-          disabled={disabled}
+          disabled={disabled || isLoading}
         />
+
+        {isLoading && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--color-surface)]/80 rounded-[16px] backdrop-blur-sm z-10">
+            <div className="relative flex items-center justify-center">
+              <div className="h-10 w-10 rounded-full border-4 border-[var(--color-border)] border-t-[var(--color-accent)] animate-spin" />
+            </div>
+            <p className="mt-4 text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wider animate-pulse">
+              Analyzing Forensic Fingerprints...
+            </p>
+          </div>
+        )}
 
         <AnimatePresence mode="wait">
           {selected ? (

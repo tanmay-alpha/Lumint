@@ -70,13 +70,13 @@ export default function SettingsPage() {
             AMLTA 2026 conference proceedings.
           </p>
           <a
-            href="https://github.com/tanmay-alpha/Lumint"
+            href="https://github.com/tanmay-alpha"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 text-[13px] font-semibold text-[var(--color-accent)] hover:underline"
           >
             <ExternalLink className="h-4 w-4" />
-            View source on GitHub
+            View Author on GitHub
           </a>
         </GlassCard>
       </motion.div>

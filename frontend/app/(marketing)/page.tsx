@@ -98,9 +98,9 @@ const FeatureCard = ({
 // ─────────────────────────────────────────────────────────────────────────────
 export default function LandingPage() {
   return (
-    <div className="relative min-h-screen bg-canvas text-text-primary flex flex-col font-sans">
+    <div className="relative min-h-screen bg-transparent text-text-primary flex flex-col font-sans">
       {/* ── NAVBAR ── */}
-      <nav className="fixed top-0 inset-x-0 z-50 border-b border-border-default bg-surface/80 backdrop-blur-[12px]">
+      <nav className="fixed top-0 inset-x-0 z-50 border-b border-white/5 bg-[#030712]/80 backdrop-blur-[12px]">
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="h-8 w-8 rounded-lg bg-brand flex items-center justify-center shadow-sm">
@@ -112,12 +112,20 @@ export default function LandingPage() {
             <a href="#modules" className="hover:text-text-primary transition-colors">Modules</a>
             <a href="#research" className="hover:text-text-primary transition-colors">Research</a>
             <a
-              href="https://github.com/tanmay-alpha/Lumint"
+              href="https://github.com/tanmay-alpha"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-text-primary transition-colors"
             >
               GitHub
+            </a>
+            <a
+              href="https://www.linkedin.com/in/tanmay-mangal/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-text-primary transition-colors"
+            >
+              LinkedIn
             </a>
           </div>
           <Link href="/dashboard">
@@ -309,7 +317,7 @@ export default function LandingPage() {
         </section>
 
         {/* ── RESEARCH ── */}
-        <section id="research" className="py-24 px-6 bg-surface-raised border-y border-border-default">
+        <section id="research" className="py-24 px-6 bg-slate-900/10 backdrop-blur-md border-y border-white/5">
           <div className="max-w-7xl mx-auto">
             <motion.div
               initial="hidden"
@@ -383,15 +391,6 @@ export default function LandingPage() {
                       Launch Platform <ArrowRight className="h-4.5 w-4.5" />
                     </Button>
                   </Link>
-                  <a
-                    href="https://github.com/tanmay-alpha/Lumint"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <Button variant="outline" size="lg" className="border-white/20 text-white hover:bg-white/10">
-                      View on GitHub
-                    </Button>
-                  </a>
                 </div>
               </div>
             </motion.div>
@@ -400,7 +399,7 @@ export default function LandingPage() {
       </main>
 
       {/* ── FOOTER ── */}
-      <footer className="border-t border-border-default bg-surface py-10 px-6 mt-auto">
+      <footer className="border-t border-white/5 bg-[#030712]/60 py-10 px-6 mt-auto backdrop-blur-md">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-5 text-caption text-text-muted">
           <div className="flex items-center gap-2.5 select-none">
             <div className="h-7 w-7 rounded-lg bg-text-primary flex items-center justify-center">
@@ -415,12 +414,20 @@ export default function LandingPage() {
             <a href="#modules" className="hover:text-text-primary transition-colors">Modules</a>
             <a href="#research" className="hover:text-text-primary transition-colors">Research</a>
             <a
-              href="https://github.com/tanmay-alpha/Lumint"
+              href="https://github.com/tanmay-alpha"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-text-primary transition-colors"
             >
               GitHub
+            </a>
+            <a
+              href="https://www.linkedin.com/in/tanmay-mangal/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-text-primary transition-colors"
+            >
+              LinkedIn
             </a>
           </div>
           <span>© {new Date().getFullYear()} Lumint Research. All rights reserved.</span>
