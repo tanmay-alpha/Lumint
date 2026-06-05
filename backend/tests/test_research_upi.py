@@ -101,4 +101,4 @@ def test_pipeline_analyzer(dummy_image_path):
     assert res["analysis_status"] == "completed"
     assert res["app_detected"] == "PhonePe"
     assert res["utr"]["valid"] is True
-    assert res["amount_extracted"] == "15,200.00"
+    assert res["amount_extracted"] == 15200.0
