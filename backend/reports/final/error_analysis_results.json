@@ -1,0 +1,18 @@
+{
+  "Clean": {
+    "FakePay": 1.0,
+    "UPIShield": 1.0
+  },
+  "OCR_Failure": {
+    "FakePay": 0.8338,
+    "UPIShield": 0.7186
+  },
+  "OOD_Layout": {
+    "FakePay": 0.9521,
+    "UPIShield": 1.0
+  },
+  "Evasion": {
+    "FakePay": 0.0,
+    "UPIShield": 0.9675
+  }
+}
