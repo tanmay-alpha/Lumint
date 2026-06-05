@@ -1,0 +1,53 @@
+{
+  "total_samples": 1200,
+  "splits": {
+    "train": 840,
+    "val": 180,
+    "test": 180
+  },
+  "class_balance": {
+    "genuine": 600,
+    "forged": 600
+  },
+  "app_distribution": {
+    "phonepay": 302,
+    "googlepay": 302,
+    "paytm": 298,
+    "bhim": 298
+  },
+  "forgery_type_distribution": {
+    "None": 600,
+    "splice": 151,
+    "overlay": 151,
+    "regenerated": 149,
+    "filter": 149
+  },
+  "difficulty_distribution": {
+    "easy": 900,
+    "hard": 200,
+    "medium": 100
+  },
+  "feature_statistics": {
+    "brand_palette_distance": {
+      "genuine_mean": 0.0,
+      "genuine_std": 0.0,
+      "forged_mean": 0.0931513347551304,
+      "forged_std": 0.12067561350474172,
+      "separation_ratio": 1.0916528794666984
+    },
+    "text_height_variance": {
+      "genuine_mean": 0.029001278811492212,
+      "genuine_std": 0.01122696709918921,
+      "forged_mean": 0.12053879813489678,
+      "forged_std": 0.10147285374184402,
+      "separation_ratio": 1.2680087499240735
+    },
+    "ela_hotspot_density": {
+      "genuine_mean": 0.008102072480108505,
+      "genuine_std": 0.00393639175363178,
+      "forged_mean": 0.08764934414405441,
+      "forged_std": 0.08755176008670541,
+      "separation_ratio": 1.2836212322105762
+    }
+  }
+}

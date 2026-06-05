@@ -77,3 +77,6 @@ backend/data/real/
 backend/data/raw/
 *.csv
 !backend/data/*.csv
+
+# Synthetic Datasets
+dataset/images/
