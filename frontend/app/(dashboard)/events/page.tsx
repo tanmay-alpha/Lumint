@@ -152,36 +152,32 @@ export default function ThreatEventsPage() {
               <div className="h-4 w-[1px] bg-[var(--color-border)] hidden md:block" />
 
               {/* Simulation Mode Toggle */}
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setSimulate(!simulate)}
-                  className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-                    simulate
-                      ? "bg-purple-950/60 text-purple-400 border border-purple-800/40"
-                      : "bg-[var(--color-surface-2)] text-[var(--color-text-secondary)] border border-[var(--color-border)] hover:bg-[var(--color-surface)]"
-                  }`}
-                >
-                  {simulate ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-                  {simulate ? "Simulation Mode Active" : "Start Simulator"}
-                </button>
-              </div>
+              <button
+                onClick={() => setSimulate(!simulate)}
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                  simulate
+                    ? "bg-[var(--color-accent)] text-white"
+                    : "bg-[var(--color-surface-2)] text-[var(--color-text-secondary)] border border-[var(--color-border)] hover:bg-[var(--color-surface)]"
+                }`}
+              >
+                {simulate ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                {simulate ? "Simulation Active" : "Start Simulation"}
+              </button>
 
               {/* Rate Adjustment (Only if simulate active) */}
               {simulate && (
-                <div className="flex items-center gap-3.5 bg-[var(--color-surface-2)] px-3 py-1.5 rounded-xl border border-[var(--color-border)]/60">
-                  <span className="text-[10px] font-bold text-[var(--color-text-muted)] flex items-center gap-1">
-                    <Sliders className="h-3 w-3" />
-                    Rate: {simulationRate.toFixed(1)}/s
+                <div className="flex items-center gap-2 bg-[var(--color-surface-2)] px-3 py-1.5 rounded-xl border border-[var(--color-border)]/60">
+                  <button
+                    onClick={() => setSimulationRate(Math.max(0.2, simulationRate - 0.2))}
+                    className="w-6 h-6 flex items-center justify-center rounded bg-[var(--color-border)] text-text-primary font-bold hover:bg-[var(--color-accent)] hover:text-white"
+                  >-</button>
+                  <span className="text-xs font-mono font-bold text-text-primary w-10 text-center">
+                    {simulationRate.toFixed(1)}/s
                   </span>
-                  <input
-                    type="range"
-                    min="0.2"
-                    max="5.0"
-                    step="0.2"
-                    value={simulationRate}
-                    onChange={(e) => setSimulationRate(parseFloat(e.target.value))}
-                    className="w-20 accent-[var(--color-accent)] cursor-pointer"
-                  />
+                  <button
+                    onClick={() => setSimulationRate(Math.min(5.0, simulationRate + 0.2))}
+                    className="w-6 h-6 flex items-center justify-center rounded bg-[var(--color-border)] text-text-primary font-bold hover:bg-[var(--color-accent)] hover:text-white"
+                  >+</button>
                 </div>
               )}
             </div>
@@ -201,16 +197,16 @@ export default function ThreatEventsPage() {
           <div className="space-y-4">
             {liveEvents.length === 0 ? (
               <div className="p-16 rounded-2xl border border-[var(--color-border)] border-dashed text-center flex flex-col items-center justify-center">
-                <Activity className="h-10 w-10 text-[var(--color-text-muted)] animate-pulse" />
+                <Activity className="h-12 w-12 text-[var(--color-text-muted)] animate-pulse text-3" />
                 <h3 className="text-sm font-bold text-[var(--color-text-secondary)] mt-3">
-                  No Live Signals Streamed Yet
+                  Connect to threat stream to monitor live events
                 </h3>
                 <p className="text-xs text-[var(--color-text-muted)] font-medium max-w-xs mt-1">
-                  Trigger threat detections in DocShield or UPI Shield, or activate Simulator Mode above to preview real-time intelligence feeds.
+                  Use Simulation Mode to preview feed
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-4 max-h-[calc(100vh-400px)] overflow-y-auto">
                 {liveEvents.map((evt) => (
                   <ThreatEventCard key={evt.event_id} event={evt} />
                 ))}
