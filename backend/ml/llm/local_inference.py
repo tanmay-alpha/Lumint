@@ -169,6 +169,13 @@ class LumintFraudLLM:
         self.fallback_to_groq = fallback_to_groq
         self.model = None
         self.tokenizer = None
+
+        # Allow disabling local inference via environment variable
+        env_use_local = os.getenv("USE_LOCAL_LLM", "").strip().lower()
+        if env_use_local == "false":
+            self.use_local = False
+        elif env_use_local == "true":
+            self.use_local = True
         
         # Resolve directory
         from pathlib import Path
@@ -191,9 +198,28 @@ class LumintFraudLLM:
                     pass
             
             if is_mock or "LUMINT_MOCK_LLM_TRAIN" in os.environ:
-                logger.info("Loading Mock Local LLM Model for testing...")
-                self.model = MockLocalModel()
-                self.tokenizer = MockLocalTokenizer()
+                import sys
+                is_testing = "pytest" in sys.modules or "LUMINT_MOCK_LLM_TRAIN" in os.environ
+                
+                # Check for Groq API key to see if we should fallback
+                has_groq_key = False
+                try:
+                    from app.config import settings
+                    if settings.GROQ_API_KEY:
+                        has_groq_key = True
+                except Exception:
+                    pass
+                if not has_groq_key:
+                    has_groq_key = bool(os.getenv("GROQ_API_KEY", "").strip())
+                
+                if has_groq_key and not is_testing:
+                    logger.info("Mock local model detected but Groq key is available and not in testing. Bypassing mock local model for Groq fallback.")
+                    self.model = None
+                    self.tokenizer = None
+                else:
+                    logger.info("Loading Mock Local LLM Model for testing...")
+                    self.model = MockLocalModel()
+                    self.tokenizer = MockLocalTokenizer()
             else:
                 try:
                     import torch

@@ -10,6 +10,16 @@ _INVALID_PLACEHOLDERS = {"", "your_database_url_here", "database_url_here", "<da
 _PRODUCTION_ENVS = {"prod", "production"}
 
 
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Resolve absolute path to the backend/.env file and load it explicitly
+backend_dir = Path(__file__).resolve().parents[1]
+env_path = backend_dir / ".env"
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path)
+
 class Settings(BaseSettings):
     APP_NAME: str = "Lumint"
     APP_VERSION: str = "1.0.0"
