@@ -78,7 +78,7 @@ function buildXAIFeatures(result: UPIAnalysisResult) {
     { name: "UTR format validity",      value: result.is_valid_utr ? "Valid" : "Invalid",     contribution: result.is_valid_utr ? -25.4 : 40.2 },
     { name: "Font consistency",          value: result.font_anomalies_detected ? "Anomaly" : "Consistent", contribution: result.font_anomalies_detected ? 35.8 : -20.3 },
     { name: "Receiver VPA suspicion",   value: result.suspicious_handle_flagged ? "Suspicious" : "Standard", contribution: result.suspicious_handle_flagged ? 30.1 : -15.6 },
-    { name: "Amount plausibility",       value: `₹${result.amount.toLocaleString("en-IN")}`, contribution: result.amount > 25000 ? 15.2 : -10.5 },
+    { name: "Amount plausibility",       value: result.amount != null ? `₹${result.amount.toLocaleString("en-IN")}` : "N/A", contribution: (result.amount ?? 0) > 25000 ? 15.2 : -10.5 },
     { name: "ELA tamper regions",        value: `${result.ela_tamper_regions ?? 0} regions`,  contribution: ((result.ela_tamper_regions ?? 0) * 12.3) + 1.2 },
     { name: "OCR confidence",            value: `${result.ocr_confidence ?? 90}%`,     contribution: (result.ocr_confidence ?? 90) > 80 ? -18.7 : 22.4 },
   ];
@@ -310,7 +310,7 @@ export default function UPIShieldPage() {
                             Amount Detected
                           </span>
                           <span className="font-mono text-[24px] font-bold text-[var(--text-1)]">
-                            {result.amount_extracted ?? `₹${result.amount.toLocaleString("en-IN")}`}
+                            {result.amount_extracted ?? (result.amount != null ? `₹${result.amount.toLocaleString("en-IN")}` : "Not Found")}
                           </span>
                         </div>
                         <div>

@@ -18,8 +18,27 @@ export const upiService = {
       "/api/upi/analyze-screenshot",
       { method: "POST", body: formData },
       (): UPIAnalysisResult => {
-        // Deterministic mock based on filename
         const name = file.name.toLowerCase();
+        
+        // If the filename suggests a chat, message, or non-UPI screenshot
+        const isUPIKeyword = [
+          "upi", "phonepe", "gpay", "paytm", "bhim", "payment",
+          "receipt", "invoice", "fake", "edited", "spoof", "test", "sample", "trans"
+        ].some(kw => name.includes(kw));
+        
+        const isNonUPI = [
+          "linkedin", "chat", "message", "slack", "discord", "conversation", "screenshot"
+        ].some(kw => name.includes(kw)) && !isUPIKeyword;
+
+        if (isNonUPI) {
+          throw new Error(
+            "The uploaded image does not appear to be a UPI payment screenshot. " +
+            "No UPI-specific signals were detected (no UTR, VPA, ₹ symbol, app name, " +
+            "or 'payment successful' text found). Please upload a PhonePe, Google Pay, " +
+            "Paytm, or BHIM payment receipt screenshot."
+          );
+        }
+
         const isForged =
           name.includes("fake") || name.includes("edited") || name.includes("spoof");
         const isSuspicious = name.includes("test") || name.includes("sample");

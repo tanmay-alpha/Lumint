@@ -77,9 +77,99 @@ def parse_vpas(text: str) -> List[str]:
     text_clean = text.lower()
     return re.findall(r'\b[a-zA-Z0-9.\-_]+@[a-zA-Z0-9]+\b', text_clean)
 
+def _is_upi_screenshot(ocr_text: str) -> bool:
+    """
+    Gate check: returns True only if OCR text contains enough UPI signals
+    to be worth running the full forensic pipeline.
+    A LinkedIn chat, random photo, meme etc. will return False.
+    """
+    text_lower = ocr_text.lower()
+
+    # Hard positive signals — any ONE of these is enough
+    strong_signals = [
+        "phonepe", "gpay", "google pay", "paytm", "bhim",
+        "upi", "utr", "transaction id", "txn id", "ref no",
+        "payment successful", "paid to", "sent to", "received from",
+        "okaxis", "okhdfcbank", "oksbi", "okicici", "ybl", "ibl",
+        "payment", "₹", "rs.", "inr",
+    ]
+
+    # VPA pattern (@axis, @okaxis, etc.)
+    has_vpa = bool(re.search(r'\b[a-zA-Z0-9.\-_]+@[a-zA-Z0-9]+\b', ocr_text))
+    # 12-digit number (UTR)
+    has_utr_candidate = bool(re.search(r'\b\d{12}\b', ocr_text))
+
+    hit_count = sum(1 for sig in strong_signals if sig in text_lower)
+
+    # Require at least 2 strong signals OR a VPA + 1 signal OR a 12-digit candidate + 1 signal
+    if hit_count >= 2:
+        return True
+    if has_vpa and hit_count >= 1:
+        return True
+    if has_utr_candidate and hit_count >= 1:
+        return True
+    return False
+
+
+_NOT_UPI_RESULT_TEMPLATE = {
+    "analysis_status": "not_upi_screenshot",
+    "forgery_score": 95,
+    "verdict": "NOT_UPI_SCREENSHOT",
+    "app_detected": "Unknown",
+    "utr": None,
+    "amount_extracted": None,
+    "payee_vpa": None,
+    "sender_upi_id": "N/A",
+    "receiver_upi_id": "N/A",
+    "ocr": {"text": "", "confidence": 0.0, "method": "none", "warnings": []},
+    "ela": {
+        "ela_score": 0,
+        "tamper_suspected": False,
+        "hotspot_ratio": 0.0,
+        "mean_difference": 0.0,
+        "max_difference": 0,
+        "tamper_regions": [],
+        "warnings": [],
+    },
+    "font": {
+        "font_consistent": False,
+        "confidence": 0.0,
+        "component_count": 0,
+        "height_variance": None,
+        "warnings": [],
+    },
+    "color": {
+        "color_authentic": False,
+        "confidence": 0.0,
+        "dominant_colors": [],
+        "reference_color": None,
+        "distance": None,
+        "warnings": [],
+    },
+    "indicators": [
+        {
+            "rule": "not_upi_screenshot",
+            "score": 95,
+            "detail": (
+                "The uploaded image does not appear to be a UPI payment screenshot. "
+                "No UPI-specific signals (UTR, VPA, app name, ₹ symbol, 'payment successful', etc.) "
+                "were detected in the OCR text. "
+                "Please upload a PhonePe, Google Pay, Paytm, or BHIM payment receipt screenshot."
+            ),
+        }
+    ],
+    "feature_contributions": [],
+    "warnings": [
+        "NOT A UPI SCREENSHOT: The image you uploaded does not look like a UPI payment receipt. "
+        "The analysis pipeline was aborted to prevent false positives."
+    ],
+}
+
+
 def analyze_upi_screenshot(image_path: Path, custom_ocr_text: Optional[str] = None) -> Dict[str, Any]:
     """
     Unified UPI Shield Analysis Pipeline:
+    0. Pre-screen: reject non-UPI images immediately with clear verdict
     1. Run OCR (or use provided custom text)
     2. Detect UPI App (PhonePe, GPay, Paytm, etc.)
     3. Extract & Validate UTR candidates
@@ -91,12 +181,24 @@ def analyze_upi_screenshot(image_path: Path, custom_ocr_text: Optional[str] = No
     9. Compute XAI Feature Contributions
     """
     warnings = []
-    
+
     # 1. OCR Extraction
     ocr_result = extract_text_from_image(image_path, fallback_text=custom_ocr_text)
     ocr_text = ocr_result["text"]
     if ocr_result.get("warnings"):
         warnings.extend(ocr_result["warnings"])
+
+    # 0. GATE CHECK — abort early if image is not a UPI screenshot
+    if not _is_upi_screenshot(ocr_text):
+        logger.warning(
+            "analyze_upi_screenshot: Non-UPI image detected. "
+            "OCR text preview: %r",
+            ocr_text[:200],
+        )
+        result = dict(_NOT_UPI_RESULT_TEMPLATE)
+        result["ocr"] = ocr_result
+        result["warnings"] = list(_NOT_UPI_RESULT_TEMPLATE["warnings"]) + warnings
+        return result
         
     # 2. Extract UTR candidates
     utr_candidates = extract_utr_candidates(ocr_text)

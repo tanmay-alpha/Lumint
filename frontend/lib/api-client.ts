@@ -160,7 +160,21 @@ export async function apiRequest<T>(
     });
     
     if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+      try {
+        const errJson = await response.json();
+        if (errJson && errJson.detail) {
+          if (typeof errJson.detail === "string") {
+            errorMessage = errJson.detail;
+          } else if (Array.isArray(errJson.detail)) {
+            errorMessage = errJson.detail.map((d: any) => d.msg || JSON.stringify(d)).join(", ");
+          }
+        }
+      } catch (_) {}
+      
+      const errorObj = new Error(errorMessage);
+      (errorObj as any).status = response.status;
+      throw errorObj;
     }
     
     setLiveMode(true);
@@ -169,7 +183,8 @@ export async function apiRequest<T>(
     console.warn(`Lumint API fallback to Mock on path ${path}:`, error);
     setLiveMode(false);
     
-    if (mockGenerator) {
+    // Do not fallback to mock for client/validation errors (400, 422) where the server is alive and gave a real rejection
+    if (mockGenerator && (error as any).status !== 400 && (error as any).status !== 422) {
       // Simulate network lag for premium visual skeletons
       await new Promise(resolve => setTimeout(resolve, 800));
       return mockGenerator();

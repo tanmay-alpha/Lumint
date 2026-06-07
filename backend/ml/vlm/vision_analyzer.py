@@ -14,7 +14,17 @@ class LumintVisionAnalyzer:
     """
 
     SYSTEM_PROMPT = """You are an expert forensic analyst specializing in UPI payment screenshot authenticity verification.
-Analyze the provided screenshot for:
+
+CRITICAL FIRST STEP: Before anything else, determine if the provided image is actually a UPI payment receipt/screenshot from PhonePe, Google Pay, Paytm, or BHIM.
+
+If the image is NOT a UPI payment screenshot (e.g. it is a chat conversation, social media post, selfie, meme, document, LinkedIn screenshot, WhatsApp chat, etc.):
+- Set "visual_verdict" to "FORGED"
+- Set "visual_confidence" to 95
+- Set "anomalies_detected" to ["NOT_A_UPI_SCREENSHOT: The uploaded image is not a UPI payment receipt"]
+- Set "visual_analyst_note" to a 2-sentence note explaining that this is not a payment screenshot and what type of image it appears to be instead.
+- Set all layout/typography/color/ui fields to false.
+
+If the image IS a UPI payment screenshot, analyze it for:
 1. Layout consistency: does the UI match standard PhonePe/GooglePay/Paytm/BHIM templates exactly?
 2. Typography: are all text elements using the same font family and rendering pipeline?
 3. Color authenticity: do the brand colors match the official app color palette exactly?
@@ -42,11 +52,12 @@ Respond ONLY with valid JSON matching this schema:
         """
         Encode image as base64.
         Send to Groq vision endpoint (llama-3.2-11b-vision-preview).
-        Fallback to HuggingFace or mock payload if API is down or key is invalid.
+        The model first checks if the image is a real UPI screenshot before forensics.
+        Fallback to heuristic verdict if API is down or key is invalid.
         """
         # Encode base64
         base64_image = base64.b64encode(image_bytes).decode("utf-8")
-        
+
         try:
             client = get_client()
             # Call Groq vision model
@@ -62,7 +73,12 @@ Respond ONLY with valid JSON matching this schema:
                         "content": [
                             {
                                 "type": "text",
-                                "text": f"Analyze this {app_detected} screenshot for UPI authenticity forensics."
+                                "text": (
+                                    "Please analyze the provided image. First determine if it is a UPI payment "
+                                    f"receipt screenshot (app hint: {app_detected}). If it is not a UPI "
+                                    "payment screenshot, immediately flag it as FORGED with NOT_A_UPI_SCREENSHOT "
+                                    "anomaly. If it is a UPI screenshot, run full forensic analysis."
+                                )
                             },
                             {
                                 "type": "image_url",

@@ -94,6 +94,18 @@ async def analyze_screenshot(
             tmp_path.unlink()
         except Exception:
             pass
+
+    # 2b. Early exit if this is not a UPI screenshot
+    if res.get("verdict") == "NOT_UPI_SCREENSHOT" or res.get("analysis_status") == "not_upi_screenshot":
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "The uploaded image does not appear to be a UPI payment screenshot. "
+                "No UPI-specific signals were detected (no UTR, VPA, ₹ symbol, app name, "
+                "or 'payment successful' text found). Please upload a PhonePe, Google Pay, "
+                "Paytm, or BHIM payment receipt screenshot."
+            ),
+        )
             
     # 3. Run VLM screenshot vision analyst and 4-signal fusion
     from ml.vlm.vision_analyzer import LumintVisionAnalyzer
