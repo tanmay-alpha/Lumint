@@ -24,7 +24,10 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend
+  Legend,
+  LineChart,
+  Line,
+  ReferenceLine
 } from "recharts";
 
 interface ModelMetrics {
@@ -1020,7 +1023,15 @@ export default function ResearchDashboardPage() {
               </p>
             </div>
 
-            <div className="overflow-x-auto">
+            {/* Context note for synthetic datasets */}
+            <div className="bg-risk-high/5 border border-risk-high/20 rounded-xl p-4 text-xs text-text-secondary">
+              <Info className="h-4 w-4 text-risk-high inline mr-2" />
+              <span className="font-semibold text-text-primary">Privacy-Preserving Synthetic Data:</span>{" "}
+              UPI and DocShield datasets marked "None (Synthetic)" are generated with fixed seed=42 for reproducibility.
+              Real UPI screenshots contain sensitive PII and cannot be publicly released. This is academically honest and required for privacy compliance.
+            </div>
+
+            <div className="overflow-x-auto mt-4">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="border-b border-border/40 bg-bg-base/40 uppercase text-[9px] font-bold text-text-secondary">
