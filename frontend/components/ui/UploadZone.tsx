@@ -188,15 +188,15 @@ export const UploadZone = ({
             >
               <motion.div
                 animate={isDragging ? { y: -3 } : { y: 0 }}
-                className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--surface-3)] text-[var(--text-3)] group-hover:text-[var(--text-2)] transition-colors duration-200"
+                className="text-[var(--text-3)] group-hover:text-[var(--text-2)] transition-colors duration-200"
               >
-                <UploadCloud className="h-7 w-7 transition-transform duration-200 group-hover:scale-105" />
+                <UploadCloud className="h-10 w-10 transition-transform duration-200 group-hover:scale-105" />
               </motion.div>
               <div className="flex flex-col gap-1">
-                <span className="text-[14px] font-semibold text-[var(--text-2)] group-hover:text-[var(--text-1)] transition-colors duration-200">
+                <span className="text-[14px] font-sans font-medium text-[var(--text-2)] group-hover:text-[var(--text-1)] transition-colors duration-200">
                   {label}
                 </span>
-                <span className="text-[11px] text-[var(--text-4)]">
+                <span className="text-[11px] font-sans text-[var(--text-4)]">
                   {defaultSubLabel}
                 </span>
               </div>

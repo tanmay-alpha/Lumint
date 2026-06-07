@@ -28,6 +28,7 @@ import { FeatureContribution } from "@/components/ui/FeatureContribution";
 import { SkeletonLoader } from "@/components/ui/SkeletonLoader";
 import { Button } from "@/components/ui/Button";
 import { RiskScore } from "@/components/ui/RiskScore";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { upiService } from "@/services/upi";
 import type { UPIAnalysisResult, UPIAIResult } from "@/types";
 
@@ -52,15 +53,13 @@ const StatusIcon = ({ ok }: { ok: boolean }) =>
 // ─── Confidence bar ──────────────────────────────────────────────────────────
 const ConfidenceBar = ({ label, value }: { label: string; value: number }) => {
   const barColor = value > 80 ? "bg-[var(--safe)]" : value >= 60 ? "bg-[var(--warn)]" : "bg-[var(--high)]";
-  const textColor = value > 80 ? "text-[var(--safe)]" : value >= 60 ? "text-[var(--warn)]" : "text-[var(--high)]";
   
   return (
-    <div className="space-y-1">
-      <div className="flex justify-between text-[11px] font-semibold">
+    <div className="space-y-1.5">
+      <div className="flex justify-between text-[11px] font-semibold uppercase tracking-wider">
         <span className="text-[var(--text-3)]">{label}</span>
-        <span className={`font-mono ${textColor}`}>{value}%</span>
       </div>
-      <div className="h-1 bg-[var(--surface-3)] rounded-full overflow-hidden">
+      <div className="h-1.5 bg-[var(--surface-3)] rounded-full overflow-hidden border border-[var(--border)]/20">
         <motion.div
           className={`h-full rounded-full ${barColor}`}
           initial={{ width: "0%" }}
@@ -154,6 +153,20 @@ export default function UPIShieldPage() {
 
   const xaiFeatures = result ? buildXAIFeatures(result) : [];
 
+  const renderVPA = (vpa: string | null, isSuspicious: boolean) => {
+    if (!vpa) return <span className="text-[var(--text-4)]">N/A</span>;
+    const parts = vpa.split("@");
+    if (parts.length < 2) return <span className="font-mono">{vpa}</span>;
+    return (
+      <span className="font-mono text-[12px] font-semibold text-[var(--text-1)]">
+        {parts[0]}
+        <span className={isSuspicious ? "text-[var(--high)] font-bold bg-[var(--high-bg)] px-1 rounded" : "text-[var(--brand)] font-semibold"}>
+          @{parts[1]}
+        </span>
+      </span>
+    );
+  };
+
   return (
     <div className="space-y-8 font-sans">
       {/* Page header */}
@@ -166,7 +179,7 @@ export default function UPIShieldPage() {
             <h1 className="text-[20px] font-bold text-[var(--text-1)]">
               UPI Shield
             </h1>
-            <p className="text-[12px] text-[var(--text-3)]">
+            <p className="text-[12px] text-[var(--text-3)] font-semibold">
               Detect fake PhonePe, Google Pay &amp; Paytm payment screenshots
             </p>
           </div>
@@ -182,8 +195,8 @@ export default function UPIShieldPage() {
           transition={{ duration: 0.4, delay: 0.1 }}
           className="space-y-4"
         >
-          <Card className="p-5">
-            <span className="text-[11px] font-semibold text-[var(--text-3)] uppercase tracking-wider block mb-4">
+          <Card className="p-6">
+            <span className="text-[11px] font-bold text-[var(--text-3)] uppercase tracking-wider block mb-4">
               Upload Payment Screenshot
             </span>
             <UploadZone
@@ -214,7 +227,7 @@ export default function UPIShieldPage() {
             )}
 
             {uploading && (
-              <div className="mt-4 text-center text-[12px] font-semibold text-[var(--text-3)] animate-pulse">
+              <div className="mt-4 text-center text-[12px] font-bold text-[var(--text-3)] animate-pulse">
                 Running forensic analysis…
               </div>
             )}
@@ -229,25 +242,28 @@ export default function UPIShieldPage() {
 
           {/* How it works card — collapses after result is loaded */}
           {!result && (
-            <Card className="p-5">
-              <span className="text-[11px] font-semibold text-[var(--text-3)] uppercase tracking-wider block mb-4">
+            <Card className="p-6">
+              <span className="text-[11px] font-bold text-[var(--text-3)] uppercase tracking-wider block mb-4">
                 How UPI Shield works
               </span>
               <div className="relative pl-8 space-y-6">
-                <div className="absolute left-[9px] top-2 bottom-2 w-[1.5px] bg-[var(--border)]" />
+                <div className="absolute left-[11px] top-3 bottom-3 w-[1.5px] bg-[var(--border)]" />
                 {[
-                  { icon: <Scan className="h-3.5 w-3.5 text-white" />, label: "OCR extraction", desc: "Tesseract extracts UTR, VPA, and amount from the screenshot" },
-                  { icon: <Check className="h-3.5 w-3.5 text-white" />, label: "Structural validation", desc: "UTR 12-digit format, VPA domain, and font consistency checks" },
-                  { icon: <Layers className="h-3.5 w-3.5 text-white" />, label: "ELA forensics", desc: "Error Level Analysis detects pixel manipulation regions" },
-                  { icon: <Sparkles className="h-3.5 w-3.5 text-white" />, label: "Groq LLM verdict", desc: "LLaMA 3.3 70B synthesizes a forensic analyst narrative" },
+                  { icon: <Scan className="h-3.5 w-3.5 text-[var(--brand)]" />, label: "OCR extraction", desc: "Tesseract extracts UTR, VPA, and amount from the screenshot" },
+                  { icon: <Check className="h-3.5 w-3.5 text-[var(--brand)]" />, label: "Structural validation", desc: "UTR 12-digit format, VPA domain, and font consistency checks" },
+                  { icon: <Layers className="h-3.5 w-3.5 text-[var(--brand)]" />, label: "ELA forensics", desc: "Error Level Analysis detects pixel manipulation regions" },
+                  { icon: <Sparkles className="h-3.5 w-3.5 text-[var(--brand)]" />, label: "Groq LLM verdict", desc: "LLaMA 3.3 70B synthesizes a forensic analyst narrative" },
                 ].map(({ icon, label, desc }, idx) => (
                   <div key={idx} className="relative flex items-start gap-4">
-                    <div className="absolute -left-[32px] h-5 w-5 rounded-full bg-[var(--brand)] flex items-center justify-center z-10 shadow-sm">
-                      {icon}
+                    <div className="absolute -left-[32px] h-6 w-6 rounded-full bg-[var(--brand)] text-white text-[11px] font-bold flex items-center justify-center z-10 shadow-sm">
+                      {idx + 1}
                     </div>
                     <div>
-                      <span className="text-[13px] font-semibold text-[var(--text-1)] block leading-tight">{label}</span>
-                      <p className="text-[12px] text-[var(--text-3)] leading-relaxed mt-1">{desc}</p>
+                      <div className="flex items-center gap-1.5 text-[13px] font-semibold text-[var(--text-1)] leading-tight">
+                        {icon}
+                        <span>{label}</span>
+                      </div>
+                      <p className="text-[12px] text-[var(--text-3)] font-semibold leading-relaxed mt-1">{desc}</p>
                     </div>
                   </div>
                 ))}
@@ -290,35 +306,35 @@ export default function UPIShieldPage() {
             >
               {/* Verdict row (Top Result Card) */}
               <motion.div variants={item}>
-                <Card variant="elevated" className="p-6">
+                <Card variant="elevated" className="p-8">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    <div className="space-y-4 flex-1">
-                      <div>
+                    <div className="space-y-5 flex-1">
+                      <div className="space-y-1.5">
                         <span className="text-[11px] uppercase tracking-widest text-[var(--text-3)] font-semibold block">
                           Forgery Probability
                         </span>
-                        <div className="mt-1">
-                          <Badge variant={result.risk_level === "CRITICAL" ? "critical" : result.risk_level === "HIGH" ? "high" : result.risk_level === "SUSPICIOUS" ? "warn" : "safe"} dot className="text-xs px-3 py-1 font-semibold uppercase">
+                        <div>
+                          <Badge variant={result.risk_level === "CRITICAL" ? "critical" : result.risk_level === "HIGH" ? "high" : result.risk_level === "SUSPICIOUS" ? "warn" : "safe"} dot className="text-xs px-3.5 py-1 font-semibold uppercase tracking-wider">
                             {result.risk_level} LEVEL VERDICT
                           </Badge>
                         </div>
                       </div>
                       
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-3 border-t border-[var(--border)]/40">
                         <div>
-                          <span className="text-[11px] uppercase tracking-widest text-[var(--text-3)] block mb-1 font-semibold">
+                          <span className="text-[11px] uppercase tracking-widest text-[var(--text-3)] block mb-1.5 font-semibold">
                             Amount Detected
                           </span>
-                          <span className="font-mono text-[24px] font-bold text-[var(--text-1)]">
+                          <span className="font-mono text-[24px] font-bold text-[var(--text-1)] tracking-tight">
                             {result.amount_extracted ?? (result.amount != null ? `₹${result.amount.toLocaleString("en-IN")}` : "Not Found")}
                           </span>
                         </div>
                         <div>
-                          <span className="text-[11px] uppercase tracking-widest text-[var(--text-3)] block mb-1 font-semibold">
+                          <span className="text-[11px] uppercase tracking-widest text-[var(--text-3)] block mb-1.5 font-semibold">
                             UTR Number
                           </span>
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-mono text-[16px] font-bold text-[var(--text-1)]">
+                            <span className="font-mono text-[16px] font-bold text-[var(--text-1)] tracking-tight">
                               {result.utr_number ?? "Not Found"}
                             </span>
                             <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-md ${
@@ -326,14 +342,14 @@ export default function UPIShieldPage() {
                                 ? "bg-[var(--brand-muted)] text-[var(--brand)] border border-[var(--brand-border)]/30" 
                                 : "bg-[var(--high-bg)] text-[var(--high)] border border-[var(--high-border)]/30"
                             }`}>
-                              {result.is_valid_utr ? "VALID" : "INVALID"}
+                              {result.is_valid_utr ? "VALID FORMAT" : "INVALID FORMAT"}
                             </span>
                           </div>
                         </div>
                       </div>
                     </div>
                     
-                    <div className="flex justify-center shrink-0">
+                    <div className="flex justify-center shrink-0 self-center">
                       <RiskScore score={result.risk_score} size="lg" />
                     </div>
                   </div>
@@ -342,59 +358,68 @@ export default function UPIShieldPage() {
 
               {/* Detail cards 2×2 */}
               <motion.div variants={item} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* UTR Analysis */}
-                <Card className="p-5 flex flex-col justify-between min-h-[170px]">
-                  <div>
-                    <div className="flex items-center gap-1.5 mb-4">
+                {/* Card 1: UTR Analysis */}
+                <Card className="p-6 flex flex-col justify-between min-h-[175px]">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-1.5 pb-2 border-b border-[var(--border)]/30">
                       <Shield className="h-4 w-4 text-[var(--brand)]" />
-                      <span className="text-[11px] text-[var(--text-3)] font-semibold uppercase tracking-wider">UTR Analysis</span>
+                      <span className="text-[11px] text-[var(--text-3)] font-bold uppercase tracking-wider">UTR Analysis</span>
                     </div>
                     
-                    <div className="space-y-4">
-                      <DataPoint 
-                        label="UTR Number" 
-                        value={result.utr_number ? result.utr_number : <span className="text-[var(--high)] font-semibold">Not Found</span>} 
-                        copyable={!!result.utr_number}
-                        mono={true}
-                      />
+                    <DataPoint 
+                      label="UTR Number" 
+                      value={result.utr_number ? result.utr_number : <span className="text-[var(--high)] font-semibold">Not Found</span>} 
+                      copyable={!!result.utr_number}
+                      mono={true}
+                    />
+                    
+                    <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                      <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-md inline-flex items-center gap-1.5 ${
+                        result.is_valid_utr 
+                          ? "bg-[var(--safe-bg)] text-[var(--safe)] border border-[var(--safe-border)]/20" 
+                          : "bg-[var(--high-bg)] text-[var(--high)] border border-[var(--high-border)]/20"
+                      }`}>
+                        <StatusIcon ok={result.is_valid_utr} />
+                        {result.is_valid_utr ? "Valid 12-digit format" : "Invalid format"}
+                      </span>
                       
-                      <div className="flex flex-wrap items-center gap-2 pt-1">
-                        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-md inline-flex items-center gap-1.5 ${
-                          result.is_valid_utr 
-                            ? "bg-[var(--safe-bg)] text-[var(--safe)]" 
-                            : "bg-[var(--high-bg)] text-[var(--high)]"
-                        }`}>
-                          <StatusIcon ok={result.is_valid_utr} />
-                          {result.is_valid_utr ? "Valid 12-digit format" : "Invalid format"}
+                      {result.app_detected && (
+                        <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-md inline-flex items-center gap-1.5 bg-[var(--surface-3)] text-[var(--text-2)] border border-[var(--border)]/65">
+                          <span className={`h-1.5 w-1.5 rounded-full ${
+                            result.app_detected.toLowerCase().includes("phonepe") 
+                              ? "bg-[#5f259f]" 
+                              : result.app_detected.toLowerCase().includes("google") 
+                              ? "bg-[#4285F4]" 
+                              : result.app_detected.toLowerCase().includes("paytm") 
+                              ? "bg-[#00baf2]" 
+                              : "bg-[var(--brand)]"
+                          }`} />
+                          {result.app_detected}
                         </span>
-                        
-                        <span className="text-[11px] text-[var(--text-2)] bg-[var(--surface-3)] px-2 py-0.5 rounded-md font-mono border border-[var(--border)]">
-                          {result.utr_format}
-                        </span>
-                      </div>
+                      )}
                     </div>
                   </div>
                 </Card>
 
-                {/* Visual Forensics */}
-                <Card className="p-5 flex flex-col justify-between min-h-[170px]">
-                  <div>
-                    <div className="flex items-center gap-1.5 mb-4">
+                {/* Card 2: Visual Forensics */}
+                <Card className="p-6 flex flex-col justify-between min-h-[175px]">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-1.5 pb-2 border-b border-[var(--border)]/30">
                       <Eye className="h-4 w-4 text-[var(--intel)]" />
-                      <span className="text-[11px] text-[var(--text-3)] font-semibold uppercase tracking-wider">Visual Forensics</span>
+                      <span className="text-[11px] text-[var(--text-3)] font-bold uppercase tracking-wider">Visual Forensics</span>
                     </div>
                     
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between border-b border-[var(--border)]/45 pb-1.5">
-                        <span className="text-[12px] text-[var(--text-2)] font-medium">ELA Tamper Regions</span>
-                        <span className="font-mono text-[13px] text-[var(--text-1)] font-semibold">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] text-[var(--text-3)] uppercase tracking-wider font-semibold">ELA Tamper Regions</span>
+                        <span className="font-mono text-[13px] text-[var(--text-1)] font-bold">
                           {result.ela_tamper_regions ?? 0}
                         </span>
                       </div>
                       
-                      <div className="flex items-center justify-between border-b border-[var(--border)]/45 pb-1.5">
-                        <span className="text-[12px] text-[var(--text-2)] font-medium">Font Consistency</span>
-                        <span className={`inline-flex items-center gap-1.5 text-[12px] font-semibold ${
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] text-[var(--text-3)] uppercase tracking-wider font-semibold">Font Consistency</span>
+                        <span className={`inline-flex items-center gap-1.5 text-[12px] font-bold ${
                           (result.font_consistent ?? !result.font_anomalies_detected) ? "text-[var(--safe)]" : "text-[var(--high)]"
                         }`}>
                           <StatusIcon ok={result.font_consistent ?? !result.font_anomalies_detected} />
@@ -403,8 +428,8 @@ export default function UPIShieldPage() {
                       </div>
                       
                       <div className="flex items-center justify-between">
-                        <span className="text-[12px] text-[var(--text-2)] font-medium">Color Authenticity</span>
-                        <span className={`inline-flex items-center gap-1.5 text-[12px] font-semibold ${
+                        <span className="text-[11px] text-[var(--text-3)] uppercase tracking-wider font-semibold">Color Authenticity</span>
+                        <span className={`inline-flex items-center gap-1.5 text-[12px] font-bold ${
                           (result.color_authentic ?? true) ? "text-[var(--safe)]" : "text-[var(--high)]"
                         }`}>
                           <StatusIcon ok={result.color_authentic ?? true} />
@@ -415,58 +440,64 @@ export default function UPIShieldPage() {
                   </div>
                 </Card>
 
-                {/* Metadata */}
-                <Card className="p-5 flex flex-col justify-between min-h-[170px]">
-                  <div>
-                    <div className="flex items-center gap-1.5 mb-4">
+                {/* Card 3: Metadata */}
+                <Card className="p-6 flex flex-col justify-between min-h-[175px]">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-1.5 pb-2 border-b border-[var(--border)]/30">
                       <Cpu className="h-4 w-4 text-[var(--warn)]" />
-                      <span className="text-[11px] text-[var(--text-3)] font-semibold uppercase tracking-wider">Metadata</span>
+                      <span className="text-[11px] text-[var(--text-3)] font-bold uppercase tracking-wider">Metadata Parameters</span>
                     </div>
                     
-                    <div className="space-y-2.5">
-                      <div className="grid grid-cols-3 gap-2">
-                        <div className="col-span-1">
-                          <span className="text-[10px] text-[var(--text-3)] font-semibold block uppercase">App</span>
-                          <span className="text-[12px] text-[var(--text-1)] font-semibold block mt-0.5">
-                            {result.app_detected ?? "Unknown"}
-                          </span>
-                        </div>
-                        <div className="col-span-2">
-                          <DataPoint 
-                            label="Sender VPA" 
-                            value={result.sender_upi_id} 
-                            copyable={true} 
-                            mono={true} 
-                          />
-                        </div>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[11px] text-[var(--text-3)] uppercase tracking-wider font-semibold">Detected Platform</span>
+                        <span className="font-mono text-[12px] text-[var(--text-1)] font-bold">
+                          {result.app_detected ?? "Unknown"}
+                        </span>
                       </div>
                       
-                      <div>
-                        <DataPoint 
-                          label="Receiver VPA" 
-                          value={
-                            <span className={result.suspicious_handle_flagged ? "text-[var(--high)] font-semibold" : "text-[var(--text-1)]"}>
-                              {result.receiver_upi_id}
-                            </span>
-                          }
-                          copyable={true}
-                          mono={true}
-                          className={result.suspicious_handle_flagged ? "border-l-2 border-[var(--high)] pl-2" : ""}
-                        />
+                      <div className="space-y-1">
+                        <span className="text-[10px] text-[var(--text-3)] uppercase tracking-wider font-bold block">Sender UPI ID</span>
+                        <div className="flex items-center justify-between">
+                          {renderVPA(result.sender_upi_id, false)}
+                          {result.sender_upi_id && (
+                            <button 
+                              onClick={() => navigator.clipboard.writeText(result.sender_upi_id!)} 
+                              className="text-[var(--text-3)] hover:text-[var(--text-1)] transition-colors"
+                            >
+                              <Copy className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <span className="text-[10px] text-[var(--text-3)] uppercase tracking-wider font-bold block">Receiver UPI ID</span>
+                        <div className="flex items-center justify-between">
+                          {renderVPA(result.receiver_upi_id, result.suspicious_handle_flagged)}
+                          {result.receiver_upi_id && (
+                            <button 
+                              onClick={() => navigator.clipboard.writeText(result.receiver_upi_id!)} 
+                              className="text-[var(--text-3)] hover:text-[var(--text-1)] transition-colors"
+                            >
+                              <Copy className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
                 </Card>
 
-                {/* Confidence breakdown */}
-                <Card className="p-5 flex flex-col justify-between min-h-[170px]">
-                  <div>
-                    <div className="flex items-center gap-1.5 mb-4">
+                {/* Card 4: Confidence breakdown */}
+                <Card className="p-6 flex flex-col justify-between min-h-[175px]">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-1.5 pb-2 border-b border-[var(--border)]/30">
                       <BarChart2 className="h-4 w-4 text-[var(--brand)]" />
-                      <span className="text-[11px] text-[var(--text-3)] font-semibold uppercase tracking-wider">Confidence</span>
+                      <span className="text-[11px] text-[var(--text-3)] font-bold uppercase tracking-wider">Confidence Matrix</span>
                     </div>
                     
-                    <div className="space-y-3.5">
+                    <div className="space-y-3">
                       <ConfidenceBar label="OCR Quality" value={result.ocr_confidence ?? 90} />
                       <ConfidenceBar label="ELA Analysis" value={result.font_anomalies_detected ? 62 : 91} />
                       <ConfidenceBar label="AI Verdict" value={result.risk_score > 60 ? 88 : 94} />
@@ -504,7 +535,7 @@ export default function UPIShieldPage() {
                         {/* Verdict row */}
                         <div className="flex items-center gap-4 flex-wrap pb-4 border-b border-[var(--ai-border)]/30">
                           <div className="flex flex-col">
-                            <span className="text-[10px] text-[var(--text-3)] font-semibold uppercase">
+                            <span className="text-[10px] text-[var(--text-3)] font-bold uppercase">
                               AI Verdict
                             </span>
                             <span
@@ -521,7 +552,7 @@ export default function UPIShieldPage() {
                           </div>
                           
                           <div className="flex flex-col">
-                            <span className="text-[10px] text-[var(--text-3)] font-semibold uppercase">Confidence:</span>
+                            <span className="text-[10px] text-[var(--text-3)] font-bold uppercase">Confidence</span>
                             <div className="mt-0.5">
                               <Badge variant={aiResult.confidence > 80 ? "safe" : aiResult.confidence > 60 ? "warn" : "high"} className="text-xs px-2.5 py-0.5">
                                 {aiResult.confidence}%
@@ -531,7 +562,7 @@ export default function UPIShieldPage() {
 
                           {aiResult.forgery_method && (
                             <div className="flex flex-col">
-                              <span className="text-[10px] text-[var(--text-3)] font-semibold uppercase">Method:</span>
+                              <span className="text-[10px] text-[var(--text-3)] font-bold uppercase">Method</span>
                               <span className="font-mono text-[11px] text-[var(--text-2)] bg-[var(--surface)] border border-[var(--border)] px-2 py-0.5 rounded-md mt-0.5">
                                 {aiResult.forgery_method}
                               </span>
@@ -544,7 +575,7 @@ export default function UPIShieldPage() {
 
                         {/* Evidence points */}
                         <div>
-                          <span className="text-[11px] font-semibold text-[var(--text-3)] uppercase tracking-wider block mb-2">
+                          <span className="text-[11px] font-bold text-[var(--text-3)] uppercase tracking-wider block mb-2">
                             Evidence points
                           </span>
                           <ul className="space-y-2">
@@ -565,13 +596,26 @@ export default function UPIShieldPage() {
                         </div>
 
                         {/* Recommended action */}
-                        <div className="rounded-xl bg-[var(--warn-bg)] border border-[var(--warn-border)]/30 px-4 py-3">
-                          <span className="text-[11px] font-semibold text-[var(--warn)] uppercase tracking-wider block mb-1">
-                            Recommended action
+                        <div className={`rounded-xl border px-4 py-3 ${
+                          aiResult.verdict === "FORGED" 
+                            ? "bg-[var(--high-bg)] border-[var(--high-border)]/40 text-[var(--high)]" 
+                            : aiResult.verdict === "SUSPICIOUS" 
+                            ? "bg-[var(--warn-bg)] border-[var(--warn-border)]/40 text-[var(--warn)]" 
+                            : "bg-[var(--safe-bg)] border-[var(--safe-border)]/40 text-[var(--safe)]"
+                        }`}>
+                          <span className="text-[11px] font-bold uppercase tracking-wider block mb-1">
+                            Recommended Action
                           </span>
                           <p className="text-[13px] font-semibold text-[var(--text-1)]">
                             {aiResult.recommended_action}
                           </p>
+                        </div>
+
+                        {/* Timestamp */}
+                        <div className="flex justify-end pt-2">
+                          <span className="font-mono text-[10px] text-[var(--text-4)] uppercase tracking-widest">
+                            TIMESTAMP: {new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }).toUpperCase()}
+                          </span>
                         </div>
                       </div>
                     )}
@@ -583,15 +627,12 @@ export default function UPIShieldPage() {
 
           {/* Empty state (UPI Shield) */}
           {!result && !uploading && (
-            <Card variant="default" className="flex flex-col items-center justify-center h-[320px] border-dashed text-center p-8">
-              <div className="h-12 w-12 rounded-xl bg-[var(--surface-3)] border border-[var(--border)] flex items-center justify-center text-[var(--text-3)] mb-4">
-                <Smartphone className="h-6 w-6" />
-              </div>
-              <h3 className="text-[15px] font-bold text-[var(--text-1)]">Awaiting Forensic Scan</h3>
-              <p className="text-[12px] text-[var(--text-3)] mt-1.5 max-w-xs leading-normal">
-                Upload a UPI payment screenshot to run optical character recognition, font analysis, and ELA pixel verification.
-              </p>
-            </Card>
+            <EmptyState
+              title="No analysis yet"
+              description="Upload a screenshot to begin"
+              icon={<Smartphone className="h-12 w-12 text-[var(--text-3)]" />}
+              className="h-[320px]"
+            />
           )}
         </motion.div>
       </div>
