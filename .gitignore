@@ -80,3 +80,4 @@ backend/data/raw/
 
 # Synthetic Datasets
 dataset/images/
+.vercel
