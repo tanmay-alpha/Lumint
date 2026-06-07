@@ -829,11 +829,13 @@ export default function ResearchDashboardPage() {
                         borderRadius: 8,
                         fontSize: 11
                       }}
-                      formatter={(value: number) => value.toFixed(3)}
+                      formatter={(value) => {
+          const num = typeof value === "number" ? value : Number(value);
+          return Number.isFinite(num) ? num.toFixed(3) : "0.000";
+        }}
                     />
                     <Legend verticalAlign="top" height={36} fontSize={11} />
-                    <ReferenceLine y={{ value: 1, label: "Perfect" }} stroke="var(--safe)" strokeDasharray="4 4" strokeOpacity={0.3} />
-                    <ReferenceLine y={[0, 1]} x={[0, 1]} stroke="var(--text-muted)" strokeDasharray="6 4" strokeOpacity={0.35} />
+                    <ReferenceLine y={1} label="Perfect" stroke="var(--safe)" strokeDasharray="4 4" strokeOpacity={0.3} />
                     <Line
                       type="monotone"
                       dataKey="tpr"
@@ -936,7 +938,10 @@ export default function ResearchDashboardPage() {
                           borderRadius: 8,
                           fontSize: 11
                         }}
-                        formatter={(value: number) => value.toFixed(3)}
+                        formatter={(value) => {
+          const num = typeof value === "number" ? value : Number(value);
+          return Number.isFinite(num) ? num.toFixed(3) : "0.000";
+        }}
                       />
                       <ReferenceLine x={fullSystemF1} stroke="var(--brand)" strokeDasharray="4 4" strokeWidth={1.5} />
                       <Bar dataKey="f1" fill="var(--brand)" radius={[0, 4, 4, 0]} />
