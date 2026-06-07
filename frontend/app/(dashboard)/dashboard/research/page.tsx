@@ -569,6 +569,15 @@ export default function ResearchDashboardPage() {
     return { fpr, tpr, baseline: fpr };
   });
 
+  // Ablation bar chart data
+  const ablationRows = ablation?.module_ablation || [];
+  const fullSystemF1 = (ablationRows.find((r: ModuleAblation) => r.delta_f1 === 0) || { f1: 0.885 }).f1;
+  const ablationChartData = ablationRows.map((r: ModuleAblation) => ({
+    config: r.configuration?.replace(" System", "") || r.configuration,
+    f1: r.f1 || 0,
+    full: r.delta_f1 === 0
+  })).reverse();
+
   // Prepare shap data for SHAP tab
   const activeModuleShap = shap?.[activeModule] || [];
   const maxShapVal = Math.max(...activeModuleShap.map((f: ShapFeature) => f.mean_abs_shap), 1);
@@ -907,6 +916,36 @@ export default function ResearchDashboardPage() {
                     </tbody>
                   </table>
                 </div>
+              </GlassCard>
+
+              {/* Ablation Bar Chart */}
+              <GlassCard className="space-y-4">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-text-secondary mb-3">
+                  F1 Score by Configuration
+                </h3>
+                <div className="h-[280px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={ablationChartData} layout="vertical" margin={{ top: 5, right: 20, left: 90, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" opacity={0.3} />
+                      <XAxis type="number" domain={[0.7, 1.0]} stroke="var(--color-text-muted)" fontSize={10} />
+                      <YAxis type="category" dataKey="config" stroke="var(--color-text-muted)" fontSize={10} width={85} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "var(--color-surface)",
+                          borderColor: "var(--color-border)",
+                          borderRadius: 8,
+                          fontSize: 11
+                        }}
+                        formatter={(value: number) => value.toFixed(3)}
+                      />
+                      <ReferenceLine x={fullSystemF1} stroke="var(--brand)" strokeDasharray="4 4" strokeWidth={1.5} />
+                      <Bar dataKey="f1" fill="var(--brand)" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <p className="text-[9px] text-text-muted text-center">
+                  Dashed line = Full System F1 ({fullSystemF1?.toFixed(3)})
+                </p>
               </GlassCard>
 
               {/* SMOTE Balanced vs Imbalanced */}
