@@ -135,7 +135,7 @@ export default function PhishShieldPage() {
                 if (error) setError(null);
               }}
               placeholder="https://..."
-              className="w-full bg-transparent pl-11 pr-36 py-3.5 text-sm font-sans font-semibold text-[var(--text-1)] placeholder:text-[var(--text-4)] focus:outline-none"
+              className="w-full bg-transparent pl-11 pr-36 py-3.5 text-sm font-sans text-[var(--text-1)] placeholder:text-[var(--text-4)] focus:outline-none"
               disabled={isScanning}
             />
             <button
@@ -165,15 +165,15 @@ export default function PhishShieldPage() {
         </form>
 
         {/* Quick Test Chips */}
-        <div className="flex flex-wrap items-center justify-center gap-2 mt-4 text-[12px] font-sans text-[var(--text-4)]">
-          <span className="font-semibold">Try:</span>
+        <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-4)]">Try:</span>
           <button
             type="button"
             onClick={() => {
               setUrlInput("hdfc-secure-login.tk");
               setError(null);
             }}
-            className="px-2.5 py-1 rounded-[var(--r-full)] bg-[var(--surface-3)] text-[var(--text-2)] hover:bg-[var(--border-2)] font-semibold transition-all cursor-pointer"
+            className="px-2.5 py-1 rounded-[var(--r-full)] bg-[var(--surface-3)] text-[var(--text-2)] hover:bg-[var(--border-2)] font-mono text-xs transition-all cursor-pointer"
           >
             hdfc-secure-login.tk
           </button>
@@ -183,7 +183,7 @@ export default function PhishShieldPage() {
               setUrlInput("chase-security-verify.net");
               setError(null);
             }}
-            className="px-2.5 py-1 rounded-[var(--r-full)] bg-[var(--surface-3)] text-[var(--text-2)] hover:bg-[var(--border-2)] font-semibold transition-all cursor-pointer"
+            className="px-2.5 py-1 rounded-[var(--r-full)] bg-[var(--surface-3)] text-[var(--text-2)] hover:bg-[var(--border-2)] font-mono text-xs transition-all cursor-pointer"
           >
             chase-security-verify.net
           </button>

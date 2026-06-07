@@ -768,9 +768,9 @@ export default function FraudDnaPage() {
                                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--ai-border)] pb-3">
                                     <div>
                                       <span className="text-[9px] font-bold text-[var(--ai-text)] uppercase tracking-wider block">
-                                        Campaign Name
+                                        Operation
                                       </span>
-                                      <h4 className="text-sm font-bold text-[var(--text-1)] font-mono">
+                                      <h4 className="text-lg text-[var(--text-1)]" style={{ fontFamily: "var(--font-display), serif" }}>
                                         {aiCampaigns[camp.campaign_id].campaign_name}
                                       </h4>
                                     </div>
