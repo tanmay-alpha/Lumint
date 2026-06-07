@@ -8,6 +8,13 @@ router = APIRouter(prefix="/api/research", tags=["research"])
 
 REPORTS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "reports"))
 
+# Feature name mapping for display
+try:
+    from ml.features.feature_names import get_readable_feature_name
+except ImportError:
+    def get_readable_feature_name(module: str, name: str) -> str:
+        return name.replace("_", " ").title()
+
 # Pydantic Schemas
 class MetricPoint(BaseModel):
     metric: str
@@ -228,11 +235,20 @@ def get_shap():
         with open(upi_path, "r", encoding="utf-8") as f:
             upi_data = json.load(f)
             
-        # Extract top 10 features
+        # Extract top 10 features and map names to readable
+        def map_features(features, module):
+            return [
+                {
+                    **f,
+                    "name": get_readable_feature_name(module, f["name"])
+                }
+                for f in features[:10]
+            ]
+
         return {
-            "doc": doc_data.get("top_features", [])[:10],
-            "phish": phish_data.get("top_features", [])[:10],
-            "upi": upi_data.get("top_features", [])[:10]
+            "doc": map_features(doc_data.get("top_features", []), "doc"),
+            "phish": map_features(phish_data.get("top_features", []), "phish"),
+            "upi": map_features(upi_data.get("top_features", []), "upi")
         }
     except Exception as e:
         raise HTTPException(
