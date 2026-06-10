@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
+import { wsOrigin } from "../lib/config";
 
 export interface ThreatEvent {
   event_id: string;
@@ -30,25 +31,20 @@ export function useThreatStream(simulate = false, simulationRate = 1.0) {
     }
 
     setStatus("connecting");
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    
-    // Derive WS host from NEXT_PUBLIC_API_URL (strip http(s):// prefix)
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-    let host: string;
-    if (apiUrl) {
-      // Convert https://api.example.com  → api.example.com
-      //         http://localhost:8000    → localhost:8000
-      host = apiUrl.replace(/^https?:\/\//, "");
-    } else {
-      // Hard fallback: check NEXT_PUBLIC_WS_HOST or default to localhost
-      host = process.env.NEXT_PUBLIC_WS_HOST || "localhost:8000";
+    const wsBase = wsOrigin();
+    if (!wsBase) {
+      // No backend configured (deployed demo without NEXT_PUBLIC_API_URL):
+      // mark disconnected and skip the WebSocket connection entirely so the
+      // browser doesn't spam wss://localhost:8000 errors.
+      setStatus("disconnected");
+      return;
     }
-    
-    const path = simulate 
-      ? `/ws/threats/simulate?rate=${simulationRate}` 
+
+    const path = simulate
+      ? `/ws/threats/simulate?rate=${simulationRate}`
       : "/ws/threats";
-      
-    const url = `${protocol}//${host}${path}`;
+
+    const url = `${wsBase}${path}`;
     
     const ws = new WebSocket(url);
     wsRef.current = ws;

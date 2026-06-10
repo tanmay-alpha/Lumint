@@ -1,6 +1,5 @@
 import { CampaignsResponse, GraphResponse, ThreatSummary } from "../types";
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { apiBaseUrl } from "../config";
 
 const MOCK_CAMPAIGNS: CampaignsResponse = {
   total_campaigns: 2,
@@ -120,7 +119,12 @@ const MOCK_SUMMARY: ThreatSummary = {
 
 export const fraudDnaApi = {
   getCampaigns: async (): Promise<CampaignsResponse> => {
-    const url = `${BASE_URL}/api/fraud-dna/campaigns`;
+    const base = apiBaseUrl();
+    if (!base) {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      return MOCK_CAMPAIGNS;
+    }
+    const url = `${base}/api/fraud-dna/campaigns`;
     try {
       const response = await fetch(url, { signal: AbortSignal.timeout(4000) });
       if (!response.ok) throw new Error("HTTP Error");
@@ -133,7 +137,12 @@ export const fraudDnaApi = {
   },
 
   getGraph: async (): Promise<GraphResponse> => {
-    const url = `${BASE_URL}/api/fraud-dna/graph`;
+    const base = apiBaseUrl();
+    if (!base) {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      return MOCK_GRAPH;
+    }
+    const url = `${base}/api/fraud-dna/graph`;
     try {
       const response = await fetch(url, { signal: AbortSignal.timeout(4000) });
       if (!response.ok) throw new Error("HTTP Error");
@@ -146,7 +155,12 @@ export const fraudDnaApi = {
   },
 
   getThreatSummary: async (): Promise<ThreatSummary> => {
-    const url = `${BASE_URL}/api/fraud-dna/threat-summary`;
+    const base = apiBaseUrl();
+    if (!base) {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      return MOCK_SUMMARY;
+    }
+    const url = `${base}/api/fraud-dna/threat-summary`;
     try {
       const response = await fetch(url, { signal: AbortSignal.timeout(4000) });
       if (!response.ok) throw new Error("HTTP Error");
@@ -159,7 +173,12 @@ export const fraudDnaApi = {
   },
 
   recluster: async (): Promise<CampaignsResponse> => {
-    const url = `${BASE_URL}/api/fraud-dna/recluster`;
+    const base = apiBaseUrl();
+    if (!base) {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      return MOCK_CAMPAIGNS;
+    }
+    const url = `${base}/api/fraud-dna/recluster`;
     try {
       const response = await fetch(url, { method: "POST", signal: AbortSignal.timeout(4000) });
       if (!response.ok) throw new Error("HTTP Error");

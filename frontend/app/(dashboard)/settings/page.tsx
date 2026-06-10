@@ -5,6 +5,7 @@ import { Settings, Info, Database, Zap, ExternalLink, Sun, Moon, Monitor, CheckC
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Button } from "@/components/ui/Button";
 import { motion } from "framer-motion";
+import { apiBaseUrl } from "@/lib/config";
 
 type Theme = "light" | "dark" | "system";
 
@@ -34,7 +35,12 @@ export default function SettingsPage() {
     setGroqStatus("testing");
     const start = Date.now();
     try {
-      const res = await fetch("http://localhost:8000/api/health");
+      const base = apiBaseUrl();
+      if (!base) {
+        setGroqStatus("error");
+        return;
+      }
+      const res = await fetch(`${base}/api/health`);
       const latency = Date.now() - start;
       if (res.ok) {
         setGroqStatus("success");
@@ -52,7 +58,12 @@ export default function SettingsPage() {
     const checkDiagnostics = async () => {
       const start = Date.now();
       try {
-        const res = await fetch("http://localhost:8000/api/health");
+        const base = apiBaseUrl();
+        if (!base) {
+          setDiagnostics((prev) => ({ ...prev, backend: { status: "offline" } }));
+          return;
+        }
+        const res = await fetch(`${base}/api/health`);
         setDiagnostics((prev) => ({
           ...prev,
           backend: { status: res.ok ? "online" : "offline", latency: Date.now() - start },

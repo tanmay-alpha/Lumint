@@ -1,13 +1,12 @@
-import { 
-  StatsResponse, 
-  RecentEventsResponse, 
-  CampaignsResponse, 
-  GraphResponse, 
-  ThreatSummaryResponse, 
+import {
+  StatsResponse,
+  RecentEventsResponse,
+  CampaignsResponse,
+  GraphResponse,
+  ThreatSummaryResponse,
   RecentEvent
 } from "@/types";
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { apiBaseUrl } from "./config";
 
 // State to track if we are in live or mock mode
 export let isLiveMode = false;
@@ -147,11 +146,22 @@ export const mockStats: StatsResponse = {
 };
 
 export async function apiRequest<T>(
-  path: string, 
-  options?: RequestInit, 
+  path: string,
+  options?: RequestInit,
   mockGenerator?: () => T
 ): Promise<T> {
-  const url = `${BASE_URL}${path}`;
+  const base = apiBaseUrl();
+  if (!base) {
+    // No backend configured (e.g. deployed site without NEXT_PUBLIC_API_URL) —
+    // skip the network round-trip and go straight to mock.
+    if (mockGenerator) {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      setLiveMode(false);
+      return mockGenerator();
+    }
+    throw new Error(`No API base URL configured; cannot reach ${path}`);
+  }
+  const url = `${base}${path}`;
   try {
     const response = await fetch(url, {
       ...options,

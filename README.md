@@ -122,6 +122,13 @@ Install dependencies:
 npm install
 ```
 
+(Optional) configure the backend URL — copy the example and edit:
+```bash
+cp .env.example .env.local
+# then set NEXT_PUBLIC_API_URL=http://localhost:8000 (or your deployed backend)
+```
+If `NEXT_PUBLIC_API_URL` is unset, the frontend will default to `http://localhost:8000` when running on localhost, and gracefully fall back to mock data on any other host (e.g. a deployed Vercel preview without a backend).
+
 Start the Next.js development server:
 ```bash
 npm run dev

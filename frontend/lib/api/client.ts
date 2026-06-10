@@ -5,8 +5,7 @@ import {
   IndicatorSummary,
   HealthResponse
 } from "../types";
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { apiBaseUrl } from "../config";
 
 // Mock Fallback generators to simulate responses when backend is offline
 const MOCK_STATS: DashboardStats = {
@@ -111,7 +110,15 @@ export async function fetchApi<T>(
   options?: RequestInit,
   mockFallback?: T
 ): Promise<T> {
-  const url = `${BASE_URL}${path}`;
+  const base = apiBaseUrl();
+  if (!base) {
+    if (mockFallback !== undefined) {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      return mockFallback;
+    }
+    throw new Error(`No API base URL configured; cannot reach ${path}`);
+  }
+  const url = `${base}${path}`;
   try {
     const response = await fetch(url, {
       ...options,

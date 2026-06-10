@@ -1,6 +1,5 @@
 import { PhishingAnalysisResult } from "../types";
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { apiBaseUrl } from "../config";
 
 const MOCK_PHISHING_RESULT: PhishingAnalysisResult = {
   url: "https://chase-security-verify.net/signin",
@@ -22,7 +21,27 @@ const MOCK_PHISHING_RESULT: PhishingAnalysisResult = {
 
 export const phishingApi = {
   checkUrl: async (url: string): Promise<PhishingAnalysisResult> => {
-    const apiEndpoint = `${BASE_URL}/api/phishing/check`;
+    const base = apiBaseUrl();
+    if (!base) {
+      // No backend configured (deployed demo without NEXT_PUBLIC_API_URL):
+      // skip network and return a clean/safe result so the UI works offline.
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (url.includes("google.com") || url.includes("github.com")) {
+        return {
+          url,
+          normalized_url: url.replace("https://", "").replace("http://", ""),
+          domain: url.split("/")[2] || url,
+          risk_score: 5,
+          risk_level: "CLEAN",
+          triggered_rules: [],
+          domain_similarity_matches: [],
+          phishing_fingerprint: null,
+          message: "Domain verified as clean. No threat indicators triggered."
+        };
+      }
+      return { ...MOCK_PHISHING_RESULT, url };
+    }
+    const apiEndpoint = `${base}/api/phishing/check`;
 
     try {
       const response = await fetch(apiEndpoint, {

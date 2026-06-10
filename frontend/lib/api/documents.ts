@@ -1,6 +1,5 @@
 import { DocumentAnalysisResult } from "../types";
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { apiBaseUrl } from "../config";
 
 const MOCK_ANALYSIS_RESULT: DocumentAnalysisResult = {
   doc_id: "doc-89a12b",
@@ -51,7 +50,12 @@ const MOCK_ANALYSIS_RESULT: DocumentAnalysisResult = {
 
 export const documentApi = {
   analyzeDocument: async (file: File): Promise<DocumentAnalysisResult> => {
-    const url = `${BASE_URL}/api/documents/analyze`;
+    const base = apiBaseUrl();
+    if (!base) {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      return MOCK_ANALYSIS_RESULT;
+    }
+    const url = `${base}/api/documents/analyze`;
     const formData = new FormData();
     formData.append("file", file);
 
