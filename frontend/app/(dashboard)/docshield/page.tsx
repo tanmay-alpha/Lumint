@@ -182,6 +182,12 @@ export default function DocShieldPage() {
                 </Card>
               </motion.div>
             ) : result ? (
+              <div
+                aria-live="polite"
+                aria-atomic="true"
+                role="region"
+                aria-label="DocShield analysis result"
+              >
               <motion.div
                 key="results-box"
                 initial={{ opacity: 0, y: 15 }}
@@ -551,6 +557,7 @@ export default function DocShieldPage() {
                   )}
                 </div>
               </motion.div>
+              </div>
             ) : (
               <motion.div
                 key="empty-box"

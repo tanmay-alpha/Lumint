@@ -207,6 +207,13 @@ export default function PhishShieldPage() {
             </p>
           </motion.div>
         ) : result ? (
+          <div
+            aria-live="polite"
+            aria-atomic="true"
+            role="region"
+            aria-label="PhishShield analysis result"
+            className="contents"
+          >
           <motion.div
             key="scan-result"
             initial={{ opacity: 0, y: 15 }}
@@ -482,6 +489,7 @@ export default function PhishShieldPage() {
               </div>
             </div>
           </motion.div>
+          </div>
         ) : (
           <motion.div
             key="empty-scan-state"

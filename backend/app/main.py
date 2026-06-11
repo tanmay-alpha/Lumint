@@ -1,11 +1,31 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+import uuid
 from app.config import settings
 from app.database import engine, Base
 from app.models.models import UPIShieldEvent, Case, ThreatFeedAlert  # Ensure models are imported for metadata registration
 from app.lifespan import lifespan
 from app.routers import health, documents, fraud_dna, phishing, dashboard, ai, upi, cases, threats, fusion, research, export, stream_router
 from app.routers.probes import router as probes_router
+
+
+class RequestIDMiddleware(BaseHTTPMiddleware):
+    """Attach a stable request id to every response and the request scope.
+
+    Honours an inbound ``X-Request-ID`` header (so a frontend or upstream
+    proxy can correlate) and otherwise generates a fresh UUID4. The id is
+    echoed back on the response as ``X-Request-ID`` and is also available
+    to downstream handlers via ``request.state.request_id``.
+    """
+
+    async def dispatch(self, request, call_next):
+        request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+        request.state.request_id = request_id
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = request_id
+        return response
+
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -15,6 +35,8 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan,
 )
+
+app.add_middleware(RequestIDMiddleware)
 
 app.add_middleware(
     CORSMiddleware,

@@ -77,6 +77,43 @@ def parse_vpas(text: str) -> List[str]:
     text_clean = text.lower()
     return re.findall(r'\b[a-zA-Z0-9.\-_]+@[a-zA-Z0-9]+\b', text_clean)
 
+
+# Layout keywords that, when followed by a VPA, identify it as the *payee*
+# (i.e. the party being paid). UPI receipts typically label the recipient
+# with "Paid to" or "To:" or "Received by". We use these to disambiguate
+# the sender-vs-receiver VPAs so that "payee_vpa" reflects the right one.
+_PAYEE_LABEL_KEYWORDS = ("paid to", "to:", "received by", "credited to")
+
+
+def select_payee_vpa(text: str, vpas: List[str]) -> Optional[str]:
+    """
+    Pick the *payee* VPA from a list using layout cues.
+
+    Strategy:
+      1. If the OCR text contains a "Paid to"/"To:"/"Received by"/"Credited to"
+         label, prefer the first VPA appearing *after* that label — that's
+         almost always the receiver on a UPI receipt.
+      2. Fall back to the last VPA in the list. On a typical PhonePe/GPay
+         receipt the sender VPA appears at the top and the receiver VPA
+         near the bottom near the amount line, so the last VPA is a
+         reasonable default when no label is found.
+      3. Return None if there are no VPAs.
+    """
+    if not vpas:
+        return None
+
+    text_lower = text.lower()
+    for keyword in _PAYEE_LABEL_KEYWORDS:
+        idx = text_lower.find(keyword)
+        if idx < 0:
+            continue
+        tail = text_lower[idx:]
+        for vpa in vpas:
+            if vpa.lower() in tail:
+                return vpa
+
+    return vpas[-1]
+
 def _is_upi_screenshot(ocr_text: str) -> bool:
     """
     Gate check: returns True only if OCR text contains enough UPI signals
@@ -121,6 +158,7 @@ _NOT_UPI_RESULT_TEMPLATE = {
     "payee_vpa": None,
     "sender_upi_id": "N/A",
     "receiver_upi_id": "N/A",
+    "score_source": "heuristic",
     "ocr": {"text": "", "confidence": 0.0, "method": "none", "warnings": []},
     "ela": {
         "ela_score": 0,
@@ -224,9 +262,9 @@ def analyze_upi_screenshot(image_path: Path, custom_ocr_text: Optional[str] = No
     # 4. Extract Amount & Payee VPA
     amount_val = parse_amount(ocr_text)
     vpas = parse_vpas(ocr_text)
-    payee_vpa = vpas[1] if len(vpas) > 1 else (vpas[0] if len(vpas) > 0 else None)
+    payee_vpa = select_payee_vpa(ocr_text, vpas)
     sender_upi_id = vpas[0] if len(vpas) > 0 else "unknown@upi"
-    receiver_upi_id = vpas[1] if len(vpas) > 1 else "unknown@merchant"
+    receiver_upi_id = payee_vpa if payee_vpa else (vpas[1] if len(vpas) > 1 else "unknown@merchant")
     
     # 5. ELA Forensics
     ela_result = run_image_ela(image_path)
@@ -326,12 +364,15 @@ def analyze_upi_screenshot(image_path: Path, custom_ocr_text: Optional[str] = No
         
     # 9. Try using trained ML model if available
     feature_contributions = []
+    score_source = "heuristic"
+    registry = None
     try:
         from ml.registry import get_registry
         from ml.features.upi_features import extract_upi_features, get_feature_names
 
         registry = get_registry()
         if registry.is_available("upi"):
+            score_source = "ml"
             temp_result = {
                 "forgery_score": forgery_score,
                 "utr": primary_utr,
@@ -373,7 +414,7 @@ def analyze_upi_screenshot(image_path: Path, custom_ocr_text: Optional[str] = No
         except Exception:
             feature_contributions = []
 
-    return {
+    result = {
         "analysis_status": "completed",
         "forgery_score": forgery_score,
         "verdict": verdict,
@@ -383,6 +424,7 @@ def analyze_upi_screenshot(image_path: Path, custom_ocr_text: Optional[str] = No
         "payee_vpa": payee_vpa,
         "sender_upi_id": sender_upi_id,
         "receiver_upi_id": receiver_upi_id,
+        "score_source": score_source,
         "ocr": ocr_result,
         "ela": ela_result,
         "font": font_result,
@@ -391,3 +433,5 @@ def analyze_upi_screenshot(image_path: Path, custom_ocr_text: Optional[str] = No
         "feature_contributions": feature_contributions,
         "warnings": warnings
     }
+
+    return result

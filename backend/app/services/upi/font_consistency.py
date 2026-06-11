@@ -34,10 +34,29 @@ def check_font_consistency(image_path: Path, ocr_text: Optional[str] = None) -> 
                 "height_variance": None,
                 "warnings": ["Failed to load image via OpenCV"]
             }
-            
-        # Threshold to get text-like structures (dark text on light bg or vice versa)
-        # We try basic thresholding
-        _, thresh = cv2.threshold(img, 127, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
+
+        # Adaptive Gaussian thresholding produces a much cleaner text mask
+        # than the previous global Otsu cutoff, especially on real-world
+        # UPI receipts which mix bright (white card) and dark (shadow/
+        # gradient) regions. A single global threshold collapses the
+        # shadow into "text" and swallows real characters in highlights;
+        # the local 11x11 Gaussian kernel keeps each character sharply
+        # defined. We invert so that text = white on black, which is the
+        # convention cv2.findContours expects when looking for blobs.
+        binary = cv2.adaptiveThreshold(
+            img,
+            255,
+            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv2.THRESH_BINARY_INV,
+            11,
+            2,
+        )
+
+        # Light morphology to close 1-pixel gaps inside glyphs (e.g. the
+        # counter of an "e" or "o") so the connected-components pass below
+        # treats them as a single blob instead of two adjacent ones.
+        kernel = np.ones((2, 2), dtype=np.uint8)
+        thresh = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)
         
         # Find contours
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)

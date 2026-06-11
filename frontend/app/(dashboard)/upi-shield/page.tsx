@@ -298,6 +298,12 @@ export default function UPIShieldPage() {
 
           {/* Results panel */}
           {result && !uploading && (
+            <div
+              aria-live="polite"
+              aria-atomic="true"
+              role="region"
+              aria-label="UPI Shield analysis result"
+            >
             <motion.div
               initial="hidden"
               animate="visible"
@@ -623,6 +629,7 @@ export default function UPIShieldPage() {
                 </motion.div>
               )}
             </motion.div>
+            </div>
           )}
 
           {/* Empty state (UPI Shield) */}
