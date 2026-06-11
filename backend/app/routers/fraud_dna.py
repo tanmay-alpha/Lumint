@@ -1,9 +1,10 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from app.dependencies.auth import get_current_user
 from app.services.fraud_dna.store import load_all
 from app.services.fraud_dna.clusterer import run_clustering, build_graph
 from app.schemas.fraud_dna import CampaignsResponse, GraphResponse
 
-router = APIRouter(prefix="/api/fraud-dna", tags=["fraud-dna"])
+router = APIRouter(prefix="/api/fraud-dna", tags=["fraud-dna"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("/fingerprints")

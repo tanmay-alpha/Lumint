@@ -3,10 +3,11 @@ from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisco
 from sqlalchemy.orm import Session
 from typing import List, Set, Optional
 from app.database import get_db
+from app.dependencies.auth import get_current_user
 from app.models.models import ThreatFeedAlert
 from app.schemas.threats import ThreatFeedCreate, ThreatFeedResponse
 
-router = APIRouter(prefix="/api/threats", tags=["threat-feed"])
+router = APIRouter(prefix="/api/threats", tags=["threat-feed"], dependencies=[Depends(get_current_user)])
 
 # Active WebSocket connections list
 class ConnectionManager:

@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from app.dependencies.auth import get_current_user
 from app.schemas.fusion import FusionRequest, FusionResponse
 from app.core.fusion import compute_lumint_score
 
-router = APIRouter(prefix="/api/fusion", tags=["fusion"])
+router = APIRouter(prefix="/api/fusion", tags=["fusion"], dependencies=[Depends(get_current_user)])
 
 @router.post("/score", response_model=FusionResponse)
 def get_fusion_score(body: FusionRequest):

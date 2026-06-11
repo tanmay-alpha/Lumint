@@ -7,12 +7,13 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, BackgroundTasks
 from sqlalchemy.orm import Session
 from app.database import get_db
+from app.dependencies.auth import get_current_user
 from app.models.models import UPIShieldEvent
 from app.schemas.upi import UPIAnalyzeResponse, UTRVerificationResponse, QRScanResponse
 from ai.upi_ai import analyze_upi_screenshot_ai
 from app.services.upi.analyzer import analyze_upi_screenshot
 
-router = APIRouter(prefix="/api/upi", tags=["upi-shield"])
+router = APIRouter(prefix="/api/upi", tags=["upi-shield"], dependencies=[Depends(get_current_user)])
 
 MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10MB
 

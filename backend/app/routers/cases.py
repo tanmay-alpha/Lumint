@@ -2,11 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from app.database import get_db
+from app.dependencies.auth import get_current_user
 from app.models.models import Case
 from app.schemas.cases import CaseCreate, CaseUpdate, CaseResponse
 from ai.client import ask_groq
 
-router = APIRouter(prefix="/api/cases", tags=["cases"])
+router = APIRouter(prefix="/api/cases", tags=["cases"], dependencies=[Depends(get_current_user)])
 
 @router.post("", response_model=CaseResponse)
 def create_case(body: CaseCreate, db: Session = Depends(get_db)):

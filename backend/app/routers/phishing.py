@@ -1,16 +1,20 @@
 import uuid
+import logging
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from pydantic import BaseModel, Field, field_validator
 
+from app.dependencies.auth import get_current_user
 from app.services.phishshield.url_analyzer import analyze_url
 from app.services.phishshield.risk_scorer import score_url
 from app.services.fraud_dna.store import save_fingerprint
 from app.schemas.phishing import PhishingCheckResponse
+from app.core.event_publisher import publish_threat_event
 
-router = APIRouter(prefix="/api/phishing", tags=["phishing"])
+logger = logging.getLogger("lumint.routers.phishing")
+router = APIRouter(prefix="/api/phishing", tags=["phishing"], dependencies=[Depends(get_current_user)])
 
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks
@@ -105,8 +109,12 @@ def _analyze_single(raw: str) -> PhishingCheckResponse:
         }
         try:
             save_fingerprint(fingerprint)
-        except Exception:
-            pass
+            logger.info(f"Fingerprint saved for URL: {analysis['domain']}")
+        except Exception as e:
+            logger.error(
+                f"Failed to save fingerprint for URL {analysis['domain']}: {e}",
+                exc_info=True
+            )
 
     return PhishingCheckResponse(
         url=raw,

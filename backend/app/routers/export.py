@@ -2,17 +2,18 @@ import io
 import os
 import json
 import datetime
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.responses import StreamingResponse
 from typing import List, Dict, Any
 
+from app.dependencies.auth import get_current_user
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, KeepTogether
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.pdfgen import canvas
 
-router = APIRouter(prefix="/api/export", tags=["export"])
+router = APIRouter(prefix="/api/export", tags=["export"], dependencies=[Depends(get_current_user)])
 
 REPORTS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "reports"))
 

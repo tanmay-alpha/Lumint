@@ -1,10 +1,12 @@
 import json
 import os
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel
 from typing import Dict, List, Any, Optional
 
-router = APIRouter(prefix="/api/research", tags=["research"])
+from app.dependencies.auth import get_current_user
+
+router = APIRouter(prefix="/api/research", tags=["research"], dependencies=[Depends(get_current_user)])
 
 REPORTS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "reports"))
 

@@ -2,12 +2,13 @@ import asyncio
 import random
 import uuid
 import datetime
-from fastapi import WebSocket, WebSocketDisconnect, APIRouter
+from fastapi import WebSocket, WebSocketDisconnect, APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
+from app.dependencies.auth import get_current_user
 from app.models.models import ThreatFeedAlert, UPIShieldEvent
 
-router = APIRouter(prefix="/ws", tags=["Streaming"])
+router = APIRouter(prefix="/ws", tags=["Streaming"], dependencies=[Depends(get_current_user)])
 
 class ThreatStreamManager:
     """

@@ -1,14 +1,15 @@
 import uuid
 from pathlib import Path
-from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks
+from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Depends
 from typing import Optional
+from app.dependencies.auth import get_current_user
 from app.schemas.document import DocumentAnalysisResponse
 from app.services.docshield.analyzer import analyze_pdf_document, analyze_image_document
 from app.services.fraud_dna.fingerprinter import generate_fingerprint
 from app.services.fraud_dna.store import save_fingerprint, STORE_PATH
 from app.core.event_publisher import publish_threat_event
 
-router = APIRouter(prefix="/api/documents", tags=["documents"])
+router = APIRouter(prefix="/api/documents", tags=["documents"], dependencies=[Depends(get_current_user)])
 
 # Stable path: backend/uploads/ always, regardless of working directory
 _BACKEND_DIR = Path(__file__).resolve().parents[2]

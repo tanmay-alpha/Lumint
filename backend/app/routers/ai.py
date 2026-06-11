@@ -1,6 +1,7 @@
 import logging
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 
+from app.dependencies.auth import get_current_user
 from app.schemas.ai import (
     DocumentAIRequest,
     DocumentAIResponse,
@@ -14,7 +15,7 @@ from ai.phishshield_ai import analyze_phishing_ai
 from ai.frauddna_ai import analyze_campaign_ai
 
 logger = logging.getLogger("lumint.routers.ai")
-router = APIRouter(prefix="/api/ai", tags=["ai"])
+router = APIRouter(prefix="/api/ai", tags=["ai"], dependencies=[Depends(get_current_user)])
 
 
 @router.post("/document", response_model=DocumentAIResponse)
