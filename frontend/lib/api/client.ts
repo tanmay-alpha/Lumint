@@ -135,7 +135,7 @@ export async function fetchApi<T>(
     const response = await fetch(url, {
       ...options,
       headers,
-      signal: AbortSignal.timeout()
+      signal: AbortSignal.timeout(4000)
     });
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
