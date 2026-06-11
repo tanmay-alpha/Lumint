@@ -180,3 +180,69 @@ Research artifacts, Ablation studies (R11), and Baseline benchmarks (R10) are lo
 - **Ablation Tables**: `backend/reports/r11_ablation_tables.md`
 - **Comparison Table**: `backend/reports/r12_comparison_table.md`
 - **Cross-Dataset Results**: `backend/reports/r12_cross_dataset_table.md`
+
+---
+
+## 🚀 Deployment
+
+Lumint is designed to be deployable with minimal configuration. The repository ships with:
+
+- **`render.yaml`** — Render Blueprint that provisions the API + a managed Postgres database in one click.
+- **`backend/Dockerfile.prod`** — Production Dockerfile (tesseract + libpq + gunicorn workers, non-root user, `/healthz` healthcheck).
+- **`backend/scripts/smoke_test.sh`** — End-to-end smoke test (boots uvicorn, hits `/healthz`, `/readyz`, `/openapi.json`, CORS header).
+- **`Makefile`** — Common developer entry points (`make install`, `make test`, `make smoke`, `make build`).
+
+### Health endpoints
+
+| Path              | Purpose          | Returns                                    |
+| ----------------- | ---------------- | ------------------------------------------ |
+| `GET /healthz`    | Liveness         | 200 unconditionally. Process is up.        |
+| `GET /readyz`     | Readiness        | 200 when DB + ML models are usable. 503 otherwise. Reports `soft_missing` (e.g. tesseract) without flipping the status. |
+| `GET /api/health` | Legacy           | Same shape as before; preserved for back-compat. |
+
+### Deploying to Render
+
+1. Push the repo to GitHub.
+2. In the Render dashboard, click **New → Blueprint** and point it at this repo.
+3. Render reads `render.yaml`, provisions `lumint-backend` (web service) and `lumint-db` (Postgres), and wires `DATABASE_URL` automatically.
+4. After the first deploy, set `CORS_ALLOW_ORIGINS` in the Render dashboard to your deployed frontend origin (e.g. `'["https://fraud-intelligence.vercel.app"]'`).
+
+Render uses `healthCheckPath: /healthz` for liveness, so a healthy response keeps the instance in the load balancer.
+
+### Deploying with Docker (any host)
+
+```bash
+cd backend
+docker build -f Dockerfile.prod -t lumint-backend .
+docker run -p 8000:8000 --env-file .env lumint-backend
+```
+
+`Dockerfile.prod` runs as a non-root user (`app`) with `gunicorn` (2 workers, UvicornWorker) listening on `:8000`. Tesseract and libpq are pre-installed in the image.
+
+### Environment variables
+
+See `backend/.env.example` for the full list. Production-critical:
+
+| Variable               | Notes                                                                                  |
+| ---------------------- | -------------------------------------------------------------------------------------- |
+| `APP_ENV=production`   | Refuses to boot with the dev SQLite URL.                                              |
+| `DATABASE_URL`         | Postgres connection string.                                                           |
+| `CORS_ALLOW_ORIGINS`   | JSON array or comma-separated string. **Must be set in production** — no default.      |
+| `JWT_SECRET`           | Random 64-char hex. Used to sign auth tokens.                                         |
+| `GROQ_API_KEY`         | Optional. Enables the AI explainer; falls back to a template when unset.              |
+
+### Running the smoke test
+
+```bash
+make smoke
+```
+
+This boots uvicorn on `:8000`, waits for `/healthz` to be 200, then curls:
+
+1. `/healthz` (200, `{"status": "ok"}`)
+2. `/readyz` (200 with all hard checks passing)
+3. `/api/health` (200, back-compat)
+4. `/openapi.json` (valid OpenAPI doc)
+5. `/healthz` with `Origin: http://localhost:3000` (CORS header present)
+
+Exits 0 on full pass; non-zero on any failure.

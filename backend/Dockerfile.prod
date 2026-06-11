@@ -1,0 +1,48 @@
+# Production image for the Lumint FastAPI backend.
+# Build:   docker build -f backend/Dockerfile.prod -t lumint-backend:dev backend/
+# Run:     docker run -p 8000:8000 --env-file backend/.env lumint-backend:dev
+FROM python:3.11-slim AS base
+
+# System dependencies. tesseract + libpq are runtime requirements; build-essential
+# is needed for any wheel that doesn't ship a manylinux build. Cleaned up in
+# the same RUN layer to keep the image small.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        tesseract-ocr \
+        tesseract-osd \
+        libpq-dev \
+        build-essential \
+        curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user.
+RUN groupadd --system app \
+    && useradd --system --gid app --create-home --home-dir /app app
+
+WORKDIR /app
+
+# Install Python deps first (better layer caching — code changes don't bust
+# this layer).
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r /app/requirements.txt
+
+# Now copy the application code.
+COPY . /app/
+
+# Make sure the runtime user owns the app dir.
+RUN chown -R app:app /app
+USER app
+
+EXPOSE 8000
+
+# Health-check the container itself (Render will additionally probe /healthz).
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+    CMD curl -fsS http://127.0.0.1:8000/healthz || exit 1
+
+CMD ["gunicorn", "app.main:app", \
+     "-k", "uvicorn.workers.UvicornWorker", \
+     "-w", "2", \
+     "-b", "0.0.0.0:8000", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-"]

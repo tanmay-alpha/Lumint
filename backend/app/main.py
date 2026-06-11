@@ -4,6 +4,7 @@ from app.config import settings
 from app.database import engine, Base
 from app.models.models import UPIShieldEvent, Case, ThreatFeedAlert  # Ensure models are imported for metadata registration
 from app.routers import health, documents, fraud_dna, phishing, dashboard, ai, upi, cases, threats, fusion, research, export, stream_router
+from app.routers.probes import router as probes_router
 
 # Automatic database initialization
 Base.metadata.create_all(bind=engine)
@@ -19,18 +20,17 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.origins_list,
-    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
 )
 
 for router in (
-    health.router, 
-    documents.router, 
-    fraud_dna.router, 
-    phishing.router, 
-    dashboard.router, 
+    health.router,
+    documents.router,
+    fraud_dna.router,
+    phishing.router,
+    dashboard.router,
     ai.router,
     upi.router,
     cases.router,
@@ -41,6 +41,9 @@ for router in (
     stream_router.router
 ):
     app.include_router(router)
+
+# Liveness + readiness probes at root (no /api prefix).
+app.include_router(probes_router)
 
 
 

@@ -34,6 +34,16 @@ class Settings(BaseSettings):
         "https://lumint.vercel.app,"
         "https://*.vercel.app"
     )
+    # Env-driven CORS allowlist. Read from the `CORS_ALLOW_ORIGINS` env var.
+    # Accepts a JSON array (["https://a.com","https://b.com"]) OR a
+    # comma-separated string ("https://a.com,https://b.com"). When the env
+    # var is unset or empty, falls back to the localhost dev origins below.
+    # In production, set this explicitly to the deployed frontend origin(s),
+    # e.g. CORS_ALLOW_ORIGINS='["https://fraud-intelligence.vercel.app"]'
+    cors_allow_origins: list[str] = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+    ]
 
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
@@ -66,6 +76,11 @@ class Settings(BaseSettings):
 
     @property
     def origins_list(self) -> list[str]:
+        # New env-driven allowlist takes precedence when it has any entries.
+        # The legacy `ALLOWED_ORIGINS` (comma-separated string) is kept as a
+        # fallback so existing deploys that haven't migrated keep working.
+        if self.cors_allow_origins:
+            return [o.strip() for o in self.cors_allow_origins if o.strip()]
         return [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
 
 

@@ -1,0 +1,51 @@
+# Render Blueprint — Lumint backend.
+#
+# One-command deploy: push to main, Render reads render.yaml, provisions
+# `lumint-backend` (web service) + `lumint-db` (Postgres), and wires the
+# DATABASE_URL automatically.
+#
+# Why Render: free tier, native Python, persistent disks, env-var UI, and
+# the existing repo already references Render in its audit notes. No
+# Docker knowledge required to deploy — Blueprint is enough.
+
+services:
+  - type: web
+    name: lumint-backend
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: >
+      gunicorn app.main:app
+      -k uvicorn.workers.UvicornWorker
+      -w 2
+      -b 0.0.0.0:$PORT
+      --access-logfile -
+      --error-logfile -
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: lumint-db
+          property: connectionString
+      - key: CORS_ALLOW_ORIGINS
+        # Replace with the actual deployed frontend origin. JSON array form
+        # is required because the value contains a comma.
+        value: '["https://fraud-intelligence.vercel.app"]'
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ML_MODEL_PATH
+        value: /opt/render/project/src/backend/ml/models
+      - key: PYTHON_VERSION
+        value: 3.11.9
+
+databases:
+  - name: lumint-db
+    plan: free
+    databaseName: lumint
+    user: lumint
