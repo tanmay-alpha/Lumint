@@ -43,12 +43,19 @@ export const phishingApi = {
     }
     const apiEndpoint = `${base}/api/phishing/check`;
 
+    // Inject authentication header (if NEXT_PUBLIC_API_KEY is set)
+    const apiKey = process.env.NEXT_PUBLIC_API_KEY;
+    const requestHeaders: Record<string, string> = {
+      "Content-Type": "application/json"
+    };
+    if (apiKey) {
+      requestHeaders["Authorization"] = `Bearer ${apiKey}`;
+    }
+
     try {
       const response = await fetch(apiEndpoint, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: requestHeaders,
         body: JSON.stringify({ url }),
         signal: AbortSignal.timeout(6000)
       });

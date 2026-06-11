@@ -26,12 +26,20 @@ export const aiApi = {
       };
     }
     const url = `${base}/api/ai/document`;
+
+    // Inject authentication header (if NEXT_PUBLIC_API_KEY is set)
+    const apiKey = process.env.NEXT_PUBLIC_API_KEY;
+    const requestHeaders: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (apiKey) {
+      requestHeaders["Authorization"] = `Bearer ${apiKey}`;
+    }
+
     try {
       const response = await fetch(url, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: requestHeaders,
         body: JSON.stringify(forensicsResult),
         signal: AbortSignal.timeout(15000), // AI processing takes a little longer
       });
@@ -72,12 +80,20 @@ export const aiApi = {
       };
     }
     const url = `${base}/api/ai/phishing`;
+
+    // Inject authentication header (if NEXT_PUBLIC_API_KEY is set)
+    const apiKey = process.env.NEXT_PUBLIC_API_KEY;
+    const requestHeaders: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (apiKey) {
+      requestHeaders["Authorization"] = `Bearer ${apiKey}`;
+    }
+
     try {
       const response = await fetch(url, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: requestHeaders,
         body: JSON.stringify(phishingResult),
         signal: AbortSignal.timeout(15000),
       });
@@ -118,12 +134,20 @@ export const aiApi = {
       };
     }
     const url = `${base}/api/ai/campaign`;
+
+    // Inject authentication header (if NEXT_PUBLIC_API_KEY is set)
+    const apiKey = process.env.NEXT_PUBLIC_API_KEY;
+    const requestHeaders: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (apiKey) {
+      requestHeaders["Authorization"] = `Bearer ${apiKey}`;
+    }
+
     try {
       const response = await fetch(url, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: requestHeaders,
         body: JSON.stringify(campaignResult),
         signal: AbortSignal.timeout(15000),
       });

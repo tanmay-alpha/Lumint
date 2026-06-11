@@ -162,9 +162,18 @@ export async function apiRequest<T>(
     throw new Error(`No API base URL configured; cannot reach ${path}`);
   }
   const url = `${base}${path}`;
+
+  // Inject authorization header if API key is configured.
+  const apiKey = process.env.NEXT_PUBLIC_API_KEY;
+  const headers = new Headers(options?.headers);
+  if (apiKey) {
+    headers.set("Authorization", `Bearer ${apiKey}`);
+  }
+
   try {
     const response = await fetch(url, {
       ...options,
+      headers,
       // Add shorter timeout to quickly fall back to mock in local dev or Vercel
       signal: AbortSignal.timeout(3000)
     });

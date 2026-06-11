@@ -59,9 +59,17 @@ export const documentApi = {
     const formData = new FormData();
     formData.append("file", file);
 
+    // Inject authentication header (if NEXT_PUBLIC_API_KEY is set)
+    const apiKey = process.env.NEXT_PUBLIC_API_KEY;
+    const requestHeaders: Record<string, string> = {};
+    if (apiKey) {
+      requestHeaders["Authorization"] = `Bearer ${apiKey}`;
+    }
+
     try {
       const response = await fetch(url, {
         method: "POST",
+        headers: requestHeaders,
         body: formData,
         // Short timeout for fallback, but file uploads might take a bit longer
         signal: AbortSignal.timeout(10000)

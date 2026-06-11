@@ -125,8 +125,15 @@ export const fraudDnaApi = {
       return MOCK_CAMPAIGNS;
     }
     const url = `${base}/api/fraud-dna/campaigns`;
+    // Inject authentication header (if NEXT_PUBLIC_API_KEY is set)
+    const apiKey = process.env.NEXT_PUBLIC_API_KEY;
+    const requestHeaders: Record<string, string> = {};
+    if (apiKey) {
+      requestHeaders["Authorization"] = `Bearer ${apiKey}`;
+    }
+
     try {
-      const response = await fetch(url, { signal: AbortSignal.timeout(4000) });
+      const response = await fetch(url, { headers: requestHeaders, signal: AbortSignal.timeout(4000) });
       if (!response.ok) throw new Error("HTTP Error");
       return (await response.json()) as CampaignsResponse;
     } catch (error) {
@@ -143,8 +150,15 @@ export const fraudDnaApi = {
       return MOCK_GRAPH;
     }
     const url = `${base}/api/fraud-dna/graph`;
+    // Inject authentication header (if NEXT_PUBLIC_API_KEY is set)
+    const apiKey = process.env.NEXT_PUBLIC_API_KEY;
+    const requestHeaders: Record<string, string> = {};
+    if (apiKey) {
+      requestHeaders["Authorization"] = `Bearer ${apiKey}`;
+    }
+
     try {
-      const response = await fetch(url, { signal: AbortSignal.timeout(4000) });
+      const response = await fetch(url, { headers: requestHeaders, signal: AbortSignal.timeout(4000) });
       if (!response.ok) throw new Error("HTTP Error");
       return (await response.json()) as GraphResponse;
     } catch (error) {
@@ -161,8 +175,15 @@ export const fraudDnaApi = {
       return MOCK_SUMMARY;
     }
     const url = `${base}/api/fraud-dna/threat-summary`;
+    // Inject authentication header (if NEXT_PUBLIC_API_KEY is set)
+    const apiKey = process.env.NEXT_PUBLIC_API_KEY;
+    const requestHeaders: Record<string, string> = {};
+    if (apiKey) {
+      requestHeaders["Authorization"] = `Bearer ${apiKey}`;
+    }
+
     try {
-      const response = await fetch(url, { signal: AbortSignal.timeout(4000) });
+      const response = await fetch(url, { headers: requestHeaders, signal: AbortSignal.timeout(4000) });
       if (!response.ok) throw new Error("HTTP Error");
       return (await response.json()) as ThreatSummary;
     } catch (error) {
@@ -179,8 +200,15 @@ export const fraudDnaApi = {
       return MOCK_CAMPAIGNS;
     }
     const url = `${base}/api/fraud-dna/recluster`;
+    // Inject authentication header (if NEXT_PUBLIC_API_KEY is set)
+    const apiKey = process.env.NEXT_PUBLIC_API_KEY;
+    const requestHeaders: Record<string, string> = {};
+    if (apiKey) {
+      requestHeaders["Authorization"] = `Bearer ${apiKey}`;
+    }
+
     try {
-      const response = await fetch(url, { method: "POST", signal: AbortSignal.timeout(4000) });
+      const response = await fetch(url, { method: "POST", headers: requestHeaders, signal: AbortSignal.timeout(4000) });
       if (!response.ok) throw new Error("HTTP Error");
       return (await response.json()) as CampaignsResponse;
     } catch (error) {

@@ -119,10 +119,23 @@ export async function fetchApi<T>(
     throw new Error(`No API base URL configured; cannot reach ${path}`);
   }
   const url = `${base}${path}`;
+
+  // Inject Authorization header if NEXT_PUBLIC_API_KEY is configured.
+  // Mirrors the backend's LUMINT_API_KEY env var so authenticated
+  // routers (ai, cases, dashboard, documents, fraud_dna, fusion,
+  // phishing, research, threats, upi, export, stream_router) accept
+  // the request. The /api/health, /healthz, /readyz probes stay public.
+  const apiKey = process.env.NEXT_PUBLIC_API_KEY;
+  const headers = new Headers(options?.headers);
+  if (apiKey) {
+    headers.set("Authorization", `Bearer ${apiKey}`);
+  }
+
   try {
     const response = await fetch(url, {
       ...options,
-      signal: AbortSignal.timeout(3000)
+      headers,
+      signal: AbortSignal.timeout()
     });
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
