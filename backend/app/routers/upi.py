@@ -17,6 +17,27 @@ router = APIRouter(prefix="/api/upi", tags=["upi-shield"], dependencies=[Depends
 
 MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10MB
 
+def select_receiver_vpa(text: str, vpas: list) -> Optional[str]:
+    """
+    Pick the VPA that appears after a 'Paid to' / 'To:' / 'Received by' label.
+    Receipts show the payee with one of these labels above the VPA; if we
+    just took the second VPA in the text we frequently got the bank's UPI
+    handle (sender bank → 'okhdfcbank@upi') instead of the actual receiver.
+
+    Falls back to the last VPA in the list when no label is found.
+    """
+    if not vpas:
+        return None
+    text_lower = text.lower()
+    for kw in ("paid to", "to:", "received by"):
+        idx = text_lower.find(kw)
+        if idx >= 0:
+            for vpa in vpas:
+                if vpa.lower() in text_lower[idx:]:
+                    return vpa
+    return vpas[-1] if len(vpas) > 1 else None
+
+
 def parse_upi_ocr(text: str) -> dict:
     """
     Parse UTR, Sender VPA, Receiver VPA, and amount from receipt text.
@@ -28,8 +49,8 @@ def parse_upi_ocr(text: str) -> dict:
 
     # Matches standard email-like structures of UPI Virtual Payment Addresses (VPAs)
     vpa_matches = re.findall(r'[a-zA-Z0-9.\-_]+@[a-zA-Z0-9]+', text_clean)
-    sender = vpa_matches[0] if len(vpa_matches) > 0 else "unknown@upi"
-    receiver = vpa_matches[1] if len(vpa_matches) > 1 else "unknown@merchant"
+    sender = vpa_matches[0] if len(vpa_matches) > 0 else None
+    receiver = select_receiver_vpa(text_clean, vpa_matches)
 
     # Matches decimal currency values
     amount_matches = re.findall(r'(?:rs\.?|inr|amount)\s*([\d,]+(?:\.\d{2})?)', text_clean)

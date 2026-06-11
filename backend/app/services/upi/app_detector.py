@@ -17,7 +17,7 @@ def detect_upi_app(text: str, dominant_colors: Optional[List[str]] = None) -> Di
     }
     
     # PhonePe Keywords
-    phonepe_keywords = ["phonepe", "ybl", "axl", "ibl", "ybl@upi", "axl@upi", "successful"]
+    phonepe_keywords = ["phonepe", "ybl", "axl", "ibl", "ybl@upi", "axl@upi"]
     for kw in phonepe_keywords:
         if kw in text_lower:
             scores["PhonePe"] += 2
@@ -64,8 +64,10 @@ def detect_upi_app(text: str, dominant_colors: Optional[List[str]] = None) -> Di
                 scores["PhonePe"] += 3
                 signals.append(f"Color match: Purple detected ({color}) (PhonePe)")
                 
-            # GPay Blue: #4285F4 -> 66, 133, 244
-            if 40 < r < 100 and 100 < g < 160 and b > 200:
+            # GPay Blue: #4285F4 -> 66, 133, 244 (light) and
+            # #1a73e8 -> 26, 115, 232 (GPay dark mode). Widened range to
+            # cover both colour schemes.
+            if 20 < r < 120 and 100 < g < 180 and b > 180:
                 scores["GPay"] += 3
                 signals.append(f"Color match: GPay Blue detected ({color}) (GPay)")
                 

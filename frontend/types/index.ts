@@ -239,6 +239,13 @@ export interface UPIAnalysisResult {
   ai_fraud_explanation: string;
   raw_ocr_text: string | null;
   metadata_json: Record<string, unknown> | null;
+  // Real XAI contributions returned by the backend (preferred over the
+  // client-side heuristic values below).
+  feature_contributions?: Array<{
+    name: string;
+    value: string | number | boolean | null;
+    contribution: number;
+  }>;
   // Derived fields used in UI (computed client-side from heuristics)
   ela_tamper_regions?: number;
   font_consistent?: boolean;

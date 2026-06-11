@@ -72,7 +72,23 @@ const ConfidenceBar = ({ label, value }: { label: string; value: number }) => {
 };
 
 // ─── XAI features for UPI ───────────────────────────────────────────────────
+//
+// Use the backend's real XAI contributions (feature_contributions) when the
+// server has provided them. Fall back to client-side heuristics only for the
+// structural case where the server response doesn't carry SHAP values (e.g.
+// older API version or mock data).
 function buildXAIFeatures(result: UPIAnalysisResult) {
+  const backend = (result.feature_contributions || []).filter(
+    (f) => f && (f.name || (f as any).feature)
+  );
+  if (backend.length > 0) {
+    return backend.map((f) => ({
+      name: f.name || (f as any).feature,
+      value: f.value ?? "—",
+      contribution: typeof f.contribution === "number" ? f.contribution : Number(f.contribution ?? 0),
+    }));
+  }
+
   return [
     { name: "UTR format validity",      value: result.is_valid_utr ? "Valid" : "Invalid",     contribution: result.is_valid_utr ? -25.4 : 40.2 },
     { name: "Font consistency",          value: result.font_anomalies_detected ? "Anomaly" : "Consistent", contribution: result.font_anomalies_detected ? 35.8 : -20.3 },
@@ -233,9 +249,13 @@ export default function UPIShieldPage() {
             )}
 
             {error && (
-              <div className="mt-3 flex items-center gap-2 text-[12px] text-[var(--high)] bg-[var(--high-bg)] border border-[var(--high-border)]/30 rounded-lg px-4 py-3">
-                <AlertTriangle className="h-4 w-4 shrink-0" />
-                {error}
+              <div
+                role="alert"
+                aria-live="assertive"
+                className="mt-3 flex items-start gap-2 text-[12px] text-[var(--high)] bg-[var(--high-bg)] border border-[var(--high-border)]/30 rounded-lg px-4 py-3"
+              >
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>{error}</span>
               </div>
             )}
           </Card>

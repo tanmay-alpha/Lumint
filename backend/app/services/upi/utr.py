@@ -47,14 +47,17 @@ def classify_utr(value: str) -> Dict[str, Any]:
     # 3. Google Pay style: alphanumeric reference of length 10-18
     # Note: GPay often has UTR and a transaction ID. If alphanumeric and 10-18 chars, it fits.
     if 10 <= length <= 18:
-        # Check if it has both letters and numbers, or is numeric of non-12 length
-        is_alphanumeric = not norm.isdigit() and not norm.isalpha()
-        if is_alphanumeric or (norm.isdigit() and length != 12):
+        # Be specific — must have BOTH letters and digits. A pure 10-digit number
+        # used to slip into gpay_alphanumeric which is wrong (it's a generic
+        # numeric ref, not a GPay-style one).
+        has_letters = any(c.isalpha() for c in norm)
+        has_digits = any(c.isdigit() for c in norm)
+        if has_letters and has_digits:
             return {
                 "format": "gpay_alphanumeric",
                 "valid": True,
                 "confidence": 0.85,
-                "evidence": "Matches Google Pay alphanumeric transaction reference format."
+                "evidence": "Alphanumeric ref matches GPay style."
             }
             
     # 4. Generic but potentially valid UPI/UTR format (numeric but 10-18 length, or general alphanumeric)
