@@ -38,6 +38,28 @@ app = FastAPI(
 
 app.add_middleware(RequestIDMiddleware)
 
+# Security headers — applied to every response
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    """Add baseline security headers to every HTTP response.
+
+    - X-Content-Type-Options: stops MIME-sniffing attacks
+    - X-Frame-Options: stops clickjacking by refusing iframe embedding
+    - Referrer-Policy: only send the origin on cross-origin requests
+    - Permissions-Policy: deny unused powerful features (geolocation, mic, camera)
+    - Strict-Transport-Security: only on HTTPS — tells browsers to upgrade
+      all subsequent requests to HTTPS for one year
+    """
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    if request.url.scheme == "https":
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.origins_list,

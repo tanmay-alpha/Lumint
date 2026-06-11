@@ -36,15 +36,13 @@ def test_auth_uses_hmac_compare_digest():
     )
 
 
-def test_auth_hmac_compare_digest_actually_works(monkeypatch):
+def test_auth_hmac_compare_digest_actually_works(enforce_auth):
     """End-to-end: get_current_user accepts the right key and rejects wrong ones."""
     from fastapi import HTTPException
     from app.dependencies.auth import get_current_user
 
-    monkeypatch.setenv("LUMINT_API_KEY", "test-secret-key-12345")
-
     # The right key succeeds
-    user = get_current_user(authorization="Bearer test-secret-key-12345")
+    user = get_current_user(authorization="Bearer test-key-for-testing-12345")
     assert user["token_valid"] is True
 
     # A wrong key raises 401
@@ -103,25 +101,21 @@ def test_document_upload_size_limit_exists():
     )
 
 
-def test_auth_uses_hmac_at_runtime():
+def test_auth_uses_hmac_at_runtime(enforce_auth):
     """Cross-check: the actual function uses hmac.compare_digest on identical
     and differing keys. We don't measure timing here (too noisy in tests),
     just confirm the function returns the right thing for both."""
     from app.dependencies.auth import get_current_user
-    import os
 
-    os.environ["LUMINT_API_KEY"] = "abc"
     # Right key
-    assert get_current_user(authorization="Bearer abc")["token_valid"] is True
+    assert get_current_user(authorization="Bearer test-key-for-testing-12345")["token_valid"] is True
     # Wrong key (different length) — should 401
     try:
-        get_current_user(authorization="Bearer abcd")
+        get_current_user(authorization="Bearer test-key-for-testing-12345x")
     except Exception as e:
         assert getattr(e, "status_code", None) == 401
     # Wrong key (same length, different bytes) — should 401
     try:
-        get_current_user(authorization="Bearer abd")
+        get_current_user(authorization="Bearer test-key-for-testing-12346")
     except Exception as e:
         assert getattr(e, "status_code", None) == 401
-    # Clean up
-    del os.environ["LUMINT_API_KEY"]

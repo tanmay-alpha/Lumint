@@ -165,22 +165,30 @@ def train_module(
     best_model_name = max(cv_results, key=lambda k: cv_results[k]["f1"])
     print(f"\n  Best model: {best_model_name} (F1={cv_results[best_model_name]['f1']:.4f})")
 
-    # Retrain best model on full dataset (with SMOTE)
-    X_full_res, y_full_res = _apply_smote(X_scaled, y)
-    best_model = type(models_dict[best_model_name])(**models_dict[best_model_name].get_params())
-    best_model.fit(X_full_res, y_full_res)
+    # NOTE: Metrics below are computed on a held-out 20% test set, NOT the
+    # training set. This gives an honest estimate of generalization. For
+    # publication, report both the held-out test metrics AND the cross-
+    # validation scores from the loop above.
+    from sklearn.model_selection import train_test_split as _tts
+    X_tr, X_te, y_tr, y_te = _tts(
+        X_scaled, y, test_size=0.2, random_state=SEED, stratify=y
+    )
 
-    # Calibrate
+    # Retrain best model on the 80% training portion (with SMOTE)
+    X_tr_res, y_tr_res = _apply_smote(X_tr, y_tr)
+    best_model = type(models_dict[best_model_name])(**models_dict[best_model_name].get_params())
+    best_model.fit(X_tr_res, y_tr_res)
+
+    # Calibrate on the training portion
     calibrator = CalibratedClassifierCV(
         estimator=best_model, method="isotonic", cv="prefit"
     )
-    calibrator.fit(X_scaled, y)
+    calibrator.fit(X_tr, y_tr)
 
-    # Hold-out evaluation (on full set — note: for synthetic this is acceptable;
-    # for real data, do proper train/test split before calling this function)
-    y_pred_final = calibrator.predict(X_scaled)
-    y_proba_final = calibrator.predict_proba(X_scaled)[:, 1]
-    test_metrics = _evaluate(y, y_pred_final, y_proba_final)
+    # Honest held-out evaluation
+    y_pred_final = calibrator.predict(X_te)
+    y_proba_final = calibrator.predict_proba(X_te)[:, 1]
+    test_metrics = _evaluate(y_te, y_pred_final, y_proba_final)
 
     # Save artifacts
     model_path = MODELS_DIR / f"{module}_model.joblib"
@@ -201,8 +209,10 @@ def train_module(
         "best_model": best_model_name,
         "cv_results": cv_results,
         "test_set": test_metrics,
-        "n_train": int(X.shape[0]),
-        "n_test": int(X.shape[0]),
+        "n_train_full": int(X.shape[0]),     # full dataset size
+        "n_train": int(X_tr.shape[0]),        # 80% used to fit the best model
+        "n_test": int(X_te.shape[0]),         # 20% held-out for honest metrics
+        "test_set_holdout": True,             # indicates the test_set block is from a held-out split
         "n_features": int(X.shape[1]),
         "random_state": SEED,
         "timestamp": datetime.now(timezone.utc).isoformat(),
