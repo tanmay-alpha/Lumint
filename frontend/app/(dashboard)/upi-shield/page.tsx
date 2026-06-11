@@ -82,11 +82,22 @@ function buildXAIFeatures(result: UPIAnalysisResult) {
     (f) => f && (f.name || (f as any).feature)
   );
   if (backend.length > 0) {
-    return backend.map((f) => ({
-      name: f.name || (f as any).feature,
-      value: f.value ?? "—",
-      contribution: typeof f.contribution === "number" ? f.contribution : Number(f.contribution ?? 0),
-    }));
+    return backend.map((f) => {
+      // Coerce value to a string|number (the FeatureContributionItem
+      // type doesn't accept booleans/null — booleans become "Yes"/"No"
+      // and null/undefined become "—").
+      let value: string | number;
+      const v = f.value;
+      if (v === null || v === undefined) value = "—";
+      else if (typeof v === "boolean") value = v ? "Yes" : "No";
+      else value = v;
+      return {
+        name: f.name || (f as any).feature,
+        value,
+        contribution:
+          typeof f.contribution === "number" ? f.contribution : Number(f.contribution ?? 0),
+      };
+    });
   }
 
   return [
