@@ -8,6 +8,12 @@ from app.database import SessionLocal
 from app.dependencies.auth import get_current_user
 from app.models.models import ThreatFeedAlert, UPIShieldEvent
 
+# Cap inbound WebSocket messages at 1KB — the threat stream is one-way
+# (server -> client); the only client-sent text is a keep-alive ping.
+# Limiting it here prevents a malicious client from sending arbitrarily
+# large payloads to exhaust server memory or CPU.
+MAX_WS_MESSAGE_BYTES = 1024
+
 router = APIRouter(prefix="/ws", tags=["Streaming"], dependencies=[Depends(get_current_user)])
 
 class ThreatStreamManager:
@@ -92,10 +98,15 @@ async def threat_stream(websocket: WebSocket):
         for event in events:
             await websocket.send_json(event)
 
-        # Loop to keep connection open
+        # Loop to keep connection open. Inbound messages are keep-alive
+        # pings only; we cap their size to prevent a malicious client from
+        # exhausting server memory.
         while True:
-            await websocket.receive_text()
-            
+            msg = await websocket.receive_text()
+            if len(msg.encode("utf-8")) > MAX_WS_MESSAGE_BYTES:
+                await websocket.close(code=1009, reason="Message too large")
+                break
+
     except WebSocketDisconnect:
         await manager.disconnect(websocket)
     except Exception:

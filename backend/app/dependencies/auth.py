@@ -1,6 +1,7 @@
 """Authentication dependency for Lumint API."""
 from fastapi import Depends, HTTPException, Header
 from typing import Optional
+import hmac
 import os
 import logging
 
@@ -58,8 +59,11 @@ def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
     # Extract token
     token = authorization[7:]  # Remove "Bearer " prefix
 
-    # Validate (simple string comparison - not cryptographic)
-    if token != api_key:
+    # Validate using constant-time comparison to prevent timing attacks
+    # (a plain `token != api_key` leaks information about the key prefix
+    # via response latency — `hmac.compare_digest` takes the same time
+    # regardless of how many bytes match).
+    if not hmac.compare_digest(token.encode("utf-8"), api_key.encode("utf-8")):
         logger.warning("Invalid API key attempt")
         raise HTTPException(status_code=401, detail="Invalid API key")
 
