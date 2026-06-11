@@ -231,6 +231,27 @@ See `backend/.env.example` for the full list. Production-critical:
 | `JWT_SECRET`           | Random 64-char hex. Used to sign auth tokens.                                         |
 | `GROQ_API_KEY`         | Optional. Enables the AI explainer; falls back to a template when unset.              |
 
+### CORS Configuration
+
+The backend's CORS allowlist defaults to:
+- `http://localhost:3000` (Next.js default)
+- `http://localhost:5173` (Vite default)
+
+If you run the frontend on a different port, you'll get CORS errors. To fix this, create a `backend/.env` file with:
+
+```bash
+# For Next.js on port 3001 (Vercel preview default)
+CORS_ALLOW_ORIGINS=["http://localhost:3001"]
+
+# For multiple ports
+CORS_ALLOW_ORIGINS=["http://localhost:3000","http://localhost:3001","http://localhost:5173"]
+
+# For production deployment
+CORS_ALLOW_ORIGINS=["https://your-domain.vercel.app"]
+```
+
+The value accepts either a JSON array or a comma-separated string.
+
 ### Running the smoke test
 
 ```bash

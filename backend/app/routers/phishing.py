@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 from app.services.phishshield.url_analyzer import analyze_url
 from app.services.phishshield.risk_scorer import score_url
@@ -22,7 +22,15 @@ class PhishingCheckRequest(BaseModel):
 
 
 class BatchCheckRequest(BaseModel):
-    urls: List[str]
+    urls: List[str] = Field(..., max_length=100, description="Maximum 100 URLs per batch")
+
+    @field_validator("urls")
+    @classmethod
+    def validate_urls(cls, v: List[str]) -> List[str]:
+        for url in v:
+            if len(url) > 2048:
+                raise ValueError(f"URL too long ({len(url)} chars, max 2048): {url[:50]}...")
+        return v
 
 
 def _analyze_single(raw: str) -> PhishingCheckResponse:
@@ -141,11 +149,11 @@ async def check_url(body: PhishingCheckRequest, background_tasks: BackgroundTask
 
 @router.post("/check/batch")
 def check_url_batch(body: BatchCheckRequest):
-    """AI feature: analyze up to 20 URLs in a single request for bulk threat screening."""
+    """AI feature: analyze up to 100 URLs in a single request for bulk threat screening."""
     if not body.urls:
         raise HTTPException(status_code=400, detail="urls list must not be empty.")
-    if len(body.urls) > 20:
-        raise HTTPException(status_code=400, detail="Maximum 20 URLs per batch request.")
+    if len(body.urls) > 100:
+        raise HTTPException(status_code=400, detail="Maximum 100 URLs per batch request.")
     results = []
     for url in body.urls:
         try:

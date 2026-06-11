@@ -14,6 +14,8 @@ from app.services.upi.analyzer import analyze_upi_screenshot
 
 router = APIRouter(prefix="/api/upi", tags=["upi-shield"])
 
+MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10MB
+
 def parse_upi_ocr(text: str) -> dict:
     """
     Parse UTR, Sender VPA, Receiver VPA, and amount from receipt text.
@@ -76,6 +78,13 @@ async def analyze_screenshot(
     # 1. Read file bytes for VLM analysis
     file_bytes = await file.read()
     await file.seek(0)
+
+    # 1a. Size limit check
+    if len(file_bytes) > MAX_UPLOAD_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large. Max upload size is {MAX_UPLOAD_SIZE // (1024*1024)}MB."
+        )
 
     suffix = Path(file.filename or "screenshot.png").suffix.lower()
     if suffix not in (".png", ".jpg", ".jpeg"):

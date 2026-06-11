@@ -14,7 +14,7 @@ DBSCAN_MIN_SAMPLES = 2
 
 
 def _campaign_id(event_ids: List[str]) -> str:
-    return "campaign_" + hashlib.md5("_".join(sorted(event_ids)).encode()).hexdigest()[:10]
+    return "campaign_" + hashlib.sha256("_".join(sorted(event_ids)).encode()).hexdigest()[:10]
 
 
 def _top_values(lists: List[List[str]], n: int = 5) -> List[str]:
