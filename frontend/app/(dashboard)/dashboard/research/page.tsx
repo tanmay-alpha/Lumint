@@ -771,11 +771,11 @@ export default function ResearchDashboardPage() {
                           borderRadius: 8,
                           fontSize: 11
                         }}
-                        formatter={(value: number | string, name: string) => {
+                        formatter={(value, name) => {
                           const num = typeof value === "number" ? value : Number(value);
                           return [
                             Number.isFinite(num) ? num.toFixed(3) : "0.000",
-                            name
+                            String(name)
                           ];
                         }}
                       />
