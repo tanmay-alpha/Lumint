@@ -733,30 +733,62 @@ export default function ResearchDashboardPage() {
                 </div>
               </GlassCard>
 
-              {/* Chart Visualizer */}
+              {/* Chart Visualizer — grouped bar chart of F1, AUC, MCC per model.
+                  The wrapper div MUST have an explicit height; Recharts'
+                  ResponsiveContainer collapses to 0×0 inside a flex parent
+                  that has no defined height, which is why this card was
+                  blank previously. */}
               <GlassCard className="flex flex-col">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-text-secondary mb-4">
                   Performance Metric Comparison
                 </h3>
-                <div className="flex-1 min-h-[220px]">
+                <div className="h-[280px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={statsChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <BarChart
+                      data={statsChartData}
+                      margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
+                      barCategoryGap="22%"
+                      barGap={4}
+                    >
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" opacity={0.4} />
-                      <XAxis dataKey="name" stroke="var(--color-text-muted)" fontSize={11} fontStyle="bold" />
-                      <YAxis domain={[0.7, 1.0]} stroke="var(--color-text-muted)" fontSize={11} />
+                      <XAxis
+                        dataKey="name"
+                        stroke="var(--color-text-muted)"
+                        fontSize={11}
+                        fontStyle="bold"
+                        tickLine={false}
+                      />
+                      <YAxis
+                        domain={[0, 1]}
+                        stroke="var(--color-text-muted)"
+                        fontSize={11}
+                        tickFormatter={(v: number) => v.toFixed(1)}
+                      />
                       <Tooltip
                         contentStyle={{
                           backgroundColor: "var(--color-surface)",
                           borderColor: "var(--color-border)",
-                          borderRadius: 8
+                          borderRadius: 8,
+                          fontSize: 11
+                        }}
+                        formatter={(value: number | string, name: string) => {
+                          const num = typeof value === "number" ? value : Number(value);
+                          return [
+                            Number.isFinite(num) ? num.toFixed(3) : "0.000",
+                            name
+                          ];
                         }}
                       />
-                      <Legend verticalAlign="top" height={36} fontSize={11} />
+                      <Legend verticalAlign="top" height={36} fontSize={11} iconType="circle" />
                       <Bar dataKey="F1" fill="#6366f1" radius={[4, 4, 0, 0]} />
                       <Bar dataKey="AUC" fill="#14b8a6" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="MCC" fill="#f59e0b" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
+                <p className="text-[10px] text-text-muted mt-2 text-center">
+                  Grouped comparison of F1, AUC-ROC, and MCC across candidate classifiers.
+                </p>
               </GlassCard>
             </div>
 
