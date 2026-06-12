@@ -181,6 +181,36 @@ export default function DocShieldPage() {
                   </p>
                 </Card>
               </motion.div>
+            ) : !result ? (
+              <motion.div
+                key="empty-box"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="space-y-4"
+              >
+                <Card className="p-6 min-h-[300px] flex flex-col items-center justify-center text-center">
+                  <div className="h-14 w-14 rounded-2xl bg-[var(--surface-3)] border border-[var(--border)]/40 flex items-center justify-center mb-4">
+                    <FileText className="h-6 w-6 text-[var(--text-3)]" />
+                  </div>
+                  <h3 className="text-[14px] font-bold text-[var(--text-1)]">Awaiting Forensic Scan</h3>
+                  <p className="text-[12px] text-[var(--text-3)] mt-1.5 max-w-sm leading-relaxed font-semibold">
+                    Upload an invoice, passport scan, identity document, or PDF file to run full layout, ELA, and metadata rule checks.
+                  </p>
+                </Card>
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: "Magic-byte", desc: "Header integrity" },
+                    { label: "ELA", desc: "Pixel tampering" },
+                    { label: "Metadata", desc: "Author & version" },
+                  ].map((step) => (
+                    <div key={step.label} className="rounded-xl border border-[var(--border)]/40 bg-[var(--surface-1)] p-3">
+                      <div className="text-[10px] font-mono font-bold text-[var(--brand)] uppercase">{step.label}</div>
+                      <div className="text-[11px] text-[var(--text-3)] mt-0.5 font-semibold">{step.desc}</div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
             ) : result ? (
               <div
                 aria-live="polite"
