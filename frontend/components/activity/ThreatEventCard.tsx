@@ -16,7 +16,7 @@ export default function ThreatEventCard({ event }: ThreatEventCardProps) {
       case "upi":
         return <Smartphone className="h-5 w-5 text-indigo-400" />;
       default:
-        return <Zap className="h-5 w-5 text-purple-400" />;
+        return <Zap className="h-5 w-5 text-crimson" />;
     }
   };
 
@@ -52,7 +52,7 @@ export default function ThreatEventCard({ event }: ThreatEventCardProps) {
   const getDriftStyles = () => {
     switch (event.drift_status) {
       case "drift":
-        return "bg-fuchsia-950/80 text-fuchsia-400 border-fuchsia-800/60 animate-pulse";
+        return "bg-red-950/80 text-red-400 border-red-800/60 animate-pulse";
       case "warning":
         return "bg-amber-950/80 text-amber-400 border-amber-800/60";
       default:

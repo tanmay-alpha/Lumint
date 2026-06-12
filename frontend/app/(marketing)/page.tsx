@@ -15,6 +15,8 @@ import {
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { ThreatGlobe } from "@/components/ThreatGlobe";
+import { TiltCard } from "@/components/TiltCard";
 
 // ─── Animation helpers ─────────────────────────────────────────────────────
 const fadeUpVariants = {
@@ -250,9 +252,9 @@ export default function LandingPage() {
           <Link href="/dashboard">
             <Button
               variant="solid"
-              className="h-8 px-4 rounded-[8px] bg-brand text-white hover:bg-brand-hover text-[13px] font-semibold flex items-center justify-center transition-colors"
+              className="h-8 px-4 rounded-[8px] bg-brand text-white hover:bg-brand-hover text-[13px] font-semibold flex items-center justify-center transition-colors shadow-[0_0_15px_rgba(220,38,38,0.3)]"
             >
-              Launch Platform →
+              Launch Demo →
             </Button>
           </Link>
         </div>
@@ -263,13 +265,16 @@ export default function LandingPage() {
         className="relative min-h-screen flex items-center justify-center pt-[56px] pb-16 overflow-hidden"
         style={{
           background: `
-            radial-gradient(circle at 20% 50%, rgba(37,99,235,0.06) 0%, transparent 50%),
+            radial-gradient(circle at 20% 50%, rgba(220,38,38,0.06) 0%, transparent 50%),
             radial-gradient(circle at 80% 20%, rgba(8,145,178,0.05) 0%, transparent 40%),
-            radial-gradient(circle at 60% 80%, rgba(124,58,237,0.04) 0%, transparent 40%),
             var(--bg)
           `,
         }}
       >
+        {/* Background wireframe globe */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <ThreatGlobe />
+        </div>
         <div className="absolute inset-0 mesh-grid-bg opacity-[0.015] pointer-events-none" />
 
         <div className="max-w-7xl mx-auto px-6 w-full flex flex-col lg:flex-row items-center justify-between gap-16 relative z-10">
@@ -317,9 +322,9 @@ export default function LandingPage() {
               <Link href="/dashboard">
                 <Button
                   variant="solid"
-                  className="h-10 px-5 flex items-center justify-center rounded-[8px] bg-brand hover:bg-brand-hover text-white text-[14px] font-semibold transition-colors"
+                  className="h-10 px-5 flex items-center justify-center rounded-[8px] bg-brand hover:bg-brand-hover text-white text-[14px] font-semibold transition-colors shadow-[0_0_30px_rgba(220,38,38,0.3)]"
                 >
-                  Launch Platform →
+                  Try It Live →
                 </Button>
               </Link>
               <Link href="/dashboard/research">
@@ -416,34 +421,42 @@ export default function LandingPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
-            <ModuleCard
-              icon={FileSearch}
-              title="DocShield"
-              description="Detect tampered invoices, forged salary slips, and edited government IDs using ELA forensics and font analysis."
-              href="/docshield"
-              colorClass="bg-brand/10 text-brand"
-            />
-            <ModuleCard
-              icon={ShieldAlert}
-              title="PhishShield"
-              description="Identify lookalike bank domains, UPI phishing URLs, and KYC scam links with SHAP-explained risk scores."
-              href="/phishshield"
-              colorClass="bg-warn/10 text-warn"
-            />
-            <ModuleCard
-              icon={Network}
-              title="Fraud DNA"
-              description="Visualize fraud campaign networks — cluster events by shared indicators, domains, and file hashes."
-              href="/fraud-dna"
-              colorClass="bg-ai/10 text-ai-accent"
-            />
-            <ModuleCard
-              icon={Smartphone}
-              title="UPI Shield"
-              description="Verify PhonePe, Google Pay, and Paytm payment screenshots using OCR, ELA, and LLM forensic analysis."
-              href="/upi-shield"
-              colorClass="bg-intel/10 text-intel"
-            />
+            <TiltCard className="h-full">
+              <ModuleCard
+                icon={FileSearch}
+                title="DocShield"
+                description="Detect tampered invoices, forged salary slips, and edited government IDs using ELA forensics and font analysis."
+                href="/docshield"
+                colorClass="bg-brand/10 text-brand"
+              />
+            </TiltCard>
+            <TiltCard className="h-full">
+              <ModuleCard
+                icon={ShieldAlert}
+                title="PhishShield"
+                description="Identify lookalike bank domains, UPI phishing URLs, and KYC scam links with SHAP-explained risk scores."
+                href="/phishshield"
+                colorClass="bg-warn/10 text-warn"
+              />
+            </TiltCard>
+            <TiltCard className="h-full">
+              <ModuleCard
+                icon={Network}
+                title="Fraud DNA"
+                description="Visualize fraud campaign networks — cluster events by shared indicators, domains, and file hashes."
+                href="/fraud-dna"
+                colorClass="bg-ai/10 text-ai-accent"
+              />
+            </TiltCard>
+            <TiltCard className="h-full">
+              <ModuleCard
+                icon={Smartphone}
+                title="UPI Shield"
+                description="Verify PhonePe, Google Pay, and Paytm payment screenshots using OCR, ELA, and LLM forensic analysis."
+                href="/upi-shield"
+                colorClass="bg-intel/10 text-intel"
+              />
+            </TiltCard>
           </div>
         </motion.div>
       </section>
@@ -499,18 +512,21 @@ export default function LandingPage() {
             Start analyzing threats
           </h2>
           <p className="text-[14px] md:text-[15px] font-sans text-text-secondary max-w-lg mx-auto leading-relaxed">
-            Lumint is open-source and ready for research verification. Launch the dashboard to test
-            multimodal fraud forensic analysis.
+            Lumint is open source under MIT. Read the code, run the tests, verify the claims.
           </p>
           <div className="flex justify-center pt-2">
-            <Link href="/dashboard">
+            <a
+              href="https://github.com/tanmay-alpha/Lumint"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               <Button
-                variant="solid"
-                className="h-10 px-5 flex items-center justify-center rounded-[8px] bg-brand hover:bg-brand-hover text-white text-[14px] font-semibold transition-colors"
+                variant="outline"
+                className="h-10 px-5 flex items-center justify-center rounded-[8px] border border-border-default hover:bg-surface-raised text-text-primary text-[14px] font-semibold transition-colors"
               >
-                Launch Platform →
+                View on GitHub →
               </Button>
-            </Link>
+            </a>
           </div>
         </div>
       </section>

@@ -2,60 +2,60 @@
 @config "../tailwind.config.ts";
 
 /* ─────────────────────────────────────────────
-   LUMINT DESIGN TOKENS — Light Mode (default)
+   LUMINT DESIGN TOKENS — Theme 1: Dark Navy + Crimson
    ───────────────────────────────────────────── */
 :root {
-  /* ── Surfaces ── */
-  --bg:             #F4F6F9;
-  --surface:        #FFFFFF;
-  --surface-2:      #F8F9FB;
-  --surface-3:      #EEF0F4;
-  --overlay:        rgba(244,246,249,0.92);
+  /* ── Surfaces — Dark Navy ── */
+  --bg:             #0A0E1A;
+  --surface:        #111827;
+  --surface-2:      #0F172A;
+  --surface-3:      #1F2937;
+  --overlay:        rgba(10,14,26,0.92);
 
   /* ── Borders ── */
-  --border:         #DDE1E9;
-  --border-2:       #C8CDD8;
-  --border-focus:   #3B7BF6;
+  --border:         #1F2937;
+  --border-2:       #2D3748;
+  --border-focus:   #DC2626;
 
   /* ── Text hierarchy ── */
-  --text-1:         #0F1523;
-  --text-2:         #3C4556;
-  --text-3:         #6B7589;
-  --text-4:         #9BA5BA;
-  --text-inverse:   #FFFFFF;
+  --text-1:         #F9FAFB;
+  --text-2:         #94A3B8;
+  --text-3:         #64748B;
+  --text-4:         #475569;
+  --text-inverse:   #0A0E1A;
 
-  /* ── Brand — intelligence blue ── */
-  --brand:          #2563EB;
-  --brand-hover:    #1D4ED8;
-  --brand-active:   #1E40AF;
-  --brand-muted:    #DBEAFE;
-  --brand-border:   #93C5FD;
+  /* ── Brand — Crimson (CTA, danger, accent) ── */
+  --brand:          #DC2626;
+  --brand-hover:    #EF4444;
+  --brand-active:   #991B1B;
+  --brand-muted:    rgba(220, 38, 38, 0.1);
+  --brand-border:   rgba(220, 38, 38, 0.3);
 
-  /* ── Intel teal — forensics accent ── */
+  /* ── Intel teal — secondary accent (kept for telemetry/sparklines) ── */
   --intel:          #0891B2;
   --intel-hover:    #0E7490;
-  --intel-muted:    #CFFAFE;
-  --intel-border:   #67E8F9;
+  --intel-muted:    rgba(8, 145, 178, 0.1);
+  --intel-border:   rgba(8, 145, 178, 0.3);
 
-  /* ── AI purple — AI components only ── */
-  --ai:             #7C3AED;
-  --ai-muted:       #EDE9FE;
-  --ai-border:      #C4B5FD;
-  --ai-text:        #5B21B6;
+  /* ── AI accent — Crimson-tinted (no more purple) ── */
+  --ai:             #DC2626;
+  --ai-muted:       rgba(220, 38, 38, 0.1);
+  --ai-border:      rgba(220, 38, 38, 0.3);
+  --ai-text:        #EF4444;
 
   /* ── Risk system ── */
   --safe:           #059669;
-  --safe-bg:        #D1FAE5;
-  --safe-border:    #6EE7B7;
+  --safe-bg:        rgba(5, 150, 105, 0.1);
+  --safe-border:    rgba(5, 150, 105, 0.3);
   --warn:           #D97706;
-  --warn-bg:        #FEF3C7;
-  --warn-border:    #FCD34D;
+  --warn-bg:        rgba(217, 119, 6, 0.1);
+  --warn-border:    rgba(217, 119, 6, 0.3);
   --high:           #DC2626;
-  --high-bg:        #FEE2E2;
-  --high-border:    #FCA5A5;
-  --critical:       #7C3AED;
-  --critical-bg:    #EDE9FE;
-  --critical-border:#C4B5FD;
+  --high-bg:        rgba(220, 38, 38, 0.1);
+  --high-border:    rgba(220, 38, 38, 0.3);
+  --critical:       #EF4444;
+  --critical-bg:    rgba(220, 38, 38, 0.15);
+  --critical-border:rgba(239, 68, 68, 0.4);
 
   /* ── Elevation shadows ── */
   --shadow-1: 0 1px 2px rgba(15,21,35,0.06);
@@ -108,27 +108,27 @@
 }
 
 /* ─────────────────────────────────────────────
-   DARK MODE
+   DARK MODE (same as default — Theme 1 is always dark)
    ───────────────────────────────────────────── */
 [data-theme="dark"] {
-  --bg:       #0C0E14;
-  --surface:  #13161F;
-  --surface-2:#1A1E2A;
-  --surface-3:#222738;
-  --overlay:  rgba(12,14,20,0.92);
-  --border:   #2A2F3E;
-  --border-2: #363D52;
-  --text-1:   #E8EBF2;
-  --text-2:   #9CA3B8;
-  --text-3:   #6B7385;
-  --text-4:   #474F63;
-  --brand-muted:   #1E3A8A;
-  --brand-border:  #3B5FD6;
-  --intel-muted:   #0E4F5C;
-  --safe-bg:    #052E1C;
-  --warn-bg:    #2D1F03;
-  --high-bg:    #2D0A0A;
-  --critical-bg:#1E0D3E;
+  --bg:       #0A0E1A;
+  --surface:  #111827;
+  --surface-2:#0F172A;
+  --surface-3:#1F2937;
+  --overlay:  rgba(10,14,26,0.92);
+  --border:   #1F2937;
+  --border-2: #2D3748;
+  --text-1:   #F9FAFB;
+  --text-2:   #94A3B8;
+  --text-3:   #64748B;
+  --text-4:   #475569;
+  --brand-muted:   rgba(220, 38, 38, 0.1);
+  --brand-border:  rgba(220, 38, 38, 0.3);
+  --intel-muted:   rgba(8, 145, 178, 0.1);
+  --safe-bg:    rgba(5, 150, 105, 0.1);
+  --warn-bg:    rgba(217, 119, 6, 0.1);
+  --high-bg:    rgba(220, 38, 38, 0.1);
+  --critical-bg:rgba(220, 38, 38, 0.15);
   /* Re-alias for dark mode */
   --canvas:          var(--bg);
   --surface-raised:  var(--surface-2);
