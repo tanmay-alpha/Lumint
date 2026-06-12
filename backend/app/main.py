@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 import uuid
+from slowapi.middleware import SlowAPIMiddleware
+from app.rate_limit import limiter
 from app.config import settings
 from app.database import engine, Base
 from app.models.models import UPIShieldEvent, Case, ThreatFeedAlert  # Ensure models are imported for metadata registration
@@ -35,8 +37,15 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan,
 )
+# Expose the shared limiter so routers can use `@limiter.limit(...)` via
+# `from app.main import limiter` or `request.app.state.limiter`.
+app.state.limiter = limiter
 
 app.add_middleware(RequestIDMiddleware)
+# SlowAPI middleware enforces `app.state.limiter`-managed limits on
+# every request that is decorated with `@limiter.limit(...)`. The default
+# 200/min cap also acts as a global circuit-breaker.
+app.add_middleware(SlowAPIMiddleware)
 
 # Security headers — applied to every response
 @app.middleware("http")

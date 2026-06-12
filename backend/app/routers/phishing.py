@@ -3,9 +3,10 @@ import logging
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, Request
 from pydantic import BaseModel, Field, field_validator
 
+from app.rate_limit import limiter
 from app.dependencies.auth import get_current_user
 from app.services.phishshield.url_analyzer import analyze_url
 from app.services.phishshield.risk_scorer import score_url
@@ -132,7 +133,8 @@ def _analyze_single(raw: str) -> PhishingCheckResponse:
 
 
 @router.post("/check", response_model=PhishingCheckResponse)
-async def check_url(body: PhishingCheckRequest, background_tasks: BackgroundTasks):
+@limiter.limit("30/minute")
+async def check_url(request: Request, body: PhishingCheckRequest, background_tasks: BackgroundTasks):
     res = _analyze_single(body.url)
     if body.ground_truth is not None:
         from ml.drift.registry import DriftRegistry

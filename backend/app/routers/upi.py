@@ -4,8 +4,9 @@ import shutil
 from datetime import datetime, timezone
 from typing import Optional
 from pathlib import Path
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, BackgroundTasks, Request
 from sqlalchemy.orm import Session
+from app.rate_limit import limiter
 from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.models.models import UPIShieldEvent
@@ -84,7 +85,9 @@ def save_upi_event_bg(event_data: dict, metadata_json: dict):
 
 @router.post("/analyze-screenshot", response_model=UPIAnalyzeResponse)
 @router.post("/analyze", response_model=UPIAnalyzeResponse)
+@limiter.limit("10/minute")
 async def analyze_screenshot(
+    request: Request,
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     custom_ocr: Optional[str] = Form(None),

@@ -1,7 +1,8 @@
 import uuid
 from pathlib import Path
-from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Depends
+from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Depends, Request
 from typing import Optional
+from app.rate_limit import limiter
 from app.dependencies.auth import get_current_user
 from app.schemas.document import DocumentAnalysisResponse
 from app.services.docshield.analyzer import analyze_pdf_document, analyze_image_document
@@ -35,7 +36,9 @@ def _validate_magic(contents: bytes, suffix: str) -> bool:
 
 
 @router.post("/analyze", response_model=DocumentAnalysisResponse)
+@limiter.limit("10/minute")
 async def analyze_document(
+    request: Request,
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     ground_truth: Optional[int] = None
