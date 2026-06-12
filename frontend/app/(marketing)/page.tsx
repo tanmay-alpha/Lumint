@@ -168,19 +168,14 @@ const ModuleCard = ({
   href: string;
   colorClass: string;
 }) => (
-  <Link href={href} className="block h-full">
-    <motion.div
-      variants={fadeUpVariants}
+  <motion.div
+    variants={fadeUpVariants}
+    whileHover={{ boxShadow: "0 0 20px rgba(220, 38, 38, 0.15)" }}
+    className="h-full"
+  >
+    <Link
+      href={href}
       className="card-elevated transition-all duration-300 p-6 flex flex-col justify-between group cursor-pointer h-full border border-border-default/50 hover:border-brand/30"
-      style={{
-        // crimson glow on hover
-      }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLElement).style.boxShadow = "0 0 20px rgba(220, 38, 38, 0.15)";
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLElement).style.boxShadow = "";
-      }}
     >
       <div className="space-y-4">
         <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${colorClass}`}>
@@ -200,8 +195,8 @@ const ModuleCard = ({
           Try {title} <ArrowRight className="h-3.5 w-3.5" />
         </span>
       </div>
-    </motion.div>
-  </Link>
+    </Link>
+  </motion.div>
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
