@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { ThreatGlobe } from "@/components/ThreatGlobe";
 import { TiltCard } from "@/components/TiltCard";
+import { Footer } from "@/components/Footer";
 
 // ─── Animation helpers ─────────────────────────────────────────────────────
 const fadeUpVariants = {
@@ -167,34 +168,40 @@ const ModuleCard = ({
   href: string;
   colorClass: string;
 }) => (
-  <motion.div
-    variants={fadeUpVariants}
-    className="card-elevated hover:shadow-xl transition-all duration-300 p-6 flex flex-col justify-between group cursor-pointer h-full border border-border-default/50"
-  >
-    <div className="space-y-4">
-      <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${colorClass}`}>
-        <Icon className="h-5 w-5" />
+  <Link href={href} className="block h-full">
+    <motion.div
+      variants={fadeUpVariants}
+      className="card-elevated transition-all duration-300 p-6 flex flex-col justify-between group cursor-pointer h-full border border-border-default/50 hover:border-brand/30"
+      style={{
+        // crimson glow on hover
+      }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLElement).style.boxShadow = "0 0 20px rgba(220, 38, 38, 0.15)";
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLElement).style.boxShadow = "";
+      }}
+    >
+      <div className="space-y-4">
+        <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${colorClass}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <div>
+          <h3 className="text-[16px] font-sans font-semibold text-text-primary mb-2">
+            {title}
+          </h3>
+          <p className="text-[14px] text-text-secondary leading-relaxed line-clamp-3">
+            {description}
+          </p>
+        </div>
       </div>
-      <div>
-        <h3 className="text-[16px] font-sans font-semibold text-text-primary mb-2">
-          {title}
-        </h3>
-        <p className="text-[14px] text-text-secondary leading-relaxed line-clamp-3">
-          {description}
-        </p>
-      </div>
-    </div>
-    <div className="mt-6 pt-4 border-t border-border-muted flex items-center justify-between">
-      <span className="font-mono text-[10px] text-text-muted">
-        Powered by LLaMA 3.3 70B · Groq
-      </span>
-      <Link href={href} className="flex items-center gap-1 text-[13px] font-semibold text-brand">
-        <span className="group-hover:translate-x-0.5 transition-transform duration-200 flex items-center gap-1">
-          Open module <ArrowRight className="h-3.5 w-3.5" />
+      <div className="mt-6 pt-4 border-t border-border-muted flex items-center justify-end">
+        <span className="text-[13px] font-semibold text-brand flex items-center gap-1 group-hover:translate-x-0.5 transition-transform duration-200">
+          Try {title} <ArrowRight className="h-3.5 w-3.5" />
         </span>
-      </Link>
-    </div>
-  </motion.div>
+      </div>
+    </motion.div>
+  </Link>
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -215,10 +222,10 @@ export default function LandingPage() {
     <div className="relative min-h-screen bg-canvas text-text-primary flex flex-col font-sans overflow-x-hidden">
       {/* ── SECTION 1 — NAV ── */}
       <nav
-        className={`fixed top-0 inset-x-0 z-50 h-[56px] transition-all duration-300 ${
+        className={`sticky top-0 inset-x-0 z-50 h-[56px] transition-all duration-300 ${
           scrolled
-            ? "bg-[rgba(244,246,249,0.85)] dark:bg-[rgba(12,14,20,0.85)] backdrop-blur-[12px] border-b border-border-default/40 shadow-sm"
-            : "bg-transparent border-b border-transparent"
+            ? "bg-[rgba(12,14,20,0.85)] backdrop-blur-md border-b border-border-default/40 shadow-sm"
+            : "bg-[rgba(10,14,26,0.6)] backdrop-blur-sm border-b border-transparent"
         }`}
       >
         <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
@@ -230,9 +237,6 @@ export default function LandingPage() {
           </div>
 
           <div className="hidden md:flex items-center gap-6 text-[14px] text-text-secondary font-medium">
-            <a href="#modules" className="hover:text-text-primary transition-colors">
-              Modules
-            </a>
             <a href="#research" className="hover:text-text-primary transition-colors">
               Research
             </a>
@@ -247,16 +251,15 @@ export default function LandingPage() {
             >
               GitHub
             </a>
-          </div>
-
-          <Link href="/dashboard">
-            <Button
-              variant="solid"
-              className="h-8 px-4 rounded-[8px] bg-brand text-white hover:bg-brand-hover text-[13px] font-semibold flex items-center justify-center transition-colors shadow-[0_0_15px_rgba(220,38,38,0.3)]"
+            <a
+              href="https://www.linkedin.com/in/tanmaymangal/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-text-primary transition-colors"
             >
-              Launch Demo →
-            </Button>
-          </Link>
+              LinkedIn
+            </a>
+          </div>
         </div>
       </nav>
 
@@ -289,17 +292,20 @@ export default function LandingPage() {
             <motion.div variants={fadeUpVariants} className="inline-block">
               <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-brand-subtle text-brand border border-brand-border/30 text-[12px] font-sans font-medium">
                 <Zap className="h-3.5 w-3.5" strokeWidth={2.5} />
-                Research Publication Platform · v1.0.0
+                Research Publication Platform
               </span>
             </motion.div>
 
             {/* Headline */}
             <motion.h1
               variants={fadeUpVariants}
-              className="font-serif text-[44px] md:text-[52px] text-text-primary tracking-tight leading-[1.1] max-w-xl"
+              className="font-sans font-bold text-[44px] md:text-[52px] text-text-primary tracking-tight leading-[1.1] max-w-xl"
             >
               Illuminate the threat.
-              <span className="text-brand italic block mt-1 font-serif">
+              <span
+                className="text-brand block mt-1 font-sans"
+                style={{ textShadow: "0 0 15px rgba(220, 38, 38, 0.4)" }}
+              >
                 Before it strikes.
               </span>
             </motion.h1>
@@ -461,15 +467,18 @@ export default function LandingPage() {
         </motion.div>
       </section>
 
-      {/* ── SECTION 4 — RESEARCH NOVELTY ── */}
+      {/* ── SECTION 4 — WHY LUMINT ── */}
       <section id="research" className="py-24 px-6 border-t border-border-default/40 bg-surface-raised w-full">
         <div className="max-w-5xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
             {/* Left Column */}
             <div className="lg:col-span-5 space-y-4">
-              <h2 className="font-serif text-[28px] md:text-[32px] text-text-primary leading-tight">
-                Novel contributions confirmed by literature review
+              <h2 className="font-sans font-bold text-[28px] md:text-[32px] text-text-primary leading-tight">
+                Why Lumint
               </h2>
+              <p className="text-[15px] text-text-secondary leading-relaxed">
+                What makes a fraud intelligence platform actually useful.
+              </p>
               <div className="h-1 w-12 bg-brand rounded-full" />
             </div>
 
@@ -482,21 +491,33 @@ export default function LandingPage() {
               className="lg:col-span-7 space-y-4"
             >
               {[
-                "First system combining doc + URL + UPI screenshot forensics in one pipeline",
-                "First LLM-generated natural language explanations for fraud scores",
-                "SHAP + LLM fusion — machine XAI to human analyst narrative",
-                "Cross-modal CMFA: brand palette, font variance, ELA grid density correlation",
-              ].map((claim, idx) => (
+                {
+                  title: "Multimodal forensics",
+                  body: "Doc, URL, and UPI screenshot analysis in one pipeline",
+                },
+                {
+                  title: "Plain-English explanations",
+                  body: "Every risk score comes with a human-readable reason",
+                },
+                {
+                  title: "Explainable AI",
+                  body: "SHAP feature importance + LLM-generated analyst narrative",
+                },
+                {
+                  title: "Cross-modal correlation",
+                  body: "Detect patterns that span document, URL, and payment signals",
+                },
+              ].map((item, idx) => (
                 <motion.div
                   key={idx}
                   variants={noveltyItem}
-                  className="flex items-start gap-3.5 p-4 rounded-xl bg-surface border border-border-default/60 shadow-sm"
+                  className="p-4 rounded-xl bg-surface border border-border-default/60 shadow-sm"
                 >
-                  <div className="h-5 w-5 rounded-full bg-safe-bg flex items-center justify-center text-safe mt-0.5 shrink-0">
-                    <Check className="h-3.5 w-3.5" />
-                  </div>
-                  <span className="font-sans text-[14px] text-text-secondary leading-relaxed">
-                    {claim}
+                  <span className="block font-sans text-[14px] font-semibold text-text-primary leading-tight mb-1">
+                    {item.title}
+                  </span>
+                  <span className="block font-sans text-[13px] text-text-secondary leading-relaxed">
+                    {item.body}
                   </span>
                 </motion.div>
               ))}
@@ -508,7 +529,7 @@ export default function LandingPage() {
       {/* ── SECTION 5 — CTA ── */}
       <section className="py-20 px-6 border-t border-brand-border/30 bg-brand-subtle/25 dark:bg-brand-subtle/5 w-full">
         <div className="max-w-4xl mx-auto text-center space-y-6">
-          <h2 className="font-serif text-[32px] md:text-[38px] text-text-primary">
+          <h2 className="font-sans font-bold text-[32px] md:text-[38px] text-text-primary">
             Start analyzing threats
           </h2>
           <p className="text-[14px] md:text-[15px] font-sans text-text-secondary max-w-lg mx-auto leading-relaxed">
@@ -532,32 +553,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── SECTION 6 — FOOTER ── */}
-      <footer className="border-t border-border-default/40 bg-surface h-16 flex items-center w-full mt-auto">
-        <div className="max-w-7xl mx-auto px-6 w-full flex items-center justify-between text-[13px] text-text-secondary/80 font-sans">
-          <div className="flex items-center gap-2 select-none">
-            <span className="font-semibold text-text-primary">Lumint</span>
-            <span className="font-mono text-[10px] px-1.5 py-0.2 bg-surface-raised border border-border-default/50 rounded text-text-muted">
-              v1.0.0
-            </span>
-          </div>
-          <div className="hidden md:block">
-            Built for research publication
-          </div>
-          <div className="flex items-center gap-4">
-            <a
-              href="https://github.com/tanmay-alpha/lumint"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-text-primary transition-colors"
-            >
-              GitHub
-            </a>
-            <Link href="/dashboard/research" className="hover:text-text-primary transition-colors">
-              Paper
-            </Link>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
