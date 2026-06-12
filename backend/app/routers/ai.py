@@ -63,10 +63,10 @@ async def run_campaign_ai(body: CampaignAIRequest):
         )
 
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 class AgentInvestigationRequest(BaseModel):
-    query: str
+    query: str = Field(..., min_length=3, max_length=2000, description="Investigation query (max 2000 chars)")
 
 @router.post("/investigate")
 async def run_agent_investigation(body: AgentInvestigationRequest):

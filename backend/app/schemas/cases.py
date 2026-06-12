@@ -1,25 +1,47 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
+# Severity whitelist to prevent arbitrary values.
+VALID_SEVERITIES = frozenset({"low", "medium", "high", "critical"})
+
+# Status whitelist.
+VALID_STATUSES = frozenset({"open", "investigating", "escalated", "resolved", "closed"})
+
+
 class CaseBase(BaseModel):
-    title: str
-    description: Optional[str] = None
-    status: Optional[str] = "open"
-    severity: Optional[str] = "medium"
-    assigned_analyst: Optional[str] = None
+    title: str = Field(..., min_length=1, max_length=200, description="Case title")
+    description: Optional[str] = Field(default=None, max_length=10000, description="Case description")
+    status: Optional[str] = Field(default="open", max_length=20, description="Case status (whitelist)")
+    severity: Optional[str] = Field(default="medium", max_length=20, description="Severity level (whitelist)")
+    assigned_analyst: Optional[str] = Field(default=None, max_length=100, description="Assigned analyst ID")
+
+    @field_validator("severity")
+    @classmethod
+    def validate_severity(cls, v):
+        if v and v.lower() not in VALID_SEVERITIES:
+            raise ValueError(f"Severity must be one of: {', '.join(sorted(VALID_SEVERITIES))}")
+        return v.lower() if v else v
+
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, v):
+        if v and v.lower() not in VALID_STATUSES:
+            raise ValueError(f"Status must be one of: {', '.join(sorted(VALID_STATUSES))}")
+        return v.lower() if v else v
+
 
 class CaseCreate(CaseBase):
     pass
 
 class CaseUpdate(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    status: Optional[str] = None
-    severity: Optional[str] = None
-    assigned_analyst: Optional[str] = None
-    analyst_notes: Optional[str] = None
-    saved_evidence: Optional[List[Dict[str, Any]]] = None
+    title: Optional[str] = Field(default=None, max_length=200, description="Case title")
+    description: Optional[str] = Field(default=None, max_length=10000, description="Case description")
+    status: Optional[str] = Field(default=None, max_length=20, description="Case status (whitelist)")
+    severity: Optional[str] = Field(default=None, max_length=20, description="Severity level (whitelist)")
+    assigned_analyst: Optional[str] = Field(default=None, max_length=100, description="Assigned analyst ID")
+    analyst_notes: Optional[str] = Field(default=None, max_length=50000, description="Analyst notes")
+    saved_evidence: Optional[List[Dict[str, Any]]] = Field(default=None, max_length=100, description="Evidence items (max 100)")
 
 class CaseResponse(CaseBase):
     id: int

@@ -119,3 +119,31 @@ def test_auth_uses_hmac_at_runtime(enforce_auth):
         get_current_user(authorization="Bearer test-key-for-testing-12346")
     except Exception as e:
         assert getattr(e, "status_code", None) == 401
+
+
+def test_auth_x_api_key_header_supported(enforce_auth):
+    """The new X-Api-Key header must be accepted (preferred path).
+
+    The legacy Authorization: Bearer path is still supported for backward
+    compatibility, but new code uses X-Api-Key so the key doesn't end up
+    in proxy access logs that auto-log Authorization.
+    """
+    from app.dependencies.auth import get_current_user
+
+    # X-Api-Key with the right key succeeds
+    assert get_current_user(
+        authorization=None, x_api_key="test-key-for-testing-12345"
+    )["token_valid"] is True
+
+    # X-Api-Key with a wrong key fails
+    try:
+        get_current_user(authorization=None, x_api_key="definitely-wrong-key")
+    except Exception as e:
+        assert getattr(e, "status_code", None) == 401
+    else:
+        raise AssertionError("Expected 401 for wrong X-Api-Key")
+
+    # X-Api-Key takes priority over Authorization if both are set
+    assert get_current_user(
+        authorization="Bearer test-key-for-testing-12345", x_api_key="test-key-for-testing-12345"
+    )["token_valid"] is True

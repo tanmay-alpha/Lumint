@@ -1,3 +1,4 @@
+import logging
 import uuid
 from pathlib import Path
 from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Depends, Request
@@ -9,6 +10,9 @@ from app.services.docshield.analyzer import analyze_pdf_document, analyze_image_
 from app.services.fraud_dna.fingerprinter import generate_fingerprint
 from app.services.fraud_dna.store import save_fingerprint, STORE_PATH
 from app.core.event_publisher import publish_threat_event
+from app.core.file_validation import InvalidFileError, validate_upload
+
+logger = logging.getLogger("lumint.routers.documents")
 
 router = APIRouter(prefix="/api/documents", tags=["documents"], dependencies=[Depends(get_current_user)])
 
@@ -19,20 +23,6 @@ UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
 ALLOWED_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg"}
 MAX_UPLOAD_BYTES = 15 * 1024 * 1024  # 15 MB
-
-MAGIC_BYTES = {
-    ".pdf":  b"%PDF",
-    ".png":  b"\x89PNG",
-    ".jpg":  b"\xff\xd8\xff",
-    ".jpeg": b"\xff\xd8\xff",
-}
-
-
-def _validate_magic(contents: bytes, suffix: str) -> bool:
-    magic = MAGIC_BYTES.get(suffix)
-    if not magic:
-        return True
-    return contents[: len(magic)] == magic
 
 
 @router.post("/analyze", response_model=DocumentAnalysisResponse)
@@ -46,12 +36,11 @@ async def analyze_document(
     if not file or not file.filename:
         raise HTTPException(status_code=400, detail="No file provided.")
 
-    suffix = Path(file.filename).suffix.lower()
-    if suffix not in ALLOWED_EXTENSIONS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"File type '{suffix}' not allowed. Accepted: {sorted(ALLOWED_EXTENSIONS)}",
-        )
+    # Reject path-traversal attempts in the filename *before* anything else.
+    # Anything not a "bare" filename (no slashes, no ..) is suspicious.
+    safe_name = Path(file.filename).name
+    if safe_name != file.filename or ".." in file.filename or "/" in file.filename or "\\" in file.filename:
+        raise HTTPException(status_code=400, detail="Invalid filename.")
 
     contents = await file.read()
 
@@ -61,13 +50,16 @@ async def analyze_document(
     if len(contents) > MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail="File exceeds maximum allowed size of 15 MB.")
 
-    if not _validate_magic(contents, suffix):
-        raise HTTPException(
-            status_code=400,
-            detail=f"File content does not match expected type '{suffix}'. Possible spoofed extension.",
-        )
+    # Multi-layer content validation (magic + structural + bomb guard).
+    try:
+        validate_upload(contents, safe_name)
+    except InvalidFileError as e:
+        # Surface the safe message; the original exception is already
+        # logged inside validate_upload.
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     doc_id = str(uuid.uuid4())
+    suffix = Path(safe_name).suffix.lower()
     saved_filename = f"{doc_id}{suffix}"
     save_path = UPLOADS_DIR / saved_filename
     save_path.write_bytes(contents)

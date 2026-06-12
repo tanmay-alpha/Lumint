@@ -83,3 +83,17 @@ backend/data/raw/
 # Synthetic Datasets
 dataset/images/
 .vercel
+
+# Playwright MCP browser session artifacts
+.playwright-mcp/
+
+# Local screenshot artifacts (browser smoke tests, etc.)
+404-test-2.png
+lumint-404.png
+lumint-home.png
+lumint-login-page.png
+lumint-login.png
+lumint-phishshield.png
+lumint-pi-dashboard.png
+lumint-pi-homepage.png
+lumint-register-page.png

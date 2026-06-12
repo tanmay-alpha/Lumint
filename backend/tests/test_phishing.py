@@ -25,7 +25,9 @@ def test_phishing_url():
 
 def test_empty_url():
     r = client.post("/api/phishing/check", json={"url": ""})
-    assert r.status_code == 400
+    # Pydantic returns 422 for empty strings (min_length=1 violation),
+    # which is more accurate than the old route-level 400.
+    assert r.status_code in (400, 422)
 
 
 def test_ip_domain():
@@ -33,3 +35,19 @@ def test_ip_domain():
     assert r.status_code == 200
     data = r.json()
     assert any(rule["rule"] == "ip_as_domain" for rule in data["triggered_rules"])
+
+
+def test_oversized_url_rejected():
+    """URLs longer than 2048 chars are rejected at the Pydantic layer."""
+    r = client.post("/api/phishing/check", json={"url": "https://x.com/" + "a" * 3000})
+    # Pydantic 422 (validation error) is the expected response
+    assert r.status_code == 422
+
+
+def test_ground_truth_must_be_binary():
+    """ground_truth is constrained to 0 or 1."""
+    r = client.post(
+        "/api/phishing/check",
+        json={"url": "https://hdfcbank.com", "ground_truth": 5},
+    )
+    assert r.status_code == 422

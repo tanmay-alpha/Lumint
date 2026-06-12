@@ -111,10 +111,26 @@ async def analyze_screenshot(
             detail=f"File too large. Max upload size is {MAX_UPLOAD_SIZE // (1024*1024)}MB."
         )
 
-    suffix = Path(file.filename or "screenshot.png").suffix.lower()
+    if not file_bytes:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+
+    # Reject path-traversal and control chars in the filename before
+    # we use it for anything.
+    safe_name = Path(file.filename or "screenshot.png").name
+    if ".." in (file.filename or "") or "/" in (file.filename or "") or "\\" in (file.filename or ""):
+        raise HTTPException(status_code=400, detail="Invalid filename.")
+
+    # Multi-layer content validation (magic + structural + bomb guard).
+    from app.core.file_validation import InvalidFileError, validate_upload
+    try:
+        validate_upload(file_bytes, safe_name)
+    except InvalidFileError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    suffix = Path(safe_name).suffix.lower()
     if suffix not in (".png", ".jpg", ".jpeg"):
-        suffix = ".png" # default fallback
-        
+        suffix = ".png"  # default fallback for screenshots
+
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
         tmp.write(file_bytes)
         tmp_path = Path(tmp.name)

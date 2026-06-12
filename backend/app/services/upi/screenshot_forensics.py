@@ -15,6 +15,11 @@ logger = logging.getLogger("lumint.services.upi.screenshot_forensics")
 
 JPEG_QUALITY = 90
 
+# Hard cap on the long edge of the image used for ELA. Anything bigger is
+# downsampled to keep peak memory (three float32 arrays per pixel) bounded.
+# 4096px gives ~192MB worst case for the diff arrays, well within budget.
+MAX_ELA_DIM = 4096
+
 # Adaptive ELA thresholds. We deliberately avoid a single global pixel-difference
 # cutoff because:
 #   1. Dark-mode screenshots (GPay dark, AMOLED, low-light captures) compress
@@ -170,6 +175,10 @@ def run_image_ela(image_path: Path) -> Dict[str, Any]:
 
         with Image.open(image_path) as img:
             img_rgb = img.convert("RGB")
+            # Cap input dimensions so a huge screenshot doesn't OOM us.
+            # 4096px on the long edge is well above any phone display and
+            # keeps the float32 diff arrays under ~200MB at worst.
+            img_rgb.thumbnail((MAX_ELA_DIM, MAX_ELA_DIM), Image.LANCZOS)
             width, height = img_rgb.size
 
             # Recompress in memory

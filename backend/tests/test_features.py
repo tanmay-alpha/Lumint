@@ -25,10 +25,12 @@ app.dependency_overrides[get_db] = override_get_db
 client = TestClient(app)
 
 def test_upi_analyze_screenshot():
-    # Test valid screenshot analysis
+    # Test valid screenshot analysis - use a minimal valid PNG (24x1px)
+    # We cannot use fake_png_data as the new validator catches invalid PNGs
+    png_header = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x18\x00\x00\x00\x01\x08\x02\x00\x00\x00K\xcc\xf9\xfc\x00\x00\x00\x0fIDATx\x9cc\xfc\xff\xff?\x035\x00\x00\xd4\xbd\x02\xff\xcf\x15|\x0c\x00\x00\x00\x00IEND\xaeB`\x82'
     response = client.post(
         "/api/upi/analyze-screenshot",
-        files={"file": ("screenshot.png", b"fake_png_data")},
+        files={"file": ("screenshot.png", png_header)},
         data={"custom_ocr": "Google Pay Payment successful To merchant@upi From sender@upi UTR: 398273645192 Amount Rs 5,000.00"}
     )
     assert response.status_code == 200

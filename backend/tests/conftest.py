@@ -12,7 +12,7 @@ import sys
 TEST_KEY = "test-key-for-testing-12345"
 os.environ["LUMINT_API_KEY"] = TEST_KEY
 os.environ["CORS_ALLOW_ORIGINS"] = '["http://localhost:3000","http://localhost:5173"]'
-os.environ["APP_ENV"] = "test"
+os.environ["APP_ENV"] = "development"  # explicitly development
 os.environ["DEBUG"] = "False"
 os.environ["DATABASE_URL"] = "sqlite+pysqlite:///:memory:"
 
@@ -21,9 +21,6 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 
-# Auto-use: skip auth on every test, regardless of whether it was written
-# with auth in mind. The conftest runs at session-scope so the override
-# is in effect for the whole test run.
 @pytest.fixture(autouse=True)
 def _auto_bypass_auth(monkeypatch):
     """Bypass the API key check for all tests by default.
@@ -32,7 +29,11 @@ def _auto_bypass_auth(monkeypatch):
     the `unauthed_client` fixture, which DOES enforce auth.
     """
     from app.dependencies import auth as auth_mod
-    monkeypatch.setattr(auth_mod, "get_api_key", lambda: "")  # empty = dev mode
+
+    # Reset the internal cache so our monkeypatch takes effect.
+    auth_mod.reset_for_testing()
+    # Set to empty string — in dev mode, this makes it auth-free.
+    monkeypatch.setattr(auth_mod, "get_api_key", lambda: "")
     yield
 
 
@@ -44,7 +45,20 @@ def client():
 
 @pytest.fixture
 def auth_headers():
-    """Explicit auth headers (for tests that need them)."""
+    """Explicit auth headers (for tests that need them).
+
+    Uses the new ``X-Api-Key`` header (preferred). ``Authorization:
+    Bearer <key>`` is still accepted by the server for backward
+    compatibility, but new tests should use ``X-Api-Key``.
+    """
+    return {"X-Api-Key": TEST_KEY}
+
+
+@pytest.fixture
+def bearer_auth_headers():
+    """Legacy ``Authorization: Bearer`` headers — still accepted by the
+    server for backward compatibility, but new tests should use the
+    ``X-Api-Key`` variant via :func:`auth_headers`."""
     return {"Authorization": f"Bearer {TEST_KEY}"}
 
 
@@ -56,30 +70,64 @@ def enforce_auth(monkeypatch):
     unauthenticated requests.
     """
     from app.dependencies import auth as auth_mod
+
+    # Set the *real* test key (not empty string).
     monkeypatch.setattr(auth_mod, "get_api_key", lambda: TEST_KEY)
     return None
 
 
 @pytest.fixture
-def client():
-    """Pre-configured test client (auth included via env var).
+def authed_client(monkeypatch):
+    """Client that enforces auth explicitly (tests expect 200 authed / 401 unauthed)."""
+    from app.dependencies import auth as auth_mod
 
-    The environment variable LUMINT_API_KEY is set before app.main
-    is imported (above), so get_current_user sees it and returns
-    successful auth: all /api/* endpoints return 200.
-    """
+    # Use the test key (not empty).
+    monkeypatch.setattr(auth_mod, "get_api_key", lambda: TEST_KEY)
     return TestClient(app)
-
-
-@pytest.fixture
-def auth_headers():
-    """Explicit auth headers (for tests that need them)."""
-    return {"Authorization": f"Bearer {TEST_KEY}"}
 
 
 @pytest.fixture
 def unauthed_client(monkeypatch):
     """Client that fails auth for tests expecting 401."""
     from app.dependencies import auth as auth_mod
+
+    # Use a wrong key (not empty).
     monkeypatch.setattr(auth_mod, "get_api_key", lambda: TEST_KEY + "-wrong")
     return TestClient(app)
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Database fixture
+# ─────────────────────────────────────────────────────────────────────
+
+
+@pytest.fixture(autouse=True)
+def _auto_setup_test_db():
+    """Initialize test database in memory."""
+    from app.database import engine, Base
+
+    Base.metadata.create_all(engine)
+    yield
+    Base.metadata.drop_all(engine)
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Other fixtures as needed
+# ─────────────────────────────────────────────────────────────────────
+
+
+@pytest.fixture
+def sample_upi_result():
+    """Return sample UPI analysis result data."""
+    return {
+        "analysis_status": "completed",
+        "forgery_score": 10,
+        "verdict": "GENUINE",
+        "app_detected": "PhonePe",
+        "utr": {"value": "123456789012", "normalized": "123456789012", "valid": True},
+        "amount_extracted": 1200.0,
+        "payee_vpa": "merchant@axis",
+        "sender_upi_id": "user@paytm",
+        "receiver_upi_id": "merchant@axis",
+        "score_source": "heuristic",
+    }

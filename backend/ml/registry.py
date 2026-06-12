@@ -3,10 +3,25 @@ Lumint ML Model Registry — Singleton pattern.
 
 Loads all trained .joblib models at startup and provides
 prediction, availability checking, and fallback interfaces.
+
+Security
+--------
+We verify a SHA-256 hash of every model file against an allow-list
+shipped in ``models/CHECKSUMS.json`` before deserialising. ``joblib.load``
+ultimately calls ``pickle.load`` under the hood, and pickle can execute
+arbitrary code at deserialisation time, so loading an attacker-supplied
+file would be RCE. The checksum check is the only thing standing between
+us and a hostile model artifact.
+
+The checksum file is committed alongside the models in the same git
+tree, so an attacker would need to compromise the repository to swap
+both the model *and* its expected hash. This is the standard
+"trust-on-first-use + signed manifest" model.
 """
 
-import logging
+import hashlib
 import json
+import logging
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
@@ -15,6 +30,77 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 MODELS_DIR = Path(__file__).resolve().parent / "models"
+CHECKSUMS_FILE = MODELS_DIR / "CHECKSUMS.json"
+
+# Set to False to skip checksum verification (e.g. for local dev when
+# the user has just retrained a model and the CHECKSUMS file hasn't
+# been updated yet). The env var is read in :func:`_is_checksum_enforced`.
+# Production deployments MUST set this to "1".
+import os as _os
+_CHECKSUMS_ENFORCED = _os.environ.get("LUMINT_ENFORCE_MODEL_CHECKSUMS", "1") != "0"
+
+
+def _sha256_of_file(path: Path) -> str:
+    """Compute the SHA-256 of a file, streamed so it works on multi-MB models."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(64 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _load_expected_checksums() -> Dict[str, str]:
+    """Load the expected {filename: sha256} map. Returns {} if missing or
+    the file is malformed — in which case we'll either log a warning
+    (if checksums are enforced) or skip verification (if not)."""
+    if not CHECKSUMS_FILE.exists():
+        logger.warning(
+            "Model checksum manifest not found at %s. "
+            "Run `python ml/tools/hash_models.py` to generate it.",
+            CHECKSUMS_FILE,
+        )
+        return {}
+    try:
+        with open(CHECKSUMS_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if not isinstance(data, dict):
+            logger.error("CHECKSUMS.json is not a dict — ignoring.")
+            return {}
+        return {str(k): str(v) for k, v in data.items()}
+    except Exception as e:
+        logger.error("Failed to parse CHECKSUMS.json: %s", e)
+        return {}
+
+
+def _verify_checksum(path: Path, expected_map: Dict[str, str]) -> bool:
+    """Returns True if ``path`` matches its expected hash, or if no
+    expected hash is recorded AND checksums are not enforced."""
+    name = path.name
+    expected = expected_map.get(name)
+    if expected is None:
+        if _CHECKSUMS_ENFORCED:
+            logger.error(
+                "Model file %s has no entry in CHECKSUMS.json — "
+                "refusing to load (set LUMINT_ENFORCE_MODEL_CHECKSUMS=0 "
+                "to override in dev).",
+                name,
+            )
+            return False
+        logger.warning(
+            "Model file %s has no entry in CHECKSUMS.json — loading anyway "
+            "(checksums not enforced).",
+            name,
+        )
+        return True
+    actual = _sha256_of_file(path)
+    if actual != expected:
+        logger.error(
+            "Checksum mismatch for %s: expected %s, got %s. "
+            "REFUSING to load — possible tampering or stale manifest.",
+            name, expected, actual,
+        )
+        return False
+    return True
 
 
 class ModelRegistry:
@@ -54,6 +140,10 @@ class ModelRegistry:
             logger.error("joblib not installed — cannot load ML models")
             return
 
+        # Pre-compute the expected checksum map once, then verify each
+        # file individually before deserialising.
+        expected_checksums = _load_expected_checksums()
+
         for module in ["phish", "doc", "upi", "fusion_meta"]:
             model_path = MODELS_DIR / f"{module}_model.joblib"
             scaler_path = MODELS_DIR / f"{module}_scaler.joblib"
@@ -64,6 +154,10 @@ class ModelRegistry:
                 scaler_path = MODELS_DIR / "fusion_meta_scaler.joblib"
 
             if model_path.exists():
+                if not _verify_checksum(model_path, expected_checksums):
+                    # Skip this model — its bytes don't match the
+                    # committed hash. We never call joblib.load.
+                    continue
                 try:
                     self._models[module] = joblib.load(model_path)
                     logger.info(f"Loaded model: {module} from {model_path}")
@@ -71,6 +165,8 @@ class ModelRegistry:
                     logger.error(f"Failed to load model {module}: {e}")
 
             if scaler_path.exists():
+                if not _verify_checksum(scaler_path, expected_checksums):
+                    continue
                 try:
                     self._scalers[module] = joblib.load(scaler_path)
                 except Exception as e:
@@ -79,6 +175,8 @@ class ModelRegistry:
             # TF-IDF (phish only)
             tfidf_path = MODELS_DIR / f"{module}_tfidf.joblib"
             if tfidf_path.exists():
+                if not _verify_checksum(tfidf_path, expected_checksums):
+                    continue
                 try:
                     self._tfidf[module] = joblib.load(tfidf_path)
                 except Exception as e:

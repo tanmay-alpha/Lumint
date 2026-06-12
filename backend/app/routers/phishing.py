@@ -18,12 +18,9 @@ logger = logging.getLogger("lumint.routers.phishing")
 router = APIRouter(prefix="/api/phishing", tags=["phishing"], dependencies=[Depends(get_current_user)])
 
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks
-from app.core.event_publisher import publish_threat_event
-
 class PhishingCheckRequest(BaseModel):
-    url: str
-    ground_truth: Optional[int] = None
+    url: str = Field(..., min_length=1, max_length=2048, description="URL to check (max 2048 chars, RFC 3986)")
+    ground_truth: Optional[int] = Field(default=None, ge=0, le=1, description="Optional ground truth label (0=clean, 1=phish)")
 
 
 class BatchCheckRequest(BaseModel):
@@ -140,13 +137,14 @@ async def check_url(request: Request, body: PhishingCheckRequest, background_tas
         from ml.drift.registry import DriftRegistry
         y_pred = 1 if res.risk_score >= 50 else 0
         DriftRegistry.update_all("phish", body.ground_truth, y_pred)
-    
-    from ml.drift.registry import DriftRegistry
+
+    # Single DriftRegistry lookup, reused below.
     try:
+        from ml.drift.registry import DriftRegistry
         drift_signal = DriftRegistry.get("phish").get_current_signal()
     except Exception:
         drift_signal = {"status": "stable"}
-        
+
     background_tasks.add_task(
         publish_threat_event,
         module="phish",
