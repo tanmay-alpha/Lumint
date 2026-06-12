@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Settings, Info, Zap, FileText } from "lucide-react";
+import { Settings, Info, FileText, ExternalLink } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { motion } from "framer-motion";
 
@@ -35,11 +35,12 @@ export default function SettingsPage() {
           </div>
           <div className="space-y-3">
             {[
-              { label: "Version", value: "v1.0.0" },
+              { label: "Version", value: "1.0" },
               { label: "AI Engine", value: "Groq · LLaMA 3.3 70B Versatile" },
               { label: "Backend", value: "FastAPI · Python 3.11" },
               { label: "Frontend", value: "Next.js 14 · App Router · TypeScript" },
               { label: "Database", value: "SQLAlchemy ORM" },
+              { label: "License", value: "MIT" },
             ].map(({ label, value }) => (
               <div
                 key={label}
@@ -58,28 +59,24 @@ export default function SettingsPage() {
 
         <GlassCard className="p-5">
           <div className="flex items-center gap-2 mb-4">
-            <Zap
-              className="h-4 w-4 text-[var(--color-warn)]"
-              strokeWidth={2.5}
-            />
+            <FileText className="h-4 w-4 text-[var(--color-accent)]" />
             <h2 className="text-[14px] font-semibold text-[var(--color-text-primary)]">
-              Research Publication
+              Resources
             </h2>
           </div>
           <p className="text-[13px] text-[var(--color-text-secondary)] leading-relaxed mb-4">
-            This platform is built for academic research publication. The codebase, methodology, and
-            evaluation results will accompany a research paper targeting ACM CIKM, IEEE Access, or
-            AMLTA 2026 conference proceedings.
+            Lumint is open source. Browse the source, read the documentation, or follow the project
+            for updates.
           </p>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <a
-              href="https://huggingface.co/tanmay-alpha"
+              href="https://github.com/tanmay-alpha/Lumint"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 text-[13px] font-semibold text-[var(--color-accent)] hover:underline"
             >
-              <FileText className="h-4 w-4" />
-              📄 Paper
+              <ExternalLink className="h-4 w-4" />
+              GitHub Repository
             </a>
             <a
               href="https://huggingface.co/tanmay-alpha"
@@ -87,8 +84,8 @@ export default function SettingsPage() {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 text-[13px] font-semibold text-[var(--color-accent)] hover:underline"
             >
-              <Zap className="h-4 w-4" />
-              🤗 HuggingFace Models
+              <FileText className="h-4 w-4" />
+              HuggingFace
             </a>
           </div>
         </GlassCard>

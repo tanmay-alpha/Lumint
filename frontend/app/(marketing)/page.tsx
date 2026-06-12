@@ -281,7 +281,7 @@ export default function LandingPage() {
             <motion.div variants={fadeUpVariants} className="inline-block">
               <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-brand-subtle text-brand border border-brand-border/30 text-[12px] font-sans font-medium">
                 <Zap className="h-3.5 w-3.5" strokeWidth={2.5} />
-                Research Publication Platform
+                Multimodal Fraud Intelligence
               </span>
             </motion.div>
 
