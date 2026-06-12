@@ -1,7 +1,7 @@
 import re
 import logging
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 
 from app.services.upi.ocr_adapter import extract_text_from_image
 from app.services.upi.app_detector import detect_upi_app
@@ -204,10 +204,252 @@ _NOT_UPI_RESULT_TEMPLATE = {
 }
 
 
+# ──────────────────────────────────────────────────────────────────────
+# Pipeline step helpers (extracted from the long orchestrator)
+# ──────────────────────────────────────────────────────────────────────
+
+
+def _gate_check(ocr_text: str, ocr_result: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Return a NOT_UPI_RESULT template if the image is not a UPI screenshot, else None.
+
+    This is the early-exit gate that prevents false positives on LinkedIn
+    chats, random photos, etc. The returned dict is the standard envelope
+    that the caller can return directly.
+    """
+    if _is_upi_screenshot(ocr_text):
+        return None
+    logger.warning(
+        "Non-UPI image detected. OCR text preview: %r",
+        ocr_text[:200],
+    )
+    result = dict(_NOT_UPI_RESULT_TEMPLATE)
+    result["ocr"] = ocr_result
+    return result
+
+
+def _extract_metadata(ocr_text: str) -> Dict[str, Any]:
+    """Extract UTR, amount, payee/sender VPAs from OCR text.
+
+    Returns a dict with keys: primary_utr, amount, payee_vpa, sender_vpa.
+    """
+    utr_candidates = extract_utr_candidates(ocr_text)
+    primary_utr = utr_candidates[0] if utr_candidates else None
+    vpas = parse_vpas(ocr_text)
+    return {
+        "primary_utr": primary_utr,
+        "amount": parse_amount(ocr_text),
+        "payee_vpa": select_payee_vpa(ocr_text, vpas),
+        "sender_vpa": vpas[0] if vpas else "unknown@upi",
+    }
+
+
+def _detect_app(image_path: Path, ocr_text: str) -> str:
+    """Run app detection (PhonePe / GPay / Paytm / etc.) and return the app name."""
+    dominant_hex_list: Optional[List[str]] = None
+    try:
+        from app.services.upi.color_profile import extract_dominant_colors
+        dominant_colors_info = extract_dominant_colors(image_path)
+        dominant_hex_list = [item["hex"] for item in dominant_colors_info] or None
+    except Exception as e:
+        logger.debug("Failed to pre-extract colors for app detection: %s", e)
+    app_result = detect_upi_app(ocr_text, dominant_colors=dominant_hex_list)
+    return app_result["app"]
+
+
+def _run_forensics(
+    image_path: Path,
+    ocr_text: str,
+    app_detected: str,
+) -> Dict[str, Any]:
+    """Run ELA + font consistency + color authenticity in sequence.
+
+    Returns a dict with keys: ela, font, color. Each is the raw result
+    of the corresponding service.
+    """
+    return {
+        "ela": run_image_ela(image_path),
+        "font": check_font_consistency(image_path, ocr_text=ocr_text),
+        "color": check_color_authenticity(image_path, app_detected=app_detected),
+    }
+
+
+def _collect_forensic_warnings(forensics: Dict[str, Any]) -> List[str]:
+    """Flatten the warnings from each forensic signal into a single list."""
+    out: List[str] = []
+    for key in ("ela", "font", "color"):
+        for w in forensics.get(key, {}).get("warnings", []) or []:
+            out.append(w)
+    return out
+
+
+def _compute_heuristic_score(
+    primary_utr: Optional[Dict[str, Any]],
+    forensics: Dict[str, Any],
+    ocr_result: Dict[str, Any],
+    ocr_text: str,
+    app_detected: str,
+) -> Tuple[int, List[Dict[str, Any]]]:
+    """Apply rule-based forgery detection. Returns (score, indicators).
+
+    Score is capped at 100. Indicators are a list of {rule, score, detail}
+    dicts that explain which rules fired. Each rule fires independently.
+    """
+    indicators: List[Dict[str, Any]] = []
+    score = 0
+
+    ela_result = forensics.get("ela", {})
+    font_result = forensics.get("font", {})
+    color_result = forensics.get("color", {})
+
+    # Rule A: Invalid UTR (+25)
+    if not primary_utr or not primary_utr.get("valid"):
+        add = 25
+        score += add
+        evidence = primary_utr["evidence"] if primary_utr else "No transaction UTR reference found in receipt text."
+        indicators.append({
+            "rule": "invalid_or_missing_utr",
+            "score": add,
+            "detail": f"Missing or invalid UTR reference. {evidence}",
+        })
+
+    # Rule B: App brand color mismatch (+15)
+    if not color_result.get("color_authentic"):
+        add = 15
+        score += add
+        indicators.append({
+            "rule": "brand_color_mismatch",
+            "score": add,
+            "detail": (
+                f"Color profile does not match expected brand template for {app_detected} "
+                f"(ref: {color_result.get('reference_color')}, dist: {color_result.get('distance')})."
+            ),
+        })
+
+    # Rule C: ELA tamper suspected (+30)
+    if ela_result.get("tamper_suspected"):
+        add = 30
+        score += add
+        indicators.append({
+            "rule": "ela_tamper_detected",
+            "score": add,
+            "detail": f"Error Level Analysis indicates potential image overlay editing (hotspot: {ela_result.get('hotspot_ratio')}).",
+        })
+
+    # Rule D: Font inconsistency (+20)
+    if not font_result.get("font_consistent"):
+        add = 20
+        score += add
+        indicators.append({
+            "rule": "font_inconsistent",
+            "score": add,
+            "detail": f"Text bounding-box heights vary significantly (variance: {font_result.get('height_variance')}), hinting at spliced fonts.",
+        })
+
+    # Rule E: OCR low confidence or empty (+10)
+    if ocr_result.get("confidence", 1.0) < 0.50 or not ocr_text.strip():
+        add = 10
+        score += add
+        indicators.append({
+            "rule": "low_ocr_confidence",
+            "score": add,
+            "detail": f"Receipt OCR text confidence is low ({round(ocr_result.get('confidence', 0), 2)}), or text is unreadable.",
+        })
+
+    # Rule F: Suspicious keywords / status mismatch (+10)
+    suspicious_kws = ["scam", "refund", "failed", "reversed", "fake", "cancelled", "void", "generated"]
+    matched_kws = [kw for kw in suspicious_kws if kw in ocr_text.lower()]
+    if matched_kws:
+        add = 10
+        score += add
+        indicators.append({
+            "rule": "suspicious_keywords",
+            "score": add,
+            "detail": f"Receipt contains suspicious keywords suggesting failure or generation tools: {', '.join(matched_kws)}.",
+        })
+
+    return min(100, score), indicators
+
+
+def _score_to_verdict(score: int) -> str:
+    """Map a numeric score (0-100) to a categorical verdict."""
+    if score >= 60:
+        return "LIKELY_FORGED"
+    if score >= 30:
+        return "SUSPICIOUS"
+    return "GENUINE"
+
+
+def _compute_confidence(score: int, indicators: List[Dict[str, Any]]) -> float:
+    """Confidence is higher when the score and the rule set agree.
+
+    Blends the score (0-100) and the average per-indicator score. Returns
+    a float in [0, 1].
+    """
+    if not indicators:
+        return 0.5
+    avg_indicator_score = sum(i["score"] for i in indicators) / len(indicators)
+    return min(1.0, max(0.0, score / 100.0 * 0.7 + avg_indicator_score / 50.0 * 0.3))
+
+
+def _apply_ml_overlay(
+    primary_utr: Optional[Dict[str, Any]],
+    forensics: Dict[str, Any],
+    ocr_result: Dict[str, Any],
+    app_detected: str,
+    heuristic_score: int,
+) -> Tuple[int, List[Dict[str, Any]], str]:
+    """Run the trained ML model on top of the heuristic score.
+
+    Returns (final_score, feature_contributions, score_source).
+    On any error, returns the heuristic score unchanged and
+    `feature_contributions=[]`.
+    """
+    try:
+        from ml.registry import get_registry
+        from ml.features.upi_features import extract_upi_features, get_feature_names
+        from app.core.xai import get_feature_contributions
+
+        registry = get_registry()
+        if registry.is_available("upi"):
+            temp_result = {
+                "forgery_score": heuristic_score,
+                "utr": primary_utr,
+                "ela": forensics.get("ela", {}),
+                "font": forensics.get("font", {}),
+                "color": forensics.get("color", {}),
+                "ocr": ocr_result,
+                "app_detected": app_detected,
+            }
+            feats = extract_upi_features(temp_result)
+            prob = registry.predict_proba("upi", feats)
+            final_score = round(prob * 100)
+            feature_contributions = get_feature_contributions(
+                model=registry._models["upi"],
+                features=feats,
+                feature_names=get_feature_names(),
+            )
+            return final_score, feature_contributions, "ml"
+    except Exception as e:
+        logger.warning("ML/SHAP UPI scoring failed: %s", e)
+
+    # Fallback: heuristic only
+    try:
+        from app.core.xai import get_feature_contributions
+        # Indicators are passed in by the caller via the score source; here we just
+        # return an empty contributions list to keep the function signature simple.
+        return heuristic_score, [], "heuristic"
+    except Exception:
+        return heuristic_score, [], "heuristic"
+
+
 def analyze_upi_screenshot(image_path: Path, custom_ocr_text: Optional[str] = None) -> Dict[str, Any]:
     """
-    Unified UPI Shield Analysis Pipeline:
-    0. Pre-screen: reject non-UPI images immediately with clear verdict
+    Unified UPI Shield Analysis Pipeline.
+
+    Reads as a clear 5-step pipeline. Each step has a focused helper
+    function above; this entry point is just the orchestration.
+
+    0. Pre-screen: reject non-UPI images immediately with a clear verdict
     1. Run OCR (or use provided custom text)
     2. Detect UPI App (PhonePe, GPay, Paytm, etc.)
     3. Extract & Validate UTR candidates
@@ -218,220 +460,68 @@ def analyze_upi_screenshot(image_path: Path, custom_ocr_text: Optional[str] = No
     8. Compute Forgery Score & Verdict
     9. Compute XAI Feature Contributions
     """
-    warnings = []
-
-    # 1. OCR Extraction
+    # Step 1: OCR
     ocr_result = extract_text_from_image(image_path, fallback_text=custom_ocr_text)
     ocr_text = ocr_result["text"]
-    if ocr_result.get("warnings"):
-        warnings.extend(ocr_result["warnings"])
+    warnings: List[str] = list(ocr_result.get("warnings", []) or [])
 
-    # 0. GATE CHECK — abort early if image is not a UPI screenshot
-    if not _is_upi_screenshot(ocr_text):
-        logger.warning(
-            "analyze_upi_screenshot: Non-UPI image detected. "
-            "OCR text preview: %r",
-            ocr_text[:200],
-        )
-        result = dict(_NOT_UPI_RESULT_TEMPLATE)
-        result["ocr"] = ocr_result
-        result["warnings"] = list(_NOT_UPI_RESULT_TEMPLATE["warnings"]) + warnings
-        return result
-        
-    # 2. Extract UTR candidates
-    utr_candidates = extract_utr_candidates(ocr_text)
-    primary_utr = utr_candidates[0] if utr_candidates else None
-    
-    # 3. App Detection (needs colors + text)
-    # We first extract colors to pass to app detection
-    dominant_colors_info = []
-    try:
-        from app.services.upi.color_profile import extract_dominant_colors
-        dominant_colors_info = extract_dominant_colors(image_path)
-    except Exception as e:
-        logger.debug("Failed to pre-extract colors for app detection: %s", e)
-        
-    dominant_hex_list = [item["hex"] for item in dominant_colors_info] if dominant_colors_info else None
-    app_result = detect_upi_app(ocr_text, dominant_colors=dominant_hex_list)
-    app_detected = app_result["app"]
-    
+    # Step 2: Gate check (early exit if not a UPI screenshot)
+    not_upi = _gate_check(ocr_text, ocr_result)
+    if not_upi is not None:
+        base_warnings: List[str] = list(_NOT_UPI_RESULT_TEMPLATE["warnings"])  # type: ignore[arg-type]
+        not_upi["warnings"] = base_warnings + warnings
+        return not_upi
+
+    # Step 3: Extract metadata
+    metadata = _extract_metadata(ocr_text)
+    primary_utr = metadata["primary_utr"]
+
+    # Step 4: App detection
+    app_detected = _detect_app(image_path, ocr_text)
+
     # Re-validate primary UTR with app hint if we have one
     if primary_utr:
         primary_utr = validate_utr(primary_utr["value"], app_hint=app_detected)
-        
-    # 4. Extract Amount & Payee VPA
-    amount_val = parse_amount(ocr_text)
-    vpas = parse_vpas(ocr_text)
-    payee_vpa = select_payee_vpa(ocr_text, vpas)
-    sender_upi_id = vpas[0] if len(vpas) > 0 else "unknown@upi"
-    receiver_upi_id = payee_vpa if payee_vpa else (vpas[1] if len(vpas) > 1 else "unknown@merchant")
-    
-    # 5. ELA Forensics
-    ela_result = run_image_ela(image_path)
-    if ela_result.get("warnings"):
-        warnings.extend(ela_result["warnings"])
-        
-    # 6. Font Consistency
-    font_result = check_font_consistency(image_path, ocr_text=ocr_text)
-    if font_result.get("warnings"):
-        warnings.extend(font_result["warnings"])
-        
-    # 7. Color Authenticity
-    color_result = check_color_authenticity(image_path, app_detected=app_detected)
-    if color_result.get("warnings"):
-        warnings.extend(color_result["warnings"])
-        
-    # 8. Compute Forgery Heuristics & Score
-    indicators = []
-    forgery_score = 0
-    
-    # Heuristic A: Missing / Invalid UTR (+25)
-    if not primary_utr or not primary_utr["valid"]:
-        score_add = 25
-        forgery_score += score_add
-        evidence_str = primary_utr["evidence"] if primary_utr else "No transaction UTR reference found in receipt text."
-        indicators.append({
-            "rule": "invalid_or_missing_utr",
-            "score": score_add,
-            "detail": f"Missing or invalid UTR reference. {evidence_str}"
-        })
-        
-    # Heuristic B: App brand color mismatch (+15)
-    if not color_result["color_authentic"]:
-        score_add = 15
-        forgery_score += score_add
-        ref_color = color_result["reference_color"]
-        dist = color_result["distance"]
-        indicators.append({
-            "rule": "brand_color_mismatch",
-            "score": score_add,
-            "detail": f"Color profile does not match expected brand template for {app_detected} (ref: {ref_color}, dist: {dist})."
-        })
-        
-    # Heuristic C: ELA Tamper Suspected (+30)
-    if ela_result["tamper_suspected"]:
-        score_add = 30
-        forgery_score += score_add
-        indicators.append({
-            "rule": "ela_tamper_detected",
-            "score": score_add,
-            "detail": f"Error Level Analysis indicates potential image overlay editing (hotspot: {ela_result['hotspot_ratio']})."
-        })
-        
-    # Heuristic D: Font inconsistency (+20)
-    if not font_result["font_consistent"]:
-        score_add = 20
-        forgery_score += score_add
-        indicators.append({
-            "rule": "font_inconsistent",
-            "score": score_add,
-            "detail": f"Text bounding-box heights vary significantly (variance: {font_result['height_variance']}), hinting at spliced fonts."
-        })
-        
-    # Heuristic E: OCR low confidence/empty (+10)
-    if ocr_result["confidence"] < 0.50 or not ocr_text.strip():
-        score_add = 10
-        forgery_score += score_add
-        indicators.append({
-            "rule": "low_ocr_confidence",
-            "score": score_add,
-            "detail": f"Receipt OCR text confidence is low ({round(ocr_result['confidence'], 2)}), or text is unreadable."
-        })
-        
-    # Heuristic F: Suspicious keywords / status mismatch (+10)
-    suspicious_kws = ["scam", "refund", "failed", "reversed", "fake", "cancelled", "void", "generated"]
-    matched_kws = [kw for kw in suspicious_kws if kw in ocr_text.lower()]
-    if matched_kws:
-        score_add = 10
-        forgery_score += score_add
-        indicators.append({
-            "rule": "suspicious_keywords",
-            "score": score_add,
-            "detail": f"Receipt contains suspicious keywords suggesting failure or generation tools: {', '.join(matched_kws)}."
-        })
-        
-    # Cap score at 100
-    forgery_score = min(100, forgery_score)
-    
-    # Verdict Assignment
-    # 0-29 GENUINE, 30-59 SUSPICIOUS, 60-100 LIKELY_FORGED
-    if forgery_score >= 60:
-        verdict = "LIKELY_FORGED"
-    elif forgery_score >= 30:
-        verdict = "SUSPICIOUS"
+
+    # Step 5: Forensics (ELA + font + color)
+    forensics = _run_forensics(image_path, ocr_text, app_detected)
+    warnings.extend(_collect_forensic_warnings(forensics))
+
+    # Step 6: Heuristic score
+    heuristic_score, indicators = _compute_heuristic_score(
+        primary_utr, forensics, ocr_result, ocr_text, app_detected,
+    )
+    verdict = _score_to_verdict(heuristic_score)
+
+    # Step 7: ML overlay (if available) — overrides heuristic
+    final_score, feature_contributions, score_source = _apply_ml_overlay(
+        primary_utr, forensics, ocr_result, app_detected, heuristic_score,
+    )
+    if score_source == "ml":
+        verdict = _score_to_verdict(final_score)
     else:
-        verdict = "GENUINE"
-        
-    # 9. Try using trained ML model if available
-    feature_contributions = []
-    score_source = "heuristic"
-    registry = None
-    try:
-        from ml.registry import get_registry
-        from ml.features.upi_features import extract_upi_features, get_feature_names
+        final_score = heuristic_score
 
-        registry = get_registry()
-        if registry.is_available("upi"):
-            score_source = "ml"
-            temp_result = {
-                "forgery_score": forgery_score,
-                "utr": primary_utr,
-                "ela": ela_result,
-                "font": font_result,
-                "color": color_result,
-                "ocr": ocr_result,
-                "app_detected": app_detected,
-            }
-            feats = extract_upi_features(temp_result)
-            prob = registry.predict_proba("upi", feats)
-            forgery_score = round(prob * 100)
-
-            # Update verdict
-            if forgery_score >= 60:
-                verdict = "LIKELY_FORGED"
-            elif forgery_score >= 30:
-                verdict = "SUSPICIOUS"
-            else:
-                verdict = "GENUINE"
-
-            # Use SHAP explanation for XAI contributions
-            from app.core.xai import get_feature_contributions
-            model_obj = registry._models["upi"]
-            feature_names = get_feature_names()
-            feature_contributions = get_feature_contributions(
-                model=model_obj,
-                features=feats,
-                feature_names=feature_names
-            )
-        else:
-            from app.core.xai import get_feature_contributions
-            feature_contributions = get_feature_contributions(indicators=indicators)
-    except Exception as e:
-        logger.warning(f"ML/SHAP UPI scoring failed: {e}")
-        try:
-            from app.core.xai import get_feature_contributions
-            feature_contributions = get_feature_contributions(indicators=indicators)
-        except Exception:
-            feature_contributions = []
-
-    result = {
+    # Step 8: Build response
+    payee_vpa = metadata["payee_vpa"]
+    vpas = parse_vpas(ocr_text)
+    return {
         "analysis_status": "completed",
-        "forgery_score": forgery_score,
+        "forgery_score": final_score,
         "verdict": verdict,
         "app_detected": app_detected,
         "utr": primary_utr,
-        "amount_extracted": amount_val,
+        "amount_extracted": metadata["amount"],
         "payee_vpa": payee_vpa,
-        "sender_upi_id": sender_upi_id,
-        "receiver_upi_id": receiver_upi_id,
+        "sender_upi_id": metadata["sender_vpa"],
+        "receiver_upi_id": payee_vpa if payee_vpa else (vpas[1] if len(vpas) > 1 else "unknown@merchant"),
         "score_source": score_source,
+        "confidence": _compute_confidence(final_score, indicators),
         "ocr": ocr_result,
-        "ela": ela_result,
-        "font": font_result,
-        "color": color_result,
+        "ela": forensics.get("ela", {}),
+        "font": forensics.get("font", {}),
+        "color": forensics.get("color", {}),
         "indicators": indicators,
         "feature_contributions": feature_contributions,
-        "warnings": warnings
+        "warnings": warnings,
     }
-
-    return result

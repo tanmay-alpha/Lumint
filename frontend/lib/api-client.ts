@@ -170,14 +170,22 @@ export async function apiRequest<T>(
     headers.set("Authorization", `Bearer ${apiKey}`);
   }
 
+  // Build a composite signal: caller signal (for unmount cancellation)
+  // + 3s timeout. If the caller passed their own AbortController (e.g.
+  // on unmount), aborting it cancels the in-flight fetch.
+  const callerSignal = options?.signal;
+  const timeoutSignal = AbortSignal.timeout(3000)
+  const signal = callerSignal
+    ? AbortSignal.any([callerSignal, timeoutSignal])
+    : timeoutSignal;
+
   try {
     const response = await fetch(url, {
       ...options,
       headers,
-      // Add shorter timeout to quickly fall back to mock in local dev or Vercel
-      signal: AbortSignal.timeout(3000)
+      signal,
     });
-    
+
     if (!response.ok) {
       let errorMessage = `API Error: ${response.status} ${response.statusText}`;
       try {

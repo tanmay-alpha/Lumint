@@ -26,6 +26,7 @@ from app.routers import (
     fraud_dna,
     fusion,
     health,
+    metrics,
     phishing,
     research,
     stream_router,
@@ -341,6 +342,7 @@ for router in (
     research.router,
     export.router,
     stream_router.router,
+    metrics.router,
 ):
     app.include_router(router)
 
