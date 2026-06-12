@@ -168,35 +168,29 @@ const ModuleCard = ({
   href: string;
   colorClass: string;
 }) => (
-  <motion.div
-    variants={fadeUpVariants}
-    whileHover={{ boxShadow: "0 0 20px rgba(220, 38, 38, 0.15)" }}
-    className="h-full"
+  <Link
+    href={href}
+    className="card-elevated transition-all duration-300 p-6 flex flex-col justify-between group cursor-pointer h-full border border-border-default/50 hover:border-brand/30 hover:shadow-[0_0_20px_rgba(220,38,38,0.15)]"
   >
-    <Link
-      href={href}
-      className="card-elevated transition-all duration-300 p-6 flex flex-col justify-between group cursor-pointer h-full border border-border-default/50 hover:border-brand/30"
-    >
-      <div className="space-y-4">
-        <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${colorClass}`}>
-          <Icon className="h-5 w-5" />
-        </div>
-        <div>
-          <h3 className="text-[16px] font-sans font-semibold text-text-primary mb-2">
-            {title}
-          </h3>
-          <p className="text-[14px] text-text-secondary leading-relaxed line-clamp-3">
-            {description}
-          </p>
-        </div>
+    <div className="space-y-4">
+      <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${colorClass}`}>
+        <Icon className="h-5 w-5" />
       </div>
-      <div className="mt-6 pt-4 border-t border-border-muted flex items-center justify-end">
-        <span className="text-[13px] font-semibold text-brand flex items-center gap-1 group-hover:translate-x-0.5 transition-transform duration-200">
-          Try {title} <ArrowRight className="h-3.5 w-3.5" />
-        </span>
+      <div>
+        <h3 className="text-[16px] font-sans font-semibold text-text-primary mb-2">
+          {title}
+        </h3>
+        <p className="text-[14px] text-text-secondary leading-relaxed line-clamp-3">
+          {description}
+        </p>
       </div>
-    </Link>
-  </motion.div>
+    </div>
+    <div className="mt-6 pt-4 border-t border-border-muted flex items-center justify-end">
+      <span className="text-[13px] font-semibold text-brand flex items-center gap-1 group-hover:translate-x-0.5 transition-transform duration-200">
+        Try {title} <ArrowRight className="h-3.5 w-3.5" />
+      </span>
+    </div>
+  </Link>
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -422,7 +416,7 @@ export default function LandingPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
-            <TiltCard className="h-full">
+            <TiltCard className="h-full" variants={fadeUpVariants}>
               <ModuleCard
                 icon={FileSearch}
                 title="DocShield"
@@ -431,7 +425,7 @@ export default function LandingPage() {
                 colorClass="bg-brand/10 text-brand"
               />
             </TiltCard>
-            <TiltCard className="h-full">
+            <TiltCard className="h-full" variants={fadeUpVariants}>
               <ModuleCard
                 icon={ShieldAlert}
                 title="PhishShield"
@@ -440,7 +434,7 @@ export default function LandingPage() {
                 colorClass="bg-warn/10 text-warn"
               />
             </TiltCard>
-            <TiltCard className="h-full">
+            <TiltCard className="h-full" variants={fadeUpVariants}>
               <ModuleCard
                 icon={Network}
                 title="Fraud DNA"
@@ -449,7 +443,7 @@ export default function LandingPage() {
                 colorClass="bg-ai/10 text-ai-accent"
               />
             </TiltCard>
-            <TiltCard className="h-full">
+            <TiltCard className="h-full" variants={fadeUpVariants}>
               <ModuleCard
                 icon={Smartphone}
                 title="UPI Shield"

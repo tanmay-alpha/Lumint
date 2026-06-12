@@ -11,12 +11,14 @@ interface TiltCardProps {
   children: ReactNode;
   className?: string;
   tiltAmount?: number;
+  variants?: any;
 }
 
 export function TiltCard({
   children,
   className,
   tiltAmount = 5,
+  variants,
 }: TiltCardProps) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -59,6 +61,7 @@ export function TiltCard({
   return (
     <motion.div
       ref={ref}
+      variants={variants}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       style={{
