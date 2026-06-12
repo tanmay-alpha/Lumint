@@ -1,52 +1,313 @@
+<div align="center">
+
 # 🔍 Lumint
 
-**Catch fraud before the money moves.**
+### Catch fraud before the money moves.
 
-Lumint is a free, open-source fraud detection platform built for India's digital payment ecosystem. It uses AI to analyze screenshots, documents, and links in seconds — telling you whether they're real or fake, and why.
+**An open-source, AI-powered fraud detection platform for India's digital payment ecosystem.**
+Analyze screenshots, documents, and links in under 3 seconds — with plain-English explanations of every verdict.
 
-🎯 **[Try the live demo](https://lumint-pi.vercel.app)** · 📄 **[Read the research paper](https://github.com/tanmay-alpha/Lumint/tree/main/paper)** · ⭐ **[Star on GitHub](https://github.com/tanmay-alpha/Lumint)**
+[🎯 Live Demo](https://lumint-pi.vercel.app) · [📄 Research Paper](https://github.com/tanmay-alpha/Lumint/tree/main/paper) · [⭐ Star on GitHub](https://github.com/tanmay-alpha/Lumint) · [🐛 Report Bug](https://github.com/tanmay-alpha/Lumint/issues) · [💼 LinkedIn](https://www.linkedin.com/in/tanmaymangal/)
+
+[![MIT License](https://img.shields.io/badge/License-MIT-crimson.svg?style=for-the-badge)](https://choosealicense.com/licenses/mit/)
+[![Python 3.11](https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![Next.js 14](https://img.shields.io/badge/Next.js-14-000000?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![263 Tests](https://img.shields.io/badge/Tests-263-brightgreen?style=for-the-badge&logo=pytest&logoColor=white)]()
+[![Production Ready](https://img.shields.io/badge/Production-Live-success?style=for-the-badge&logo=checkmarx&logoColor=white)](https://lumint-pi.vercel.app)
+[![Security](https://img.shields.io/badge/Security-Hardened-blue?style=for-the-badge&logo=security&logoColor=white)]()
+
+</div>
+
+---
+
+## 🎬 The 60-Second Story
+
+**You just received a UPI payment screenshot.** Is it real, or did your friend send you a photoshopped ₹1,500 to scam you?
+
+**You see a link in your email** saying your bank account will be blocked. Is it real HDFC, or a phishing site?
+
+**Your landlord sent a rent receipt.** Is it real, or edited in Photoshop?
+
+**Lumint answers all of these in under 3 seconds** — with a risk score AND a plain-English reason.
+
+```mermaid
+flowchart LR
+    A["📤 You upload<br/>screenshot · document<br/>or URL"] -->|"< 1 sec"| B["🧠 4 AI techniques<br/>run in parallel"]
+    B -->|"< 2 sec"| C{"⚖️ Verdict"}
+    C -->|"Genuine"| D["✅ Score 0-30<br/>Looks real"]
+    C -->|"Suspicious"| E["⚠️ Score 30-70<br/>Check carefully"]
+    C -->|"High Risk"| F["🚨 Score 70-100<br/>Don't trust it"]
+
+    style A fill:#1a1a2e,stroke:#DC2626,stroke-width:2px,color:#F9FAFB
+    style B fill:#1a1a2e,stroke:#DC2626,stroke-width:2px,color:#F9FAFB
+    style C fill:#1a1a2e,stroke:#F9FAFB,stroke-width:3px,color:#F9FAFB
+    style D fill:#065f46,stroke:#10B981,stroke-width:2px,color:#F9FAFB
+    style E fill:#92400e,stroke:#F59E0B,stroke-width:2px,color:#F9FAFB
+    style F fill:#991b1b,stroke:#DC2626,stroke-width:2px,color:#F9FAFB
+```
+
+**No signup. No data stored. No tracking. 100% open source.**
 
 ---
 
 ## 🛑 The Problem
 
-Every day in India:
-- **₹100+ crore** is lost to UPI payment fraud
-- **15,000+** fake UPI screenshots are circulated
-- **40,000+** new phishing websites target Indian bank customers
-- **2.3 million** people fall victim to fake KYC/document scams
+Every single day in India:
 
-Most fraud tools only catch *one type* of fraud. Lumint catches **all of them — in one place.**
+| 🛑 Daily fraud in India | Count |
+|------------------------|-------|
+| 💸 Money lost to UPI payment fraud | **₹100+ crore** |
+| 📸 Fake UPI payment screenshots circulated | **15,000+** |
+| 🎣 New phishing websites targeting banks | **40,000+** |
+| 📄 People scammed via fake KYC / documents | **2.3 million** |
 
----
-
-## ✅ What Lumint Does
-
-| Module | What it catches | Example |
-|--------|----------------|---------|
-| **📄 DocShield** | Fake documents (invoices, ID cards, salary slips) | "Is this rent receipt real or photoshopped?" |
-| **🎣 PhishShield** | Phishing links and fake bank websites | "Will this URL steal my password?" |
-| **📲 UPI Shield** | Fake UPI payment screenshots (PhonePe, GPay, Paytm) | "Did my friend really send me ₹1,500 or is this a fake screenshot?" |
-| **🧬 Fraud DNA** | Connected fraud campaigns and patterns | "Are these 50 phishing sites run by the same gang?" |
-
-**Every result comes with a plain-English explanation** — not just a score, but a reason: *"This URL mimics Chase Bank's domain and uses a non-secure connection."*
+Most fraud tools only catch **one type** of fraud. Lumint catches **all of them — in one platform, with explanations for every decision.**
 
 ---
 
-## 🎬 How It Works (60-second version)
+## ✨ What Lumint Does
 
-1. **You upload** a screenshot, document, or paste a link
-2. **Lumint analyzes it** using 4 AI techniques in parallel:
-   - **Pixel forensics** — finds invisible edits in images
-   - **Pattern matching** — compares against known fraud templates
-   - **Domain intelligence** — checks URL reputation, registration age, typosquatting
-   - **LLM reasoning** — an AI explains the verdict in plain English
-3. **You get a verdict** in under 3 seconds:
-   - ✅ **Genuine** (with confidence score)
-   - ⚠️ **Suspicious** (with reasons)
-   - 🚨 **High Risk** (with SHAP feature importance)
+<table>
+  <thead>
+    <tr>
+      <th align="left">🛡️ Module</th>
+      <th align="left">🎯 What it catches</th>
+      <th align="left">💬 Real-world example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>📄 <b>DocShield</b></td>
+      <td>Fake documents (invoices, ID cards, salary slips, rent receipts)</td>
+      <td><i>"Is this rent receipt real or photoshopped?"</i></td>
+    </tr>
+    <tr>
+      <td>🎣 <b>PhishShield</b></td>
+      <td>Phishing links and lookalike bank websites</td>
+      <td><i>"Will this URL steal my password?"</i></td>
+    </tr>
+    <tr>
+      <td>📲 <b>UPI Shield</b></td>
+      <td>Fake UPI payment screenshots (PhonePe, GPay, Paytm, BHIM)</td>
+      <td><i>"Did my friend really send me ₹1,500, or is this fake?"</i></td>
+    </tr>
+    <tr>
+      <td>🧬 <b>Fraud DNA</b></td>
+      <td>Connected fraud campaigns and threat actor networks</td>
+      <td><i>"Are these 50 phishing sites run by the same gang?"</i></td>
+    </tr>
+  </tbody>
+</table>
 
-**No signup. No data stored. No credit card.**
+> **Every result comes with a plain-English explanation** — not just a score, but a *reason*.  
+> Example: *"This URL mimics Chase Bank's domain and uses a non-secure connection. The path 'signin' and 3 brand keywords triggered the typosquatting policy."*
+
+---
+
+## 🏗️ Architecture
+
+```mermaid
+flowchart TB
+    subgraph CLIENT["👤 Client Layer"]
+        U["🌐 User<br/>(Browser)"]
+    end
+
+    subgraph FRONTEND["🌐 Frontend (Next.js 14 · TypeScript)"]
+        UI["📊 Dashboard UI<br/>Tailwind + Framer Motion"]
+        G3D["🌍 ThreatGlobe 3D<br/>(Cobe library)"]
+        TC["🎴 TiltCard<br/>(3D mouse tilt)"]
+        LL["⏳ Loading Logo<br/>(wireframe hexagon)"]
+    end
+
+    subgraph BACKEND["⚙️ Backend (FastAPI · Python 3.11)"]
+        AUTH["🔐 JWT Auth<br/>Rate Limiting"]
+        R1["/api/phishing"]
+        R2["/api/upi"]
+        R3["/api/documents"]
+        R4["/api/fraud-dna"]
+        R5["/api/research"]
+    end
+
+    subgraph MLPIPE["🧠 ML Pipeline"]
+        PS["🎣 PhishShield<br/>TF-IDF + LR<br/>SHAP"]
+        US["📲 UPI Shield<br/>OCR + Heuristic<br/>SHAP"]
+        DS["📄 DocShield<br/>ELA + scikit-learn<br/>SHAP"]
+        FD["🧬 Fraud DNA<br/>DBSCAN clustering"]
+    end
+
+    subgraph AI["🤖 AI Reasoning Layer"]
+        LLM["🧠 LLaMA 3.3 70B<br/>via Groq API<br/>(plain-English explanations)"]
+    end
+
+    subgraph DATA["🗄️ Data Layer"]
+        PG[("🐘 PostgreSQL<br/>production")]
+        SQ[("📁 SQLite<br/>development")]
+        MODELS["📦 11 trained models<br/>.joblib files"]
+    end
+
+    subgraph INFRA["🚢 Infrastructure"]
+        VER["▲ Vercel<br/>(frontend CDN)"]
+        REN["🚂 Render<br/>(backend)"]
+    end
+
+    U --> UI
+    UI -.visual.-> G3D
+    UI -.interaction.-> TC
+    UI -.states.-> LL
+    UI -->|"HTTPS + JWT"| AUTH
+
+    AUTH --> R1
+    AUTH --> R2
+    AUTH --> R3
+    AUTH --> R4
+    AUTH --> R5
+
+    R1 --> PS
+    R2 --> US
+    R3 --> DS
+    R4 --> FD
+
+    PS -.SHAP.-> LLM
+    US -.SHAP.-> LLM
+    DS -.SHAP.-> LLM
+
+    R1 --> PG
+    R2 --> PG
+    R3 --> PG
+    R4 --> PG
+    R5 --> PG
+    PG -.dev fallback.-> SQ
+
+    PS --> MODELS
+    US --> MODELS
+    DS --> MODELS
+
+    UI -.hosted.-> VER
+    AUTH -.hosted.-> REN
+
+    style U fill:#1a1a2e,stroke:#F9FAFB,stroke-width:2px,color:#F9FAFB
+    style UI fill:#0A0E1A,stroke:#DC2626,color:#F9FAFB
+    style G3D fill:#0A0E1A,stroke:#DC2626,color:#F9FAFB
+    style TC fill:#0A0E1A,stroke:#DC2626,color:#F9FAFB
+    style LL fill:#0A0E1A,stroke:#DC2626,color:#F9FAFB
+    style AUTH fill:#0A0E1A,stroke:#F59E0B,color:#F9FAFB
+    style R1 fill:#0A0E1A,stroke:#DC2626,color:#F9FAFB
+    style R2 fill:#0A0E1A,stroke:#DC2626,color:#F9FAFB
+    style R3 fill:#0A0E1A,stroke:#DC2626,color:#F9FAFB
+    style R4 fill:#0A0E1A,stroke:#DC2626,color:#F9FAFB
+    style R5 fill:#0A0E1A,stroke:#DC2626,color:#F9FAFB
+    style PS fill:#0A0E1A,stroke:#10B981,color:#F9FAFB
+    style US fill:#0A0E1A,stroke:#10B981,color:#F9FAFB
+    style DS fill:#0A0E1A,stroke:#10B981,color:#F9FAFB
+    style FD fill:#0A0E1A,stroke:#10B981,color:#F9FAFB
+    style LLM fill:#1a1a2e,stroke:#F59E0B,stroke-width:2px,color:#F9FAFB
+    style PG fill:#0A0E1A,stroke:#3B82F6,color:#F9FAFB
+    style SQ fill:#0A0E1A,stroke:#94A3B8,color:#F9FAFB
+    style MODELS fill:#0A0E1A,stroke:#F59E0B,color:#F9FAFB
+    style VER fill:#0A0E1A,stroke:#F9FAFB,color:#F9FAFB
+    style REN fill:#0A0E1A,stroke:#F9FAFB,color:#F9FAFB
+```
+
+---
+
+## 🎣 PhishShield: Real-time URL Analysis
+
+```mermaid
+flowchart LR
+    A["🌐 User pastes URL<br/>chase-securty-verify.com"] --> B["🔍 Lexical Analysis<br/>• Length<br/>• Subdomain count<br/>• Special chars<br/>• IP vs domain"]
+    B --> C["🎭 Brand Mimicry<br/>Levenshtein vs<br/>50+ bank domains"]
+    C --> D["🔒 TLS Check<br/>• Certificate<br/>• Registration age<br/>• WHOIS data"]
+    D --> E["🧠 ML Classifier<br/>TF-IDF + LR<br/>+ SHAP"]
+    E --> F["📊 Risk Score<br/>0-100 + reasons"]
+
+    F -->|Score 94| G["🚨 HIGH RISK<br/>3 policies triggered<br/>• Typosquat: 45<br/>• Brand mimic: 25<br/>• No TLS: 24"]
+
+    style A fill:#1a1a2e,stroke:#DC2626,color:#F9FAFB
+    style B fill:#0A0E1A,stroke:#F59E0B,color:#F9FAFB
+    style C fill:#0A0E1A,stroke:#F59E0B,color:#F9FAFB
+    style D fill:#0A0E1A,stroke:#F59E0B,color:#F9FAFB
+    style E fill:#0A0E1A,stroke:#10B981,color:#F9FAFB
+    style F fill:#0A0E1A,stroke:#DC2626,color:#F9FAFB
+    style G fill:#991b1b,stroke:#DC2626,stroke-width:3px,color:#F9FAFB
+```
+
+---
+
+## 📲 UPI Shield: Fake Screenshot Detection
+
+```mermaid
+flowchart TB
+    A["📸 User uploads<br/>payment screenshot"] --> B["👁️ OCR<br/>Tesseract extracts:<br/>• UTR (12 digits)<br/>• VPA handle<br/>• Amount<br/>• Timestamp"]
+    B --> C{"✓ Format check<br/>UTR valid?<br/>VPA valid?"}
+    C -->|No| Z["🚨 Format fraud<br/>Auto-fail"]
+    C -->|Yes| D["🎨 Visual forensics<br/>• Font consistency<br/>• Color palette<br/>• Layout structure"]
+    D --> E["🔬 ELA<br/>Error Level Analysis<br/>detects pixel edits"]
+    E --> F["🧠 LLM verdict<br/>LLaMA 3.3 70B<br/>via Groq"]
+    F --> G["📊 Verdict<br/>+ plain-English<br/>+ SHAP features"]
+
+    style A fill:#1a1a2e,stroke:#DC2626,color:#F9FAFB
+    style B fill:#0A0E1A,stroke:#F59E0B,color:#F9FAFB
+    style C fill:#0A0E1A,stroke:#F59E0B,color:#F9FAFB
+    style Z fill:#991b1b,stroke:#DC2626,color:#F9FAFB
+    style D fill:#0A0E1A,stroke:#3B82F6,color:#F9FAFB
+    style E fill:#0A0E1A,stroke:#3B82F6,color:#F9FAFB
+    style F fill:#0A0E1A,stroke:#10B981,color:#F9FAFB
+    style G fill:#0A0E1A,stroke:#DC2626,color:#F9FAFB
+```
+
+---
+
+## 🧬 Fraud DNA: Connecting The Dots
+
+```mermaid
+flowchart LR
+    subgraph INPUT["📥 Incoming Threats"]
+        T1["🎣 chase-securty.com<br/>Score 94"]
+        T2["📲 Fake ₹5,000 GPay<br/>Score 87"]
+        T3["🎣 hdfc-kyc-verify.net<br/>Score 91"]
+        T4["📄 Fake invoice_9821.pdf<br/>Score 78"]
+        T5["🎣 icici-update.com<br/>Score 88"]
+    end
+
+    subgraph FE["🔍 Feature Fingerprinting"]
+        F1["Domain hash<br/>Typosquat pattern"]
+        F2["Font signature<br/>Color palette"]
+        F3["Domain hash<br/>Brand mimicry"]
+        F4["ELA signature<br/>Metadata"]
+        F5["Domain hash<br/>TLD pattern"]
+    end
+
+    subgraph CL["🧬 DBSCAN Clustering Engine"]
+        C1["🔴 Campaign A<br/>Indian Banking<br/>₹5,00,000 fraud<br/>3 linked URLs"]
+        C2["🟡 Campaign B<br/>Document Forgery<br/>₹1,20,000 fraud<br/>2 linked files"]
+    end
+
+    T1 --> F1
+    T2 --> F2
+    T3 --> F3
+    T4 --> F4
+    T5 --> F5
+
+    F1 -->|"0.92 similarity"| C1
+    F3 -->|"0.88 similarity"| C1
+    F5 -->|"0.85 similarity"| C1
+    F2 -->|"0.78 similarity"| C2
+    F4 -->|"0.81 similarity"| C2
+
+    style T1 fill:#991b1b,stroke:#DC2626,color:#F9FAFB
+    style T2 fill:#991b1b,stroke:#DC2626,color:#F9FAFB
+    style T3 fill:#991b1b,stroke:#DC2626,color:#F9FAFB
+    style T4 fill:#991b1b,stroke:#DC2626,color:#F9FAFB
+    style T5 fill:#991b1b,stroke:#DC2626,color:#F9FAFB
+    style F1 fill:#0A0E1A,stroke:#F59E0B,color:#F9FAFB
+    style F2 fill:#0A0E1A,stroke:#F59E0B,color:#F9FAFB
+    style F3 fill:#0A0E1A,stroke:#F59E0B,color:#F9FAFB
+    style F4 fill:#0A0E1A,stroke:#F59E0B,color:#F9FAFB
+    style F5 fill:#0A0E1A,stroke:#F59E0B,color:#F9FAFB
+    style C1 fill:#1e3a8a,stroke:#3B82F6,stroke-width:2px,color:#F9FAFB
+    style C2 fill:#1e3a8a,stroke:#3B82F6,stroke-width:2px,color:#F9FAFB
+```
 
 ---
 
@@ -54,90 +315,180 @@ Most fraud tools only catch *one type* of fraud. Lumint catches **all of them �
 
 | If you are... | Lumint helps you... |
 |---------------|---------------------|
-| 🏦 **A bank or fintech** | Catch fraudulent transactions before they clear |
-| 🛡️ **A security analyst** | Investigate suspicious activity across documents, URLs, and payments |
-| 📚 **A researcher** | Study fraud patterns with reproducible benchmarks and 4 published research reports |
-| 👨‍💻 **A developer** | Integrate fraud detection into your own app via REST API |
-| 🧑 **A regular person** | Verify that UPI screenshot your friend sent isn't fake |
+| 🏦 **A bank or fintech** | Catch fraudulent transactions before they clear — across UPI, documents, and URLs in one place |
+| 🛡️ **A security analyst** | Investigate suspicious activity with full provenance and SHAP-based feature explanations |
+| 📚 **A researcher** | Study Indian fraud patterns with reproducible benchmarks, 5 published research reports, and cross-dataset evaluation |
+| 👨‍💻 **A developer** | Integrate fraud detection into your own app via a clean REST API with JWT auth and OpenAPI docs |
+| 🧑 **A regular person** | Verify that the UPI screenshot your friend sent isn't fake — paste a link to check if it's a phishing site |
 
 ---
 
-## 🚀 Try It Live (No Install)
+## 🚀 Try It Live (No Install Required)
 
 👉 **[https://lumint-pi.vercel.app](https://lumint-pi.vercel.app)**
 
-You can:
-- Paste any suspicious URL into PhishShield
-- Upload any UPI screenshot to UPI Shield
-- Browse real fraud cases in the dashboard
-- Read the full research methodology in the Research section
+Once you're there, you can:
+
+- 🎣 **Paste any suspicious URL** into PhishShield → get a risk score in 200ms
+- 📲 **Upload any UPI screenshot** → see if it's real or photoshopped
+- 🧬 **Browse real fraud cases** in the dashboard
+- 📄 **Read the full research methodology** in the Research section
+- 🧠 **Inspect SHAP feature importance** for every verdict
 
 ---
 
 ## 📊 Real Performance Numbers
 
-| Module | Accuracy | Latency | False Positive Rate |
-|--------|----------|---------|---------------------|
-| PhishShield | 96.2% | 180ms | 2.1% |
-| UPI Shield | 94.7% | 1.2s | 3.4% |
-| DocShield | 92.8% | 2.4s | 4.1% |
-| Fraud DNA Clustering | 89.3% | 800ms | 6.2% |
+| 🛡️ Module | 🎯 Same-Distribution F1 | 🌐 Cross-Dataset F1 | ⚡ Latency |
+|-----------|-------------------------|--------------------|-----------|
+| 🎣 PhishShield | **1.0000** (synthetic) | **0.6439** (synth → real) | 180ms |
+| 📲 UPI Shield | **1.0000** (synthetic) | reported in `r12_*.json` | 1.2s |
+| 📄 DocShield | **1.0000** (synthetic) | reported in `r12_*.json` | 2.4s |
+| 🧬 Fraud DNA Clustering | DBSCAN-driven | n/a | 800ms |
 
-*Tested on a holdout set of 12,400 samples across 4 Indian banking datasets. See `backend/reports/` for full benchmark tables.*
+*Numbers from `backend/reports/r10_*.json` (intra-distribution) and `r12_cross_dataset_results.json` (domain shift).*
+
+### Why these numbers are honest (not "vibe coded")
+
+- ✅ All metrics computed on **held-out test sets**, not training data
+- ✅ 5-fold cross-validation with confidence intervals reported
+- ✅ Cross-dataset evaluation (synthetic → real F1 drop is **0.36**, reported transparently)
+- ✅ Failure mode analysis and adversarial robustness tests published in `paper/`
+- ✅ Real-world F1 (Real → Real) reported as **0.8387**, not the perfect 1.0 from synthetic
+
+### Cross-dataset generalization (the honest metric)
+
+| Training | Test | F1-Score | AUC-ROC |
+|----------|------|----------|---------|
+| Synthetic | Synthetic | 1.0000 | 1.0000 |
+| Real | Real | 0.8387 | 0.9125 |
+| Synthetic | Real (domain shift) | 0.6439 | 0.8169 |
+| Real | Synthetic | 0.7224 | 0.8246 |
+
+### Performance vs Latency Tradeoff
+
+```mermaid
+quadrantChart
+    title "Module Performance Profile"
+    x-axis "Low Latency" --> "High Latency"
+    y-axis "Low Accuracy" --> "High Accuracy"
+    quadrant-1 "🎯 Production Sweet Spot"
+    quadrant-2 "🐌 High Accuracy, Slow"
+    quadrant-3 "❌ Avoid"
+    quadrant-4 "⚡ Fast but Risky"
+    "PhishShield": [0.20, 0.85]
+    "UPI Shield": [0.55, 0.80]
+    "DocShield": [0.75, 0.75]
+    "Fraud DNA": [0.45, 0.70]
+    "Legacy rules-only": [0.10, 0.40]
+```
 
 ---
 
-## 🧠 The AI Stack (For The Curious)
+## 🧠 The Tech Stack
 
-Lumint combines **4 AI techniques** that work together:
+```mermaid
+mindmap
+  root((Lumint<br/>Stack))
+    Backend
+      Python 3.11
+      FastAPI 0.115
+      SQLAlchemy 2.0
+      Pydantic 2
+      scikit-learn 1.4
+      SHAP 0.45
+      Tesseract OCR
+      PyMuPDF
+      Pillow
+      OpenCV
+    AI / ML
+      LLaMA 3.3 70B
+      Groq API
+      TF-IDF
+      Logistic Regression
+      Random Forest
+      LightGBM
+      XGBoost
+      DBSCAN
+      Adversarial-Robustness-Toolbox
+    Frontend
+      Next.js 14
+      TypeScript
+      Tailwind CSS
+      Framer Motion
+      Recharts
+      Cobe
+      Lucide React
+    Infrastructure
+      Vercel
+      Render
+      PostgreSQL
+      SQLite
+      GitHub Actions
+      Gitleaks
+```
 
-- **Computer vision** (Error Level Analysis, EXIF metadata inspection) — finds invisible edits in images
-- **Classical ML** (TF-IDF, Logistic Regression, scikit-learn) — fast pattern matching for URLs and documents
-- **LLM reasoning** (LLaMA 3.3 70B via Groq) — generates plain-English explanations
-- **Explainable AI** (SHAP) — shows which features drove each decision
+### Security (Enterprise-grade by default)
 
-**Why this matters:** Most fraud tools are "black boxes" — they tell you *what* but not *why*. Lumint shows you exactly which pixel, which character, or which pattern triggered the alert.
-
----
-
-## 🏗️ Built With
-
-**Backend**
-- 🐍 Python 3.11 + FastAPI
-- 🧠 scikit-learn, SHAP, Tesseract OCR
-- 🤖 LLaMA 3.3 70B (via Groq) for explanations
-- 🗄️ PostgreSQL (production) / SQLite (dev)
-
-**Frontend**
-- ⚛️ Next.js 14 + TypeScript
-- 🎨 Tailwind CSS + Framer Motion
-- 🌍 3D threat globe with Cobe
-- 📊 Recharts for telemetry
-
-**Infrastructure**
-- ▲ Vercel (frontend)
-- 🚂 Render (backend)
-- 🐳 Docker (self-host)
-- 🔒 JWT auth, CORS-locked, Sentry monitored
+- 🔐 JWT bearer auth on all API endpoints
+- 🛡️ SSRF guard (blocks cloud metadata, private IPs, `file://`)
+- ⏱️ Rate limiting (10/min on UPI, 30/min on phishing)
+- 🔒 Constant-time API key comparison (timing attack prevention)
+- 🛡️ CSP, HSTS, X-Frame-Options, X-Content-Type-Options headers
+- 🧬 SHA-256 model integrity checks (no pickle injection)
+- 🪪 PII-redacted structured JSON logging
+- 🚨 Production refuses to boot without `LUMINT_API_KEY`
 
 ---
 
 ## 📦 Project Structure
-Lumint/
-├── frontend/              # Next.js dashboard (TypeScript)
-│   ├── app/               # Pages and layouts
-│   ├── components/        # UI components (globe, cards, charts)
-│   └── lib/               # API client and utilities
-├── backend/               # FastAPI service (Python)
-│   ├── app/
-│   │   ├── routers/       # /api/docs, /api/phishing, /api/upi, etc.
-│   │   ├── services/      # Business logic (DocShield, PhishShield, etc.)
-│   │   └── core/          # XAI integration, fusion meta-learner
-│   ├── ml/                # Trained models + training pipeline
-│   ├── tests/             # 270+ pytest tests
-│   └── reports/           # R10-R14 research artifacts
-├── paper/                 # LaTeX research paper source
-└── docs/                  # Methodology, ablation studies
+
+```mermaid
+graph TD
+    ROOT["📁 Lumint/"] --> FE["📁 frontend/"]
+    ROOT --> BE["📁 backend/"]
+    ROOT --> RP["📁 paper/"]
+    ROOT --> DOC["📁 docs/"]
+    ROOT --> DAT["📁 dataset/"]
+    ROOT --> INF["📁 .github/"]
+    ROOT --> DEPLOY["📄 render.yaml<br/>📄 Dockerfile.prod<br/>📄 Makefile"]
+    ROOT --> REPO["📄 reproduce.sh<br/>📄 README.md"]
+
+    FE --> FE1["📁 app/<br/>pages & layouts"]
+    FE --> FE2["📁 components/<br/>ThreatGlobe, TiltCard, LoadingLogo"]
+    FE --> FE3["📁 lib/<br/>API client, utilities"]
+
+    BE --> BE1["📁 app/"]
+    BE --> BE2["📁 ml/<br/>11 trained models"]
+    BE --> BE3["📁 tests/<br/>263 pytest tests"]
+    BE --> BE4["📁 reports/<br/>R10-R16 artifacts"]
+
+    BE1 --> BE1A["📁 routers/<br/>phishing · upi · documents<br/>fraud_dna · research · ai · fusion"]
+    BE1 --> BE1B["📁 services/<br/>business logic"]
+    BE1 --> BE1C["📁 core/<br/>XAI, fusion, SSRF guard"]
+    BE1 --> BE1D["📁 middleware/<br/>rate limit, tracing"]
+
+    style ROOT fill:#0A0E1A,stroke:#DC2626,stroke-width:3px,color:#F9FAFB
+    style FE fill:#0A0E1A,stroke:#DC2626,color:#F9FAFB
+    style BE fill:#0A0E1A,stroke:#DC2626,color:#F9FAFB
+    style RP fill:#0A0E1A,stroke:#F59E0B,color:#F9FAFB
+    style DOC fill:#0A0E1A,stroke:#F59E0B,color:#F9FAFB
+    style DAT fill:#0A0E1A,stroke:#F59E0B,color:#F9FAFB
+    style INF fill:#0A0E1A,stroke:#10B981,color:#F9FAFB
+    style DEPLOY fill:#0A0E1A,stroke:#10B981,color:#F9FAFB
+    style REPO fill:#0A0E1A,stroke:#3B82F6,color:#F9FAFB
+    style FE1 fill:#1a1a2e,stroke:#94A3B8,color:#F9FAFB
+    style FE2 fill:#1a1a2e,stroke:#94A3B8,color:#F9FAFB
+    style FE3 fill:#1a1a2e,stroke:#94A3B8,color:#F9FAFB
+    style BE1 fill:#1a1a2e,stroke:#94A3B8,color:#F9FAFB
+    style BE2 fill:#1a1a2e,stroke:#94A3B8,color:#F9FAFB
+    style BE3 fill:#1a1a2e,stroke:#94A3B8,color:#F9FAFB
+    style BE4 fill:#1a1a2e,stroke:#94A3B8,color:#F9FAFB
+    style BE1A fill:#0A0E1A,stroke:#94A3B8,color:#F9FAFB
+    style BE1B fill:#0A0E1A,stroke:#94A3B8,color:#F9FAFB
+    style BE1C fill:#0A0E1A,stroke:#94A3B8,color:#F9FAFB
+    style BE1D fill:#0A0E1A,stroke:#94A3B8,color:#F9FAFB
+```
 
 ---
 
@@ -147,143 +498,195 @@ Lumint/
 - Python 3.10+
 - Node.js 18+
 - Git
+- Tesseract OCR (optional, for UPI analysis)
 
-### 1. Clone and set up the backend
+### 1. Clone the repo
+
 ```bash
 git clone https://github.com/tanmay-alpha/Lumint.git
-cd Lumint/backend
+cd Lumint
+```
+
+### 2. Backend setup
+
+```bash
+cd backend
 python -m venv venv
-source venv/bin/activate    # On Windows: venv\Scripts\Activate.ps1
+
+# On Windows (PowerShell):
+.\venv\Scripts\Activate.ps1
+# On macOS/Linux:
+source venv/bin/activate
+
 pip install -r requirements.txt
-cp ../.env.example .env     # Add your GROQ_API_KEY (optional)
+cp ../.env.example .env       # Add GROQ_API_KEY (optional) and LUMINT_API_KEY
 python scripts/seed_demo_data.py
 uvicorn main:app --reload
 ```
-→ API runs at `http://localhost:8000` (docs at `/docs`)
 
-### 2. Set up the frontend
+✅ Backend running at `http://localhost:8000`  
+📖 API docs at `http://localhost:8000/docs`
+
+### 3. Frontend setup (in a new terminal)
+
 ```bash
-cd ../frontend
+cd frontend
 npm install
-cp .env.example .env.local  # Set NEXT_PUBLIC_API_URL if needed
+cp .env.example .env.local    # Set NEXT_PUBLIC_API_URL=http://localhost:8000
 npm run dev
 ```
-→ Dashboard runs at `http://localhost:3000`
 
-### 3. Run the test suite
+✅ Dashboard running at `http://localhost:3000`
+
+### 4. Run the test suite
+
 ```bash
-cd ../backend
+cd backend
 pytest --tb=short -q
-# 270+ tests, should all pass
 ```
 
-### 4. Re-train the ML models (optional)
+### 5. Re-train the ML models (optional, takes ~5 min)
+
 ```bash
 cd backend
 python ml/train.py --train-all
 ```
 
+### 6. Reproduce all research tables (optional, takes ~15 min)
+
+```bash
+./reproduce.sh
+```
+
 ---
 
-## 🔬 Research
+## 🔬 Research & Publications
 
-Lumint is also a **research platform**. The full methodology, ablation studies, and benchmarks are published in `paper/`.
+```mermaid
+gantt
+    title Research Report Timeline
+    dateFormat YYYY-MM-DD
+    section Reports
+    R10 Baseline Benchmarks       :done, r10, 2026-05-01, 7d
+    R11 Ablation Studies          :done, r11, after r10, 7d
+    R12 Cross-Dataset             :done, r12, after r11, 7d
+    R15 Drift Detection           :done, r15, after r12, 5d
+    R16 Adversarial Robustness    :done, r16, after r15, 7d
+```
 
-| Report | Topic |
-|--------|-------|
-| **R10** | Baseline benchmarks (accuracy, latency, consensus rate) |
-| **R11** | Ablation studies (what happens if you remove each module?) |
-| **R12** | Cross-dataset generalization (synthetic vs real-world) |
-| **R13** | Failure mode analysis (when does Lumint get fooled?) |
-| **R14** | Adversarial robustness (can fraudsters evade Lumint?) |
+| Report | Topic | Reproducible with |
+|--------|-------|-------------------|
+| **R10** | Baseline benchmarks (accuracy, latency, consensus) | `make benchmark` |
+| **R11** | Ablation studies (what if you remove a module?) | `make ablation` |
+| **R12** | Cross-dataset generalization (synthetic vs real) | `python ml/experiments/run_real_data.py` |
+| **R15** | Drift detection (does the model age in production?) | `backend/reports/r15_drift_table.md` |
+| **R16** | Adversarial robustness (can fraudsters evade detection?) | `python ml/adversarial/run_attacks.py` |
 
-All artifacts live in `backend/reports/` and are reproducible with `make benchmark` and `make ablation`.
+All artifacts live in `backend/reports/` and are deterministic (random seed = 42 pinned).
 
-**Novel contributions:**
-1. First system to combine document, URL, and UPI screenshot forensics in one pipeline
-2. First LLM-generated plain-English explanations for fraud scores
-3. SHAP + LLM fusion — machine XAI to human analyst narrative
-4. Cross-modal CMFA — correlated brand palette, font variance, and ELA grid density
+### Novel contributions
+
+1. **First system** to combine document, URL, and UPI screenshot forensics in one multimodal pipeline
+2. **First LLM-generated** plain-English explanations for fraud scores (vs. black-box scores)
+3. **SHAP + LLM fusion** — bridging machine XAI (SHAP values) to human analyst narrative
+4. **Cross-modal CMFA** — Correlated Multi-modal Forensic Analysis using brand palette + font variance + ELA grid density
 
 ---
 
 ## 🚀 Deployment
 
-Lumint is production-ready. Three deployment paths:
+```mermaid
+flowchart LR
+    DEV["💻 Local Dev"] --> GIT["📤 Git Push to main"]
+    GIT --> GH["🐙 GitHub"]
+    GH -->|"webhook"| VER["▲ Vercel<br/>auto-deploy frontend"]
+    GH -->|"webhook"| REN["🚂 Render<br/>auto-deploy backend"]
+    REN --> DB["🐘 PostgreSQL<br/>managed"]
+    VER --> CDN["🌍 Global CDN"]
+    CDN --> USER["👤 Users worldwide"]
 
-### Option A: Vercel (frontend) + Render (backend) — 5 min
-The repository ships with:
-- `render.yaml` — provisions API + managed Postgres
-- `Dockerfile.prod` — production container
-- `make smoke` — end-to-end health check
-
-```bash
-# Deploy backend to Render
-# 1. Push to GitHub
-# 2. In Render: New → Blueprint → select this repo
-# 3. Set GROQ_API_KEY and CORS_ALLOW_ORIGINS in dashboard
-
-# Deploy frontend to Vercel
-# 1. Import the repo in Vercel
-# 2. Set NEXT_PUBLIC_API_URL to your Render backend URL
-# 3. Deploy
+    style DEV fill:#0A0E1A,stroke:#F9FAFB,color:#F9FAFB
+    style GIT fill:#0A0E1A,stroke:#F9FAFB,color:#F9FAFB
+    style GH fill:#0A0E1A,stroke:#F9FAFB,color:#F9FAFB
+    style VER fill:#0A0E1A,stroke:#F9FAFB,color:#F9FAFB
+    style REN fill:#0A0E1A,stroke:#F9FAFB,color:#F9FAFB
+    style DB fill:#0A0E1A,stroke:#3B82F6,color:#F9FAFB
+    style CDN fill:#0A0E1A,stroke:#10B981,color:#F9FAFB
+    style USER fill:#1a1a2e,stroke:#DC2626,stroke-width:2px,color:#F9FAFB
 ```
 
-### Option B: Docker self-host
-```bash
-cd backend
-docker build -f Dockerfile.prod -t lumint-backend .
-docker run -p 8000:8000 --env-file .env lumint-backend
-```
+### Health endpoints (for monitoring)
 
-### Option C: Local development
-See the "Run It Locally" section above.
+| Path | Purpose | Returns |
+|------|---------|---------|
+| `GET /healthz` | Liveness | `200` unconditionally. Process is up. |
+| `GET /readyz` | Readiness | `200` when DB + ML models loaded. `503` otherwise. |
+| `GET /api/health` | Legacy | Back-compat alias for older clients. |
 
-**Health endpoints:**
-- `GET /healthz` — liveness (always 200)
-- `GET /readyz` — readiness (200 if DB + ML models loaded)
-- `GET /api/health` — legacy back-compat
+### Environment variables (production-critical)
+
+| Variable | Required | Notes |
+|----------|----------|-------|
+| `APP_ENV=production` | ✅ | Refuses to boot with default SQLite in prod |
+| `DATABASE_URL` | ✅ | PostgreSQL connection string |
+| `CORS_ALLOW_ORIGINS` | ✅ | JSON array, e.g. `["https://your-app.vercel.app"]` |
+| `LUMINT_API_KEY` | ✅ | Bearer token for protected API endpoints |
+| `GROQ_API_KEY` | ⚪ Optional | Enables LLM explanations; falls back to templates if unset |
 
 ---
 
-## 🛡️ Security
+## 🛡️ Security & Compliance
 
-- All API endpoints require JWT (except `/healthz`, `/readyz`, `/api/health`)
-- CORS allowlist enforced (configure via `CORS_ALLOW_ORIGINS` env var)
-- Inputs are hashed and rate-limited (no PII stored)
-- Production refuses to boot with default SQLite (requires Postgres)
-- Sentry error tracking in production
-- `make smoke` validates health checks + CORS before deploy
-
-**Vulnerability disclosure:** Open a GitHub issue or email tanmay.mangal@example.com (replace with your real email)
+- 🔐 All API endpoints require JWT bearer auth (except health probes)
+- 🛡️ SSRF guard (blocks private IPs, cloud metadata, `file://`)
+- ⏱️ Rate limiting (10/min on UPI, 30/min on phishing, 200/min global)
+- 🔒 Constant-time API key comparison (timing-attack resistant)
+- 🛡️ CSP, HSTS preload, X-Frame-Options, X-Content-Type-Options headers
+- 🧬 SHA-256 model integrity verification (prevents pickle injection)
+- 🪪 PII-redacted structured JSON logging
+- 🚨 Production refuses to start without `LUMINT_API_KEY` (fail-closed)
+- 🧹 CORS refuses wildcard (`*`) in production
+- 🪶 20MB request body cap (defense in depth)
+- 🔍 Gitleaks secret scan on every commit
 
 ---
 
 ## 🤝 Contributing
 
-Pull requests welcome! For major changes, open an issue first.
+Pull requests are welcome! For major changes, please open an issue first to discuss what you'd like to change.
 
 ```bash
-# Run tests before committing
+# 1. Fork the repo
+# 2. Create your feature branch
+git checkout -b feature/amazing-feature
+
+# 3. Make your changes
+# 4. Run the test suite (both backend and frontend)
 cd backend && pytest -q
 cd frontend && npm run build
-```
 
-**Good first issues:** See the `good-first-issue` label in Issues.
+# 5. Commit and push
+git commit -m "feat: add amazing feature"
+git push origin feature/amazing-feature
+
+# 6. Open a Pull Request
+```
 
 ---
 
 ## 📜 License
 
-MIT License — free to use, modify, and distribute. See `LICENSE` for details.
+MIT License — free to use, modify, and distribute, commercially or non-commercially.
 
-If you use Lumint in research, please cite:
+### Citing Lumint in research
+
 ```bibtex
 @misc{lumint2026,
-  title={Lumint: Multimodal Fraud Intelligence for Digital Payments},
+  title={Lumint: Multimodal Fraud Intelligence for India's Digital Payment Ecosystem},
   author={Mangal, Tanmay},
   year={2026},
-  url={https://github.com/tanmay-alpha/Lumint}
+  howpublished={\url{https://github.com/tanmay-alpha/Lumint}},
+  note={Open-source fraud detection platform combining document, URL, and UPI screenshot forensics with LLM-based explanations}
 }
 ```
 
@@ -292,20 +695,35 @@ If you use Lumint in research, please cite:
 ## 👤 Built By
 
 **Tanmay Mangal**
-- 🔗 [LinkedIn](https://www.linkedin.com/in/tanmaymangal/)
-- 🐙 [GitHub](https://github.com/tanmay-alpha)
-- 📧 tanmay.mangal@example.com *(replace with your real email)*
+
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/tanmaymangal/)
+[![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/tanmay-alpha)
+[![Email](https://img.shields.io/badge/Email-D14836?style=for-the-badge&logo=gmail&logoColor=white)](mailto:mangaltanmay7@gmail.com)
 
 ---
 
 ## 🌟 Star History
 
-If Lumint helped you catch fraud or saved you time, **give it a star** ⭐ on GitHub — it helps others find the project.
+If Lumint helped you catch fraud, saved you time, or taught you something — **give it a star** ⭐ on GitHub. It helps others discover the project.
 
-[⭐ Star on GitHub](https://github.com/tanmay-alpha/Lumint)
+<p align="center">
+  <a href="https://github.com/tanmay-alpha/Lumint/stargazers">
+    <img src="https://img.shields.io/github/stars/tanmay-alpha/Lumint?style=social" alt="GitHub stars">
+  </a>
+</p>
+
+---
+
+## 🙏 Acknowledgments
+
+- **LLaMA 3.3 70B** by Meta AI — used via [Groq](https://groq.com) for plain-English explanations
+- **Tesseract OCR** — open-source OCR engine powering UPI Shield
+- **scikit-learn** & **SHAP** — the ML backbone of the entire platform
+- **Next.js** & **Tailwind CSS** — the frontend foundation
+- **All open-source contributors** who make projects like this possible
 
 ---
 
 <p align="center">
-  <sub>Built with ❤️ in India · Powered by open-source AI · Catching fraud, one screenshot at a time</sub>
+  <sub>Built with ❤️ in India 🇮🇳 · Powered by open-source AI · Catching fraud, one screenshot at a time</sub>
 </p>
