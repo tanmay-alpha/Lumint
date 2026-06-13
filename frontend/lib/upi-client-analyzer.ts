@@ -28,16 +28,28 @@ export interface UPIAnalysisResult {
   model_version: string;
 }
 
-async function runOCR(imageFile: File): Promise<{ text: string; confidence: number }> {
-  const result = await Tesseract.recognize(imageFile, 'eng', {
-    // Explicit CDN paths so the worker/wasm/lang files are reachable
-    // from the Vercel-deployed site (the v7 default CDN can be blocked
-    // by strict CSP / network egress).
-    workerPath: 'https://unpkg.com/tesseract.js@4.1.1/dist/worker.min.js',
-    corePath: 'https://unpkg.com/tesseract.js-core@4.1.1/tesseract-core.wasm.js',
+async function runOCR(
+  imageFile: File,
+  onProgress?: OCRProgressCallback
+): Promise<{ text: string; confidence: number }> {
+  // Pre-process image for faster OCR + better accuracy on screenshots
+  let processedFile: File | Blob = imageFile;
+  try {
+    const processedBlob = await preprocessImageForOCR(imageFile);
+    processedFile = new File([processedBlob], 'processed.jpg', { type: 'image/jpeg' });
+  } catch (err) {
+    console.warn('Image pre-processing failed, using original:', err);
+  }
+
+  const result = await Tesseract.recognize(processedFile, 'eng', {
+    workerPath: '/tesseract/worker.min.js',
+    corePath: '/tesseract/tesseract-core-relaxedsimd-lstm.wasm.js',
     langPath: 'https://tessdata.projectnaptha.com/4.0.0',
     logger: (m: any) => {
-      console.log('[Tesseract]', m.status || m);
+      console.log('[Tesseract]', m.status, m.progress);
+      if (onProgress && typeof m.progress === 'number') {
+        onProgress(m.progress, m.status);
+      }
     },
   });
   return {
@@ -134,6 +146,72 @@ interface ELAResult {
   score: number;
   regionCount: number;
   maxRegionArea: number;
+}
+
+interface OCRProgressCallback {
+  (progress: number, stage: string): void;
+}
+
+// Pre-process image for faster OCR with better accuracy
+function preprocessImageForOCR(imageFile: File): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const MAX_WIDTH = 1200;
+      const MAX_HEIGHT = 1200;
+      let width = img.width;
+      let height = img.height;
+
+      // Scale down if too large
+      if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+        const scale = Math.min(MAX_WIDTH / width, MAX_HEIGHT / height);
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) {
+        reject(new Error('Could not get canvas context'));
+        return;
+      }
+
+      // Draw grayscale + enhanced contrast
+      ctx.drawImage(img, 0, 0, width, height);
+      const imageData = ctx.getImageData(0, 0, width, height);
+      const data = imageData.data;
+
+      // Convert to grayscale + boost contrast for better OCR
+      for (let i = 0; i < data.length; i += 4) {
+        // Grayscale luminance formula
+        const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+
+        // Boost contrast (midtones are preserved, high/low pushed to black/white)
+        let enhanced;
+        const threshold = 128;
+        if (gray < threshold - 30) {
+          enhanced = gray * 0.7; // Dark areas
+        } else if (gray > threshold + 30) {
+          enhanced = gray * 1.3 - 38; // Light areas
+        } else {
+          enhanced = gray; // Midtone preserved
+        }
+
+        const clamped = Math.min(255, Math.max(0, enhanced));
+        data[i] = clamped;     // R
+        data[i + 1] = clamped; // G
+        data[i + 2] = clamped; // B
+        // Alpha remains unchanged
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+      resolve(new Blob([canvas.toDataURL('image/jpeg', 0.9)], { type: 'image/jpeg' }));
+    };
+    img.onerror = () => reject(new Error('Image load failed'));
+    img.src = URL.createObjectURL(imageFile);
+  });
 }
 
 async function isScreenshotLikely(img: HTMLImageElement): Promise<boolean> {
@@ -273,13 +351,25 @@ async function computeELA(imageFile: File): Promise<ELAResult> {
   });
 }
 
-export async function analyzeUPIClientSide(imageFile: File): Promise<UPIAnalysisResult> {
+export async function analyzeUPIClientSide(
+  imageFile: File,
+  onProgress?: OCRProgressCallback
+): Promise<UPIAnalysisResult> {
   const startTime = performance.now();
 
   try {
     let ocr: { text: string; confidence: number };
     try {
-      ocr = await runOCR(imageFile);
+      // 60s hard timeout: if Tesseract hangs (e.g. lang download), fail fast
+      // with a clear error instead of leaving the user staring at a spinner.
+      const OCR_TIMEOUT_MS = 60_000;
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("OCR took too long (>60s). Try a smaller/clearer image.")), OCR_TIMEOUT_MS)
+      );
+      ocr = await Promise.race([
+        runOCR(imageFile, onProgress),
+        timeoutPromise,
+      ]);
     } catch (ocrErr: any) {
       console.error('Tesseract OCR failed to run:', ocrErr);
       return {
