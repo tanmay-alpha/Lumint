@@ -1,96 +1,64 @@
 import { PhishingAnalysisResult } from "../types";
 import { apiBaseUrl } from "../config";
 
-const MOCK_PHISHING_RESULT: PhishingAnalysisResult = {
-  url: "https://chase-security-verify.net/signin",
-  normalized_url: "chase-security-verify.net/signin",
-  domain: "chase-security-verify.net",
-  risk_score: 94,
-  risk_level: "HIGH",
-  triggered_rules: [
-    { rule: "Lookalike Domain (Typosquatting)", score: 45, detail: "Domain attempts to mimic brand 'chase' via keyword manipulation." },
-    { rule: "High Risk Keywords present in path", score: 25, detail: "Discovered path identifiers matching: 'signin'." },
-    { rule: "Missing TLS validation structure", score: 24, detail: "Domain host lacks security headers and standard registrar logs." }
-  ],
-  domain_similarity_matches: [
-    { brand: "Chase Bank", actual_domain: "chase.com", similarity: 0.88 }
-  ],
-  phishing_fingerprint: null,
-  message: "High risk url match with active credentials theft campaign."
-};
-
 export const phishingApi = {
   checkUrl: async (url: string): Promise<PhishingAnalysisResult> => {
     const base = apiBaseUrl();
     if (!base) {
-      // No backend configured (deployed demo without NEXT_PUBLIC_API_URL):
-      // skip network and return a clean/safe result so the UI works offline.
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      if (url.includes("google.com") || url.includes("github.com")) {
-        return {
-          url,
-          normalized_url: url.replace("https://", "").replace("http://", ""),
-          domain: url.split("/")[2] || url,
-          risk_score: 5,
-          risk_level: "CLEAN",
-          triggered_rules: [],
-          domain_similarity_matches: [],
-          phishing_fingerprint: null,
-          message: "Domain verified as clean. No threat indicators triggered."
-        };
-      }
-      return { ...MOCK_PHISHING_RESULT, url };
+      throw {
+        message: "Backend not configured. Set NEXT_PUBLIC_API_URL to your FastAPI host.",
+        status: 0,
+        path: "/api/phishing/check",
+        isNetworkError: true,
+      };
     }
     const apiEndpoint = `${base}/api/phishing/check`;
 
-    // Inject authentication header (if NEXT_PUBLIC_API_KEY is set)
     const apiKey = process.env.NEXT_PUBLIC_API_KEY;
     const requestHeaders: Record<string, string> = {
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
     };
     if (apiKey) {
       requestHeaders["Authorization"] = `Bearer ${apiKey}`;
     }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
 
     try {
       const response = await fetch(apiEndpoint, {
         method: "POST",
         headers: requestHeaders,
         body: JSON.stringify({ url }),
-        signal: AbortSignal.timeout(6000)
+        signal: controller.signal,
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+        try {
+          const errJson = await response.json();
+          if (errJson && errJson.detail) {
+            if (typeof errJson.detail === "string") errorMessage = errJson.detail;
+          }
+        } catch (_) {}
+        const errorObj: any = new Error(errorMessage);
+        errorObj.status = response.status;
+        throw errorObj;
       }
 
       return (await response.json()) as PhishingAnalysisResult;
-    } catch (error) {
-      console.warn("Lumint PhishShield API fallback to mock analysis result:", error);
-      // Simulate artificial latency
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      
-      // If user typed a clean URL, return custom mock score
-      if (url.includes("google.com") || url.includes("github.com")) {
-        return {
-          url,
-          normalized_url: url.replace("https://", "").replace("http://", ""),
-          domain: url.split("/")[2] || url,
-          risk_score: 5,
-          risk_level: "CLEAN",
-          triggered_rules: [],
-          domain_similarity_matches: [],
-          phishing_fingerprint: null,
-          message: "Domain verified as clean. No threat indicators triggered."
-        };
-      }
-
-      return {
-        ...MOCK_PHISHING_RESULT,
-        url
+    } catch (error: any) {
+      console.error("[Lumint PhishShield] check failed:", error);
+      throw {
+        message: error?.message || "PhishShield analysis failed",
+        status: error?.status || 0,
+        path: "/api/phishing/check",
+        isNetworkError: !error?.status,
       };
+    } finally {
+      clearTimeout(timeoutId);
     }
-  }
+  },
 };
 
 export default phishingApi;

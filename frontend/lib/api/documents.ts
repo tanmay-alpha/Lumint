@@ -1,90 +1,63 @@
 import { DocumentAnalysisResult } from "../types";
 import { apiBaseUrl } from "../config";
 
-const MOCK_ANALYSIS_RESULT: DocumentAnalysisResult = {
-  doc_id: "doc-89a12b",
-  original_filename: "invoice_9821.pdf",
-  saved_filename: "doc-89a12b.pdf",
-  file_path: "/uploads/doc-89a12b.pdf",
-  file_size: 102400,
-  content_type: "application/pdf",
-  analysis_status: "COMPLETED",
-  risk_score: 87,
-  risk_level: "HIGH",
-  metadata: {
-    title: "Invoice 9821 Forged",
-    author: "Malicious Actor",
-    creator: "Accounts Payable Manager",
-    producer: "Adobe PDF Library 15.0",
-    creation_date: new Date().toISOString(),
-    modification_date: new Date().toISOString(),
-    page_count: 1,
-    is_encrypted: false,
-    file_size: 102400
-  },
-  text_analysis: {
-    sensitive_keywords_found: ["payment", "wire transfer", "bank routing"],
-    suspicious_patterns: ["modified IBAN number"]
-  },
-  layout_analysis: {
-    overlapping_text_blocks: true,
-    font_discrepancies: ["Arial and Helvetica mixed irregularly"]
-  },
-  ela_analysis: {
-    ela_discrepancy_score: 0.85,
-    tampering_detected: true
-  },
-  indicators: [
-    { rule: "Metadata Modification Detected", score: 35, detail: "File creation dates modified relative to original metadata timestamps." },
-    { rule: "Spoofed Creator Field", score: 25, detail: "Producer fields indicate graphical tool generation rather than standard ERP output." },
-    { rule: "Swift Code Alteration Hint", score: 27, detail: "Swift / Routing info fields modified via image layered overrides." }
-  ],
-  explanation: [
-    "The document's creator metadata field was spoofed to mimic a standard invoice application.",
-    "Graphic alteration signatures detected in the SWIFT code layout structure.",
-    "Error Level Analysis shows tampering markers around the banking information."
-  ],
-  analysis_warnings: [],
-  message: "High risk document anomalies matching invoicing forgery pattern."
-};
-
 export const documentApi = {
   analyzeDocument: async (file: File): Promise<DocumentAnalysisResult> => {
     const base = apiBaseUrl();
     if (!base) {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      return MOCK_ANALYSIS_RESULT;
+      throw {
+        message: "Backend not configured. Set NEXT_PUBLIC_API_URL to your FastAPI host.",
+        status: 0,
+        path: "/api/documents/analyze",
+        isNetworkError: true,
+      };
     }
     const url = `${base}/api/documents/analyze`;
     const formData = new FormData();
     formData.append("file", file);
 
-    // Inject authentication header (if NEXT_PUBLIC_API_KEY is set)
     const apiKey = process.env.NEXT_PUBLIC_API_KEY;
     const requestHeaders: Record<string, string> = {};
     if (apiKey) {
       requestHeaders["Authorization"] = `Bearer ${apiKey}`;
     }
 
+    // 30s timeout — OCR + ELA + ML can take 5-10s in production.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
     try {
       const response = await fetch(url, {
         method: "POST",
         headers: requestHeaders,
         body: formData,
-        // Short timeout for fallback, but file uploads might take a bit longer
-        signal: AbortSignal.timeout(10000)
+        signal: controller.signal,
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+        try {
+          const errJson = await response.json();
+          if (errJson && errJson.detail) {
+            if (typeof errJson.detail === "string") errorMessage = errJson.detail;
+          }
+        } catch (_) {}
+        const errorObj: any = new Error(errorMessage);
+        errorObj.status = response.status;
+        throw errorObj;
       }
 
       return (await response.json()) as DocumentAnalysisResult;
-    } catch (error) {
-      console.warn("Lumint DocShield API fallback to mock analysis result:", error);
-      // Simulate artificial latency
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      return MOCK_ANALYSIS_RESULT;
+    } catch (error: any) {
+      console.error("[Lumint DocShield] analyze failed:", error);
+      throw {
+        message: error?.message || "DocShield analysis failed",
+        status: error?.status || 0,
+        path: "/api/documents/analyze",
+        isNetworkError: !error?.status,
+      };
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 };

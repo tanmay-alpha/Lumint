@@ -36,19 +36,21 @@ export default function DocShieldPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<DocumentAnalysisResult | null>(null);
   const [activeTab, setActiveTab] = useState<TabID>("metadata");
-  
+
   const [isAnalyzingAI, setIsAnalyzingAI] = useState(false);
   const [aiResult, setAiResult] = useState<DocumentAIResult | null>(null);
+  const [error, setError] = useState<{ message: string; status?: number } | null>(null);
 
   const handleFileAccepted = async (acceptedFile: File) => {
     setIsAnalyzing(true);
     setResult(null);
     setAiResult(null);
+    setError(null);
 
     try {
       const response = await documentApi.analyzeDocument(acceptedFile);
       setResult(response);
-      
+
       // Auto-trigger AI Analysis
       setIsAnalyzingAI(true);
       try {
@@ -59,8 +61,12 @@ export default function DocShieldPage() {
       } finally {
         setIsAnalyzingAI(false);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Document analysis failed:", err);
+      setError({
+        message: err?.message || "DocShield analysis failed",
+        status: err?.status,
+      });
     } finally {
       setIsAnalyzing(false);
     }
@@ -162,6 +168,27 @@ export default function DocShieldPage() {
 
         {/* RIGHT COLUMN — Results & Analysis */}
         <div className="lg:col-span-2">
+          {error && !isAnalyzing && !result && (
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="mb-4 rounded-lg border border-[var(--high-border)]/40 bg-[var(--high-bg)] p-5"
+            >
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-[var(--high)] shrink-0 mt-0.5" />
+                <div className="flex-1 space-y-1.5">
+                  <h3 className="text-[14px] font-bold text-[var(--high)]">DocShield analysis failed</h3>
+                  <p className="text-[12px] text-[var(--text-1)] font-semibold leading-relaxed">
+                    {error.message}
+                    {error.status ? <span className="ml-1 text-[var(--text-3)]">(HTTP {error.status})</span> : null}
+                  </p>
+                  <p className="text-[11px] text-[var(--text-3)] font-semibold leading-relaxed pt-1">
+                    Make sure you're uploading a real PDF or image document. If the backend is unreachable, check <code className="text-[var(--brand)]">NEXT_PUBLIC_API_URL</code> on Vercel.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           <AnimatePresence mode="wait">
             {isAnalyzing ? (
               <motion.div

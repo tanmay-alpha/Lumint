@@ -1,27 +1,17 @@
 # Render Blueprint — Lumint backend.
 #
-# One-command deploy: push to main, Render reads render.yaml, provisions
-# `lumint-backend` (web service) + `lumint-db` (Postgres), and wires the
-# DATABASE_URL automatically.
-#
-# Why Render: free tier, native Python, persistent disks, env-var UI, and
-# the existing repo already references Render in its audit notes. No
-# Docker knowledge required to deploy — Blueprint is enough.
+# Uses Docker runtime so the Dockerfile.prod (which installs tesseract-ocr
+# + libgl + libglib for Pillow/OpenCV) is used instead of the plain Python
+# buildpack — tesseract is required for UPI OCR.
 
 services:
   - type: web
     name: lumint-backend
-    runtime: python
-    plan: free
+    runtime: docker
     rootDir: backend
-    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
-    startCommand: >
-      gunicorn app.main:app
-      -k uvicorn.workers.UvicornWorker
-      -w 2
-      -b 0.0.0.0:$PORT
-      --access-logfile -
-      --error-logfile -
+    dockerfilePath: ./Dockerfile.prod
+    dockerContext: .
+    plan: starter
     healthCheckPath: /healthz
     autoDeploy: true
     envVars:
@@ -34,18 +24,20 @@ services:
           name: lumint-db
           property: connectionString
       - key: CORS_ALLOW_ORIGINS
-        # Replace with the actual deployed frontend origin. JSON array form
-        # is required because the value contains a comma.
-        value: '["https://fraud-intelligence.vercel.app"]'
+        value: '["https://lumint-pi.vercel.app"]'
       - key: JWT_SECRET
         generateValue: true
+      - key: LUMINT_API_KEY
+        generateValue: true
+      - key: GROQ_API_KEY
+        sync: false
       - key: ML_MODEL_PATH
-        value: /opt/render/project/src/backend/ml/models
+        value: /app/ml/models
       - key: PYTHON_VERSION
         value: 3.11.9
 
 databases:
   - name: lumint-db
-    plan: free
+    plan: starter
     databaseName: lumint
     user: lumint
