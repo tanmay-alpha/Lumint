@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { UploadZone } from "@/components/ui/UploadZone";
 import { documentApi } from "@/lib/api/documents";
 import { DocumentAnalysisResult } from "@/lib/types";
@@ -34,6 +34,23 @@ type TabID = "metadata" | "indicators" | "explanation" | "tampering" | "ai_repor
 
 export default function DocShieldPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [progressIdx, setProgressIdx] = useState(0);
+
+  useEffect(() => {
+    if (!isAnalyzing) { setProgressIdx(0); return; }
+    const stages = [
+      { title: "Parsing File Signatures", desc: "Extracting document stream layers, computing file hashes, and running forensic pattern scanners..." },
+      { title: "Running Metadata & EXIF Scan", desc: "Checking author stamps, software fingerprints, and XMP inconsistencies..." },
+      { title: "Error-Level Analysis (ELA)", desc: "Recompressing pixels to expose tampered regions at JPEG block boundaries..." },
+      { title: "Layout & Text Geometry", desc: "Verifying baseline alignment, font consistency, and whitespace distribution..." },
+      { title: "Compiling Forensic Report", desc: "Aggregating all evidence into a final risk verdict..." },
+    ];
+    setProgressIdx(0);
+    const id = setInterval(() => {
+      setProgressIdx((i) => (i + 1) % stages.length);
+    }, 1400);
+    return () => clearInterval(id);
+  }, [isAnalyzing]);
   const [result, setResult] = useState<DocumentAnalysisResult | null>(null);
   const [activeTab, setActiveTab] = useState<TabID>("metadata");
 
@@ -210,9 +227,21 @@ export default function DocShieldPage() {
                     <div className="h-16 w-16 rounded-full border-4 border-[var(--surface-3)] border-t-[var(--brand)] animate-spin" />
                     <FileText className="absolute h-6 w-6 text-[var(--brand)] animate-pulse" />
                   </div>
-                  <h3 className="text-[15px] font-bold text-[var(--text-1)]">Parsing File Signatures</h3>
+                  <h3 className="text-[15px] font-bold text-[var(--text-1)]">{[
+                    "Parsing File Signatures",
+                    "Running Metadata & EXIF Scan",
+                    "Error-Level Analysis (ELA)",
+                    "Layout & Text Geometry",
+                    "Compiling Forensic Report",
+                  ][progressIdx]}</h3>
                   <p className="text-[12px] text-[var(--text-3)] mt-1.5 max-w-sm font-semibold">
-                    Extracting document stream layers, computing file hashes, and running forensic pattern scanners...
+                    {[
+                      "Extracting document stream layers, computing file hashes, and running forensic pattern scanners...",
+                      "Checking author stamps, software fingerprints, and XMP inconsistencies...",
+                      "Recompressing pixels to expose tampered regions at JPEG block boundaries...",
+                      "Verifying baseline alignment, font consistency, and whitespace distribution...",
+                      "Aggregating all evidence into a final risk verdict...",
+                    ][progressIdx]}
                   </p>
                 </Card>
               </motion.div>

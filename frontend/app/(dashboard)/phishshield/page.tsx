@@ -20,7 +20,8 @@ import {
   ShieldCheck,
   ShieldAlert,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  Clipboard
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -138,6 +139,20 @@ export default function PhishShieldPage() {
               className="w-full bg-transparent pl-11 pr-36 py-3.5 text-sm font-sans text-[var(--text-1)] placeholder:text-[var(--text-4)] focus:outline-none"
               disabled={isScanning}
             />
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  const text = await navigator.clipboard.readText();
+                  if (text) { setUrlInput(text.trim()); if (error) setError(null); }
+                } catch {}
+              }}
+              title="Paste from clipboard"
+              className="absolute right-[100px] top-1 bottom-1 px-2.5 rounded-[var(--r-2)] text-[var(--text-2)] hover:text-[var(--text-1)] hover:bg-[var(--surface-3)] font-bold text-[11px] flex items-center gap-1 cursor-pointer transition-all"
+            >
+              <Clipboard className="h-3.5 w-3.5" />
+              Paste
+            </button>
             <button
               type="submit"
               disabled={isScanning || !urlInput.trim()}

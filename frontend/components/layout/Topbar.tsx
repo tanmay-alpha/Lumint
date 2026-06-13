@@ -6,7 +6,6 @@ import { twMerge } from "tailwind-merge";
 import Badge from "@/components/ui/Badge";
 
 export interface TopbarProps {
-  isOnline?: boolean | null;
   setMobileOpen: (v: boolean) => void;
   pathname: string;
   pageLabels: Record<string, string>;

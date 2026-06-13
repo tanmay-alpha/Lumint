@@ -22,9 +22,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Lumint — AI-Powered Fraud Intelligence Platform",
+  title: "Lumint · Multimodal Fraud Intelligence",
   description:
-    "Illuminate the threat. Before it strikes. Lumint is a unified multimodal fraud intelligence platform for India's digital payment ecosystem — detecting fraud across documents, URLs, UPI screenshots, and fraud campaign networks.",
+    "Privacy-first fraud detection for UPI payments, documents, and URLs. 100% client-side analysis. No uploads.",
   keywords: [
     "fraud detection",
     "AI",
@@ -33,11 +33,14 @@ export const metadata: Metadata = {
     "document forensics",
     "India",
     "fintech",
+    "offline fraud detection",
+    "client-side",
+    "privacy-first",
   ],
   authors: [{ name: "Lumint Research" }],
   openGraph: {
-    title: "Lumint — AI Fraud Intelligence",
-    description: "Illuminate the threat. Before it strikes.",
+    title: "Lumint · Illuminate the threat",
+    description: "Free, open-source fraud detection that runs in your browser.",
     type: "website",
   },
 };

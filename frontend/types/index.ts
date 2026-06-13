@@ -235,7 +235,7 @@ export interface UPIAnalysisResult {
   font_anomalies_detected: boolean;
   suspicious_handle_flagged: boolean;
   risk_score: number;
-  risk_level: "CLEAN" | "SUSPICIOUS" | "HIGH" | "CRITICAL";
+  risk_level: "GENUINE" | "SUSPICIOUS" | "HIGH_RISK" | "NOT_UPI" | "ERROR";
   ai_fraud_explanation: string;
   raw_ocr_text: string | null;
   metadata_json: Record<string, unknown> | null;

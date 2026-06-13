@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
-import client from "@/lib/api/client";
 import Sidebar from "@/components/layout/Sidebar";
 import Topbar from "@/components/layout/Topbar";
 
@@ -15,28 +14,14 @@ const PAGE_LABELS: Record<string, string> = {
   "/upi-shield":  "UPI Shield · Screenshot Analysis",
   "/events":      "Activity Timeline",
   "/dashboard/research": "Lumint Research Results",
+  "/dashboard/history": "Scan History",
   "/settings":    "Settings",
 };
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [isOnline, setIsOnline] = useState<boolean | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-
-  useEffect(() => {
-    const check = async () => {
-      try {
-        const res = await client.getHealth();
-        setIsOnline(res.status === "ok");
-      } catch {
-        setIsOnline(false);
-      }
-    };
-    check();
-    const id = setInterval(check, 30_000);
-    return () => clearInterval(id);
-  }, []);
 
   return (
     <div className="relative min-h-screen bg-canvas text-text-primary flex overflow-hidden">
@@ -46,7 +31,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Sidebar Component */}
       <Sidebar
-        isOnline={isOnline}
         collapsed={collapsed}
         setCollapsed={setCollapsed}
         mobileOpen={mobileOpen}
@@ -57,7 +41,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="flex-1 flex flex-col min-w-0 relative z-20">
         {/* Topbar Component */}
         <Topbar
-          isOnline={isOnline}
           setMobileOpen={setMobileOpen}
           pathname={pathname}
           pageLabels={PAGE_LABELS}

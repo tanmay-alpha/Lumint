@@ -195,7 +195,7 @@ export default function UPIShieldPage() {
       // Map the analyzer result into the page's UPIAnalysisResult shape.
       const mapped: UPIAnalysisResult = {
         ...(res as any),
-        id: Math.floor(Math.random() * 10000),
+        id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `id-${Date.now()}-${Math.floor(Math.random() * 1e9)}`,
         timestamp: new Date().toISOString(),
         event_type: "screenshot",
         utr_number: res.extracted.utr,
@@ -209,7 +209,7 @@ export default function UPIShieldPage() {
         font_anomalies_detected: res.signals.some((s) => s.check.toLowerCase().includes("tampering") && !s.passed),
         suspicious_handle_flagged: false,
         risk_score: res.score,
-        risk_level: res.verdict === "HIGH_RISK" ? "HIGH" : res.verdict === "SUSPICIOUS" ? "SUSPICIOUS" : "CLEAN",
+        risk_level: res.verdict,
         ai_fraud_explanation: res.label,
         raw_ocr_text: res.ocr_text,
         metadata_json: { file_name: file.name, file_size: file.size, model_version: res.model_version },
@@ -248,6 +248,7 @@ export default function UPIShieldPage() {
     }
   };
 
+  // Note: This is a structural-analysis fallback. Real LLM integration is a future enhancement.
   const handleAIAnalyze = async () => {
     if (!result) return;
     setAILoading(true);
@@ -320,7 +321,7 @@ export default function UPIShieldPage() {
             </span>
             <UploadZone
               accept=".png,.jpg,.jpeg"
-              maxSizeMB={5}
+              maxSizeMB={10}
               label="Drop payment screenshot here"
               subLabel="PhonePe · Google Pay · Paytm · BHIM"
               onFileSelected={handleFileSelected}
@@ -497,7 +498,7 @@ export default function UPIShieldPage() {
                           Forgery Probability
                         </span>
                         <div>
-                          <Badge variant={result.risk_level === "CRITICAL" ? "critical" : result.risk_level === "HIGH" ? "high" : result.risk_level === "SUSPICIOUS" ? "warn" : "safe"} dot className="text-xs px-3.5 py-1 font-semibold uppercase tracking-wider">
+                          <Badge variant={result.risk_level === "HIGH_RISK" ? "critical" : result.risk_level === "SUSPICIOUS" ? "warn" : result.risk_level === "NOT_UPI" || result.risk_level === "ERROR" ? "high" : "safe"} dot className="text-xs px-3.5 py-1 font-semibold uppercase tracking-wider">
                             {result.risk_level} LEVEL VERDICT
                           </Badge>
                           <button
@@ -696,22 +697,93 @@ export default function UPIShieldPage() {
                 </Card>
               </motion.div>
 
-              {/* AI Analyst button */}
-              {!aiResult && !aiLoading && (
+              {/* Forensic Analysis (replaces broken AI button — client-side heuristics are the explanation) */}
+              {result && (
                 <motion.div variants={item}>
-                  <Button
-                    onClick={handleAIAnalyze}
-                    variant="intel"
-                    className="w-full flex items-center justify-center gap-2 py-2.5 font-semibold"
+                  <AIInsightCard
+                    isLoading={false}
+                    title="UPI FORENSIC ANALYSIS"
+                    className="border-2 border-dashed border-[var(--ai-border)] bg-[var(--ai-muted)]"
                   >
-                    <Zap className="h-4 w-4" strokeWidth={2.5} />
-                    Run AI Analysis · LLaMA 3.3 70B
-                  </Button>
+                    <div className="space-y-5 text-body text-[var(--text-1)]">
+                      <div className="flex items-center gap-4 flex-wrap pb-4 border-b border-[var(--ai-border)]/30">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-[var(--text-3)] font-bold uppercase">
+                            Forensic Verdict
+                          </span>
+                          <span
+                            className={`font-mono text-[16px] font-bold mt-0.5 ${
+                              result.risk_level === "HIGH_RISK"
+                                ? "text-[var(--high)]"
+                                : result.risk_level === "SUSPICIOUS"
+                                ? "text-[var(--warn)]"
+                                : result.risk_level === "NOT_UPI" || result.risk_level === "ERROR"
+                                ? "text-[var(--text-3)]"
+                                : "text-[var(--safe)]"
+                            }`}
+                          >
+                            {result.risk_level}
+                          </span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-[var(--text-3)] font-bold uppercase">Risk Score</span>
+                          <div className="mt-0.5">
+                            <Badge variant={result.risk_score >= 75 ? "high" : result.risk_score >= 35 ? "warn" : "safe"} className="text-xs px-2.5 py-0.5">
+                              {result.risk_score}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+
+                      <FeatureContribution features={xaiFeatures} title="Feature contributions (heuristic SHAP)" />
+
+                      <div>
+                        <span className="text-[11px] font-bold text-[var(--text-3)] uppercase tracking-wider block mb-2">
+                          Evidence points
+                        </span>
+                        <ul className="space-y-2">
+                          {result.feature_contributions && result.feature_contributions.length > 0 ? (
+                            result.feature_contributions.map((pt, i) => (
+                              <li key={i} className="flex items-start gap-2 text-[12px] text-[var(--text-2)] leading-relaxed">
+                                <span className="font-mono text-[10px] text-[var(--brand)] mt-0.5 shrink-0 font-bold">{i + 1}.</span>
+                                <span><strong className="text-[var(--text-1)]">{pt.name}:</strong> {pt.value}</span>
+                              </li>
+                            ))
+                          ) : (
+                            <li className="text-[12px] text-[var(--text-3)]">No feature-level evidence available for this scan.</li>
+                          )}
+                        </ul>
+                      </div>
+
+                      <div className="border-l-2 border-[var(--ai-border)] pl-4 bg-[var(--surface)]/50 py-2.5 pr-2 rounded-r-lg">
+                        <p className="text-[13px] italic font-serif text-[var(--text-2)] leading-relaxed">
+                          &ldquo;{result.ai_fraud_explanation || "Client-side heuristics completed. Verify directly with your bank using the UTR number."}&rdquo;
+                        </p>
+                      </div>
+
+                      <div className={`rounded-xl border px-4 py-3 ${
+                        result.risk_level === "HIGH_RISK"
+                          ? "bg-[var(--high-bg)] border-[var(--high-border)]/40 text-[var(--high)]"
+                          : result.risk_level === "SUSPICIOUS"
+                          ? "bg-[var(--warn-bg)] border-[var(--warn-border)]/40 text-[var(--warn)]"
+                          : "bg-[var(--safe-bg)] border-[var(--safe-border)]/40 text-[var(--safe)]"
+                      }`}>
+                        <span className="text-[11px] font-bold uppercase tracking-wider block mb-1">
+                          Recommended Action
+                        </span>
+                        <p className="text-[13px] font-semibold text-[var(--text-1)]">
+                          {result.risk_score >= 75
+                            ? "Do not trust this payment. Verify with your bank using the UTR number before sending goods or money."
+                            : result.risk_score >= 35
+                            ? "Treat with caution. Cross-check the UTR and amount with the sender before taking action."
+                            : "Looks consistent. Always verify high-value transfers via a second channel."}
+                        </p>
+                      </div>
+                    </div>
+                  </AIInsightCard>
                 </motion.div>
               )}
-
-              {/* AI Analyst Card */}
-              {(aiLoading || aiResult) && (
+                {(aiLoading || aiResult) && (
                 <motion.div variants={item}>
                   <AIInsightCard
                     isLoading={aiLoading}

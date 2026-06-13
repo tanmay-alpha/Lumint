@@ -17,6 +17,7 @@ import {
   Moon,
   Sun,
   Shield,
+  History,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { twMerge } from "tailwind-merge";
@@ -41,6 +42,7 @@ const NAV_GROUPS = [
     title: "INTELLIGENCE",
     items: [
       { name: "Activity", href: "/events", icon: Activity, desc: "Event timeline" },
+      { name: "History", href: "/dashboard/history", icon: History, desc: "Past scans (local)" },
       { name: "Research", href: "/dashboard/research", icon: Zap, desc: "Statistical analysis & paper" },
     ],
   },
@@ -53,7 +55,6 @@ const NAV_GROUPS = [
 ] as const;
 
 export interface SidebarProps {
-  isOnline: boolean | null;
   collapsed: boolean;
   setCollapsed: (v: boolean) => void;
   mobileOpen: boolean;
@@ -83,10 +84,8 @@ const LumintLogo = ({ collapsed }: { collapsed: boolean }) => (
 
 const SystemStatus = ({
   collapsed,
-  isOnline,
 }: {
   collapsed: boolean;
-  isOnline: boolean | null;
 }) => {
   const [theme, setTheme] = React.useState<"light" | "dark">("light");
 
@@ -144,7 +143,6 @@ const SystemStatus = ({
 };
 
 export const Sidebar = ({
-  isOnline: _isOnline,
   collapsed,
   setCollapsed,
   mobileOpen,
@@ -236,7 +234,7 @@ export const Sidebar = ({
 
       {/* Footer */}
       <div className={twMerge("p-3 border-t border-border-muted bg-surface-raised/40", collapsed && !isMobile && "px-1")}>
-        <SystemStatus collapsed={collapsed && !isMobile} isOnline={_isOnline} />
+        <SystemStatus collapsed={collapsed && !isMobile} />
       </div>
     </div>
   );
