@@ -42,6 +42,14 @@ export default function DocShieldPage() {
   const [error, setError] = useState<{ message: string; status?: number } | null>(null);
 
   const handleFileAccepted = async (acceptedFile: File) => {
+    if (acceptedFile.size > 10 * 1024 * 1024) {
+      setError({ message: "File too large. Please use an image under 10MB." });
+      return;
+    }
+    if (!acceptedFile.type.startsWith("image/") && acceptedFile.type !== "application/pdf") {
+      setError({ message: "Please upload an image or PDF file." });
+      return;
+    }
     setIsAnalyzing(true);
     setResult(null);
     setAiResult(null);

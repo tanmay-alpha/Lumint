@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/Button";
 import { RiskScore } from "@/components/ui/RiskScore";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { analyzeUPIClientSide } from "@/lib/upi-client-analyzer";
+import { saveScan } from "@/lib/scan-history";
 import { upiService } from "@/services/upi";
 import type { UPIAnalysisResult, UPIAIResult } from "@/types";
 
@@ -119,8 +120,34 @@ export default function UPIShieldPage() {
   const [aiResult, setAIResult] = useState<UPIAIResult | null>(null);
   const [aiLoading, setAILoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = () => {
+    if (!result) return;
+    const summary = `Lumint ${result.ai_fraud_explanation || result.risk_level}\nScore: ${result.risk_score}/100\nRisk: ${result.risk_level}`;
+    navigator.clipboard.writeText(summary).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {
+      // Fallback for non-secure contexts
+      const ta = document.createElement("textarea");
+      ta.value = summary;
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand("copy"); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch {}
+      document.body.removeChild(ta);
+    });
+  };
 
   const handleFileSelected = (f: File) => {
+    if (f.size > 10 * 1024 * 1024) {
+      setError("File too large. Please use an image under 10MB.");
+      return;
+    }
+    if (!f.type.startsWith("image/")) {
+      setError("Please upload an image file (PNG or JPEG).");
+      return;
+    }
     setFile(f);
     setResult(null);
     setAIResult(null);
@@ -203,6 +230,13 @@ export default function UPIShieldPage() {
       };
       setTimeout(() => {
         setResult(mapped);
+        saveScan({
+          shield: 'upi',
+          verdict: mapped.risk_level,
+          label: mapped.ai_fraud_explanation,
+          score: mapped.risk_score,
+          fileName: file.name,
+        });
         setProgress(0);
         setUploading(false);
       }, 200);
@@ -466,6 +500,13 @@ export default function UPIShieldPage() {
                           <Badge variant={result.risk_level === "CRITICAL" ? "critical" : result.risk_level === "HIGH" ? "high" : result.risk_level === "SUSPICIOUS" ? "warn" : "safe"} dot className="text-xs px-3.5 py-1 font-semibold uppercase tracking-wider">
                             {result.risk_level} LEVEL VERDICT
                           </Badge>
+                          <button
+                            type="button"
+                            onClick={handleShare}
+                            className="ml-2 mt-1 inline-flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-1 text-[11px] font-semibold text-[var(--text-2)] hover:border-[var(--brand)] hover:text-[var(--brand)] transition-colors"
+                          >
+                            {copied ? "Copied!" : "Share Result"}
+                          </button>
                         </div>
                       </div>
                       
