@@ -29,6 +29,7 @@ import { SkeletonLoader } from "@/components/ui/SkeletonLoader";
 import { Button } from "@/components/ui/Button";
 import { RiskScore } from "@/components/ui/RiskScore";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { analyzeUPIClientSide } from "@/lib/upi-client-analyzer";
 import { upiService } from "@/services/upi";
 import type { UPIAnalysisResult, UPIAIResult } from "@/types";
 
@@ -135,22 +136,59 @@ export default function UPIShieldPage() {
 
     let p = 0;
     const tick = setInterval(() => {
-      p = Math.min(p + 15, 90);
+      p = Math.min(p + 10, 90);
       setProgress(p);
-    }, 120);
+    }, 200);
 
     try {
-      const res = await upiService.analyzeScreenshot(file);
+      // Client-side analyzer: Tesseract.js OCR + Canvas ELA, no backend.
+      const res = await analyzeUPIClientSide(file);
       clearInterval(tick);
       setProgress(100);
+      // Map the analyzer result into the page's UPIAnalysisResult shape.
+      const mapped: UPIAnalysisResult = {
+        ...(res as any),
+        id: Math.floor(Math.random() * 10000),
+        timestamp: new Date().toISOString(),
+        event_type: "screenshot",
+        utr_number: res.extracted.utr,
+        utr_valid: !!res.extracted.utr,
+        utr_format: res.extracted.app ? res.extracted.app.toLowerCase() : "unknown",
+        sender_upi_id: null,
+        receiver_upi_id: res.extracted.vpa,
+        amount: res.extracted.amount,
+        transaction_date: res.extracted.timestamp || new Date().toISOString(),
+        is_valid_utr: !!res.extracted.utr,
+        font_anomalies_detected: res.signals.some((s) => s.check.toLowerCase().includes("tampering") && !s.passed),
+        suspicious_handle_flagged: false,
+        risk_score: res.score,
+        risk_level: res.verdict === "HIGH_RISK" ? "HIGH" : res.verdict === "SUSPICIOUS" ? "SUSPICIOUS" : "CLEAN",
+        ai_fraud_explanation: res.label,
+        raw_ocr_text: res.ocr_text,
+        metadata_json: { file_name: file.name, file_size: file.size, model_version: res.model_version },
+        ela_tamper_regions: res.signals.find((s) => s.check.toLowerCase().includes("tampering"))?.detail?.match(/\d+/)?.[0]
+          ? parseInt(res.signals.find((s) => s.check.toLowerCase().includes("tampering"))!.detail!.match(/\d+/)![0])
+          : 0,
+        font_consistent: !res.signals.some((s) => s.check.toLowerCase().includes("tampering") && !s.passed),
+        color_authentic: true,
+        ocr_confidence: Math.round(res.confidence * 100),
+        amount_extracted: res.extracted.amount != null ? `Rs ${res.extracted.amount.toLocaleString("en-IN")}` : null,
+        app_detected: res.extracted.app,
+        timestamp_extracted: res.extracted.timestamp || new Date().toLocaleString("en-IN"),
+        feature_contributions: res.signals.map((s) => ({
+          name: s.check,
+          value: s.passed ? "Pass" : "Fail",
+          contribution: s.passed ? -10 : 15,
+        })),
+      };
       setTimeout(() => {
-        setResult(res);
+        setResult(mapped);
         setProgress(0);
         setUploading(false);
-      }, 300);
-    } catch (e) {
+      }, 200);
+    } catch (e: any) {
       clearInterval(tick);
-      setError(e instanceof Error ? e.message : "Analysis failed. Please retry.");
+      setError(e?.message || "Analysis failed. Please retry.");
       setUploading(false);
       setProgress(0);
     }

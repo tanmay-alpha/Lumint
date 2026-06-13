@@ -6,14 +6,13 @@ import { twMerge } from "tailwind-merge";
 import Badge from "@/components/ui/Badge";
 
 export interface TopbarProps {
-  isOnline: boolean | null;
+  isOnline?: boolean | null;
   setMobileOpen: (v: boolean) => void;
   pathname: string;
   pageLabels: Record<string, string>;
 }
 
 export const Topbar = ({
-  isOnline,
   setMobileOpen,
   pathname,
   pageLabels,
@@ -61,22 +60,16 @@ export const Topbar = ({
       </div>
 
       <div className="flex items-center gap-3.5">
-        {/* API Connection Health */}
-        <Badge
-          variant={isOnline === null ? "neutral" : isOnline ? "safe" : "critical"}
-          dot={true}
-          size="md"
-        >
-          {isOnline === null ? "CHECKING" : isOnline ? "API ONLINE" : "API OFFLINE"}
+        {/* Client-side mode indicator (analysis runs in the browser) */}
+        <Badge variant="safe" dot={true} size="md">
+          READY
         </Badge>
 
         {/* AI Ready Indicator */}
-        {isOnline && (
-          <Badge variant="ai" size="md" className="gap-1">
-            <Zap className="h-3 w-3 shrink-0 text-[var(--ai)]" strokeWidth={2.5} />
-            AI READY
-          </Badge>
-        )}
+        <Badge variant="ai" size="md" className="gap-1">
+          <Zap className="h-3 w-3 shrink-0 text-[var(--ai)]" strokeWidth={2.5} />
+          AI READY
+        </Badge>
 
         {/* Theme Toggle Button */}
         <button

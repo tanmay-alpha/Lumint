@@ -104,14 +104,15 @@ const SystemStatus = ({
     localStorage.setItem("theme", nextTheme);
   };
 
-  const statusText = isOnline === null ? "Checking" : isOnline ? "API Online" : "API Offline";
-  const statusColor =
-    isOnline === null ? "bg-text-muted" : isOnline ? "bg-safe" : "bg-risk-high";
+  // Client-side mode: analysis runs entirely in the browser, so the
+  // system is always "Ready" regardless of backend connectivity.
+  const statusText = "Ready";
+  const statusColor = "bg-safe";
 
   if (collapsed) {
     return (
       <div className="flex flex-col items-center gap-4 py-2">
-        <span className={`h-2 w-2 rounded-full ${statusColor} ${isOnline ? "animate-pulse" : ""}`} />
+        <span className={`h-2 w-2 rounded-full ${statusColor} animate-pulse`} />
         <button
           onClick={toggleTheme}
           className="text-text-muted hover:text-text-primary transition-colors"
@@ -126,7 +127,7 @@ const SystemStatus = ({
   return (
     <div className="flex items-center justify-between px-3 py-2.5 w-full bg-surface-raised/40 border border-border-default/45 rounded-lg">
       <div className="flex items-center gap-2">
-        <span className={`h-2 w-2 rounded-full ${statusColor} ${isOnline ? "animate-pulse" : ""}`} />
+        <span className={`h-2 w-2 rounded-full ${statusColor} animate-pulse`} />
         <span className="font-sans text-[10px] font-semibold text-text-secondary tracking-wide uppercase">
           {statusText}
         </span>
@@ -143,7 +144,7 @@ const SystemStatus = ({
 };
 
 export const Sidebar = ({
-  isOnline,
+  isOnline: _isOnline,
   collapsed,
   setCollapsed,
   mobileOpen,
@@ -235,7 +236,7 @@ export const Sidebar = ({
 
       {/* Footer */}
       <div className={twMerge("p-3 border-t border-border-muted bg-surface-raised/40", collapsed && !isMobile && "px-1")}>
-        <SystemStatus collapsed={collapsed && !isMobile} isOnline={isOnline} />
+        <SystemStatus collapsed={collapsed && !isMobile} isOnline={_isOnline} />
       </div>
     </div>
   );
