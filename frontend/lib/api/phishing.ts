@@ -2,15 +2,12 @@ import { PhishingAnalysisResult } from "../types";
 import { apiBaseUrl } from "../config";
 
 export const phishingApi = {
-  checkUrl: async (url: string): Promise<PhishingAnalysisResult> => {
+  checkUrl: async (url: string): Promise<PhishingAnalysisResult | null> => {
     const base = apiBaseUrl();
     if (!base) {
-      throw {
-        message: "Backend not configured. Set NEXT_PUBLIC_API_URL to your FastAPI host.",
-        status: 0,
-        path: "/api/phishing/check",
-        isNetworkError: true,
-      };
+      // Demo deployment: no backend configured. Fail soft so the UI can
+      // surface a friendly empty state rather than a confusing error.
+      return null;
     }
     const apiEndpoint = `${base}/api/phishing/check`;
 
@@ -48,13 +45,9 @@ export const phishingApi = {
 
       return (await response.json()) as PhishingAnalysisResult;
     } catch (error: any) {
-      console.error("[Lumint PhishShield] check failed:", error);
-      throw {
-        message: error?.message || "PhishShield analysis failed",
-        status: error?.status || 0,
-        path: "/api/phishing/check",
-        isNetworkError: !error?.status,
-      };
+      console.warn("[Lumint PhishShield] check unreachable; returning null:", error?.message);
+      // Network or server error — fail soft, return null.
+      return null;
     } finally {
       clearTimeout(timeoutId);
     }

@@ -98,7 +98,7 @@ export default function DashboardOverviewPage() {
         client.getRecentEvents(25),
       ]);
       setStats(statsData);
-      setEvents(eventsData);
+      setEvents(eventsData ?? []);
     } catch (err) {
       console.error("Error loading dashboard metrics:", err);
     } finally {

@@ -52,8 +52,13 @@ export default function PhishShieldPage() {
 
     try {
       const response = await phishingApi.checkUrl(urlInput);
+      if (!response) {
+        // Soft-fail path: backend not configured or unreachable.
+        setError("PhishShield requires a backend connection. This is a demo deployment — only UPI Shield is fully functional.");
+        return;
+      }
       setResult(response);
-      
+
       // Auto-trigger AI Analysis
       setIsAnalyzingAI(true);
       try {

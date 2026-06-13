@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { UploadZone } from "@/components/ui/UploadZone";
 import { documentApi } from "@/lib/api/documents";
 import { DocumentAnalysisResult } from "@/lib/types";
@@ -74,6 +75,14 @@ export default function DocShieldPage() {
 
     try {
       const response = await documentApi.analyzeDocument(acceptedFile);
+      if (!response) {
+        // Soft-fail path: backend not configured or unreachable. Show
+        // friendly demo-mode message instead of a stack trace.
+        setError({
+          message: "DocShield requires a backend connection. This is a demo deployment — only UPI Shield is fully functional.",
+        });
+        return;
+      }
       setResult(response);
 
       // Auto-trigger AI Analysis
@@ -197,19 +206,25 @@ export default function DocShieldPage() {
             <div
               role="alert"
               aria-live="assertive"
-              className="mb-4 rounded-lg border border-[var(--high-border)]/40 bg-[var(--high-bg)] p-5"
+              className="mb-4 rounded-lg border border-[var(--warn-border)]/30 bg-[var(--warn-bg)] p-5"
             >
               <div className="flex items-start gap-3">
-                <AlertTriangle className="h-5 w-5 text-[var(--high)] shrink-0 mt-0.5" />
+                <Info className="h-5 w-5 text-[var(--warn)] shrink-0 mt-0.5" />
                 <div className="flex-1 space-y-1.5">
-                  <h3 className="text-[14px] font-bold text-[var(--high)]">DocShield analysis failed</h3>
+                  <h3 className="text-[14px] font-bold text-[var(--warn)]">DocShield is a demo module</h3>
                   <p className="text-[12px] text-[var(--text-1)] font-semibold leading-relaxed">
                     {error.message}
-                    {error.status ? <span className="ml-1 text-[var(--text-3)]">(HTTP {error.status})</span> : null}
                   </p>
                   <p className="text-[11px] text-[var(--text-3)] font-semibold leading-relaxed pt-1">
-                    Make sure you're uploading a real PDF or image document. If the backend is unreachable, check <code className="text-[var(--brand)]">NEXT_PUBLIC_API_URL</code> on Vercel.
+                    The full DocShield analysis pipeline is currently unavailable in this deployment.
+                    Try the fully-functional UPI Shield instead, which runs 100% in your browser.
                   </p>
+                  <Link
+                    href="/upi-shield"
+                    className="inline-block mt-3 text-[11px] font-semibold text-[var(--brand)] hover:underline"
+                  >
+                    Try UPI Shield →
+                  </Link>
                 </div>
               </div>
             </div>

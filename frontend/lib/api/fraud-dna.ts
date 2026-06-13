@@ -1,15 +1,11 @@
 import { CampaignsResponse, GraphResponse, ThreatSummary } from "../types";
 import { apiBaseUrl } from "../config";
 
-async function realFetch<T>(path: string, init?: RequestInit): Promise<T> {
+async function realFetch<T>(path: string, init?: RequestInit): Promise<T | null> {
   const base = apiBaseUrl();
   if (!base) {
-    throw {
-      message: "Backend not configured. Set NEXT_PUBLIC_API_URL to your FastAPI host.",
-      status: 0,
-      path,
-      isNetworkError: true,
-    };
+    // Demo deployment: no backend configured. Fail soft.
+    return null;
   }
   const url = `${base}${path}`;
   const apiKey = process.env.NEXT_PUBLIC_API_KEY;
@@ -27,32 +23,28 @@ async function realFetch<T>(path: string, init?: RequestInit): Promise<T> {
     }
     return (await response.json()) as T;
   } catch (error: any) {
-    console.error(`[Lumint FraudDNA] ${init?.method || "GET"} ${path} failed:`, error);
-    throw {
-      message: error?.message || "Fraud DNA request failed",
-      status: error?.status || 0,
-      path,
-      isNetworkError: !error?.status,
-    };
+    console.warn(`[Lumint FraudDNA] ${init?.method || "GET"} ${path} unreachable; returning null:`, error?.message);
+    // Network or server error — fail soft.
+    return null;
   } finally {
     clearTimeout(timeoutId);
   }
 }
 
 export const fraudDnaApi = {
-  getCampaigns: async (): Promise<CampaignsResponse> => {
+  getCampaigns: async (): Promise<CampaignsResponse | null> => {
     return realFetch<CampaignsResponse>("/api/fraud-dna/campaigns");
   },
 
-  getGraph: async (): Promise<GraphResponse> => {
+  getGraph: async (): Promise<GraphResponse | null> => {
     return realFetch<GraphResponse>("/api/fraud-dna/graph");
   },
 
-  getThreatSummary: async (): Promise<ThreatSummary> => {
+  getThreatSummary: async (): Promise<ThreatSummary | null> => {
     return realFetch<ThreatSummary>("/api/fraud-dna/threat-summary");
   },
 
-  recluster: async (): Promise<CampaignsResponse> => {
+  recluster: async (): Promise<CampaignsResponse | null> => {
     return realFetch<CampaignsResponse>("/api/fraud-dna/recluster", { method: "POST" });
   },
 };

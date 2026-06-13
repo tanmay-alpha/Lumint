@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Menu, Bell, Zap, Sun, Moon } from "lucide-react";
+import { Menu, Bell, Sun, Moon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import Badge from "@/components/ui/Badge";
 
@@ -59,15 +59,9 @@ export const Topbar = ({
       </div>
 
       <div className="flex items-center gap-3.5">
-        {/* Client-side mode indicator (analysis runs in the browser) */}
-        <Badge variant="safe" dot={true} size="md">
-          READY
-        </Badge>
-
-        {/* AI Ready Indicator */}
-        <Badge variant="ai" size="md" className="gap-1">
-          <Zap className="h-3 w-3 shrink-0 text-[var(--ai)]" strokeWidth={2.5} />
-          AI READY
+        {/* Demo mode indicator — no backend is connected in this deployment. */}
+        <Badge variant="warn" size="md" dot={true} className="gap-1">
+          DEMO MODE
         </Badge>
 
         {/* Theme Toggle Button */}

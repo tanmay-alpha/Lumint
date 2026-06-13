@@ -49,9 +49,10 @@ export default function ThreatEventsPage() {
     async function loadEvents() {
       try {
         const eventsData = await client.getRecentEvents(50);
-        setEvents(eventsData);
+        setEvents(eventsData ?? []);
       } catch (error) {
         console.error("Failed to load events logs", error);
+        setEvents([]);
       } finally {
         setLoading(false);
       }

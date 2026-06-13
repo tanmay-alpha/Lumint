@@ -10,18 +10,18 @@ import { apiBaseUrl } from "../config";
 /**
  * The single network entry point for dashboard widgets.
  *
- * No mock fallback. If the backend is unreachable, the real error is
- * thrown to the caller so the UI can show a meaningful error state.
+ * Fails soft (returns `null`) when no backend is configured or the request
+ * errors. The dashboard pages render empty states in that case, so users
+ * on the demo deployment see a friendly placeholder instead of a stack
+ * trace. When a real backend is configured, normal `T` returns work as
+ * expected.
  */
-export async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
+export async function fetchApi<T>(path: string, options?: RequestInit): Promise<T | null> {
   const base = apiBaseUrl();
   if (!base) {
-    throw {
-      message: "Backend not configured. Set NEXT_PUBLIC_API_URL to your FastAPI host.",
-      status: 0,
-      path,
-      isNetworkError: true,
-    };
+    // Demo deployment: no backend configured. Return null so the page
+    // can render its empty state.
+    return null;
   }
   const url = `${base}${path}`;
 
@@ -58,13 +58,9 @@ export async function fetchApi<T>(path: string, options?: RequestInit): Promise<
     }
     return (await response.json()) as T;
   } catch (error: any) {
-    console.error(`[Lumint API] ${options?.method || "GET"} ${path} failed:`, error);
-    throw {
-      message: error?.message || "Backend unavailable",
-      status: error?.status || 0,
-      path,
-      isNetworkError: !error?.status,
-    };
+    console.warn(`[Lumint API] ${options?.method || "GET"} ${path} unreachable; returning null:`, error?.message);
+    // Network or server error — fail soft.
+    return null;
   } finally {
     clearTimeout(timeoutId);
   }
@@ -72,27 +68,26 @@ export async function fetchApi<T>(path: string, options?: RequestInit): Promise<
 
 // API methods
 export const client = {
-  getHealth: async (): Promise<HealthResponse> => {
+  getHealth: async (): Promise<HealthResponse | null> => {
     return fetchApi<HealthResponse>("/api/health", {});
   },
 
-  getStats: async (): Promise<DashboardStats> => {
+  getStats: async (): Promise<DashboardStats | null> => {
     return fetchApi<DashboardStats>("/api/dashboard/stats", {});
   },
 
-  getRecentEvents: async (limit: number = 20): Promise<RecentEvent[]> => {
-    const response = await fetchApi<{ events: RecentEvent[] }>(
+  getRecentEvents: async (limit: number = 20): Promise<RecentEvent[] | null> => {
+    return fetchApi<{ events: RecentEvent[] }>(
       `/api/dashboard/recent-events?limit=${limit}`,
       {}
-    );
-    return response.events;
+    ).then(r => r?.events ?? null);
   },
 
-  getRiskDistribution: async (): Promise<RiskDistribution> => {
+  getRiskDistribution: async (): Promise<RiskDistribution | null> => {
     return fetchApi<RiskDistribution>("/api/dashboard/risk-distribution", {});
   },
 
-  getIndicatorSummary: async (): Promise<IndicatorSummary> => {
+  getIndicatorSummary: async (): Promise<IndicatorSummary | null> => {
     return fetchApi<IndicatorSummary>("/api/dashboard/indicator-summary", {});
   },
 

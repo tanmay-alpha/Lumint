@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd /c/Users/TANMAY/OneDrive/Desktop/Lumint/frontend && pwd && ls package.json)",
+      "Read(//c/c/Users/TANMAY/OneDrive/Desktop/Lumint/frontend/**)"
+    ]
+  }
+}

@@ -129,7 +129,7 @@ export default function FraudDnaPage() {
 
   // Compile individual fingerprints/events list
   const fingerprintsList = useMemo(() => {
-    if (!campaigns) return [];
+    if (!campaigns || !campaigns.campaigns) return [];
     const list: any[] = [];
     campaigns.campaigns.forEach((camp) => {
       camp.events.forEach((evt) => {

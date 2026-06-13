@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import Sidebar from "@/components/layout/Sidebar";
 import Topbar from "@/components/layout/Topbar";
+import { DemoModeBanner } from "@/components/DemoModeBanner";
 
 const PAGE_LABELS: Record<string, string> = {
   "/dashboard":   "Dashboard Overview",
@@ -45,6 +46,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           pathname={pathname}
           pageLabels={PAGE_LABELS}
         />
+
+        {/* Demo-mode banner — above the page content, below the topbar. */}
+        <div className="px-6 pt-4 lg:px-8">
+          <div className="max-w-7xl mx-auto">
+            <DemoModeBanner />
+          </div>
+        </div>
 
         {/* Dynamic page contents */}
         <main className="flex-1 overflow-y-auto p-6 lg:p-8">

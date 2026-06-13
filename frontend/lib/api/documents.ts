@@ -2,15 +2,12 @@ import { DocumentAnalysisResult } from "../types";
 import { apiBaseUrl } from "../config";
 
 export const documentApi = {
-  analyzeDocument: async (file: File): Promise<DocumentAnalysisResult> => {
+  analyzeDocument: async (file: File): Promise<DocumentAnalysisResult | null> => {
     const base = apiBaseUrl();
     if (!base) {
-      throw {
-        message: "Backend not configured. Set NEXT_PUBLIC_API_URL to your FastAPI host.",
-        status: 0,
-        path: "/api/documents/analyze",
-        isNetworkError: true,
-      };
+      // Demo deployment: no backend configured. Fail soft so the UI can
+      // surface a friendly empty state rather than a confusing error.
+      return null;
     }
     const url = `${base}/api/documents/analyze`;
     const formData = new FormData();
@@ -49,13 +46,10 @@ export const documentApi = {
 
       return (await response.json()) as DocumentAnalysisResult;
     } catch (error: any) {
-      console.error("[Lumint DocShield] analyze failed:", error);
-      throw {
-        message: error?.message || "DocShield analysis failed",
-        status: error?.status || 0,
-        path: "/api/documents/analyze",
-        isNetworkError: !error?.status,
-      };
+      console.warn("[Lumint DocShield] analyze unreachable; returning null:", error?.message);
+      // Network or server error — fail soft, return null. The page's
+      // try/catch will display the friendly empty state.
+      return null;
     } finally {
       clearTimeout(timeoutId);
     }
