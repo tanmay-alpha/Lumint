@@ -37,26 +37,79 @@ async function runOCR(imageFile: File): Promise<{ text: string; confidence: numb
 }
 
 function extractUTR(text: string): string | null {
-  const matches = text.match(/\b\d{12}\b/g);
-  if (matches && matches.length > 0) return matches[0];
-  const phonepeMatch = text.match(/[Tt]\d{10,15}/);
-  if (phonepeMatch) return phonepeMatch[0].substring(1);
-  return null;
+  // Strategy 1: Find "UTR"/"Txn ID"/"Transaction ID" etc followed by digits
+  // (Tesseract often inserts spaces/colons, so be lenient).
+  const utrContextPatterns = [
+    /(?:UTR|Txn\s*ID|Transaction\s*ID|Txn\s*Ref|UPI\s*Ref)[\s:.]*(\d{9,18})/gi,
+    /T(\d{18,22})/g, // PhonePe: T + 21 digits
+  ];
+
+  for (const pattern of utrContextPatterns) {
+    const matches = text.matchAll(pattern);
+    for (const match of matches) {
+      const digits = (match[1] || '').replace(/\D/g, '');
+      if (digits.length === 12) return digits;
+      if (digits.length >= 10 && digits.length <= 22) return digits;
+    }
+  }
+
+  // Strategy 2: find any 10-22 digit run; prefer 12-digit UTRs.
+  const allNumbers = text.match(/\d{10,22}/g) || [];
+  if (allNumbers.length === 0) return null;
+  const twelveDigit = allNumbers.find(n => n.length === 12);
+  if (twelveDigit) return twelveDigit;
+  const first = allNumbers[0];
+  return first ? first.replace(/^T/, '') : null;
 }
 
 function extractAmount(text: string): number | null {
-  const rupeeMatch = text.match(/₹\s*([\d,]+(?:\.\d{1,2})?)/);
-  if (rupeeMatch) return parseFloat(rupeeMatch[1].replace(/,/g, ''));
-  const rsMatch = text.match(/(?:rs\.?|inr)\s*([\d,]+(?:\.\d{1,2})?)/i);
-  if (rsMatch) return parseFloat(rsMatch[1].replace(/,/g, ''));
-  const amountMatch = text.match(/(?:amount|paid|received|sent)[:\s]+(?:rs\.?|₹)?\s*([\d,]+)/i);
-  if (amountMatch) return parseFloat(amountMatch[1].replace(/,/g, ''));
+  // Strategy 1: contextual — "Rs 25,000" / "Amount: 1500" / "₹1,500"
+  const contextualPatterns = [
+    /(?:rs\.?|inr|₹|amount|paid|received|sent|pay)[\s.:]+([\d,]+(?:\.\d{1,2})?)/gi,
+  ];
+  for (const pattern of contextualPatterns) {
+    const matches = text.matchAll(pattern);
+    for (const match of matches) {
+      const num = match[1].replace(/,/g, '');
+      const parsed = parseFloat(num);
+      if (!isNaN(parsed) && parsed >= 1 && parsed <= 1000000) return parsed;
+    }
+  }
+  // Strategy 2: Indian-formatted comma numbers (25,000 / 1,50,000 / 10,00,000)
+  const commaNumbers = text.match(/\d{1,2}(?:,\d{2,3})+/g) || [];
+  if (commaNumbers.length > 0) {
+    const parsed = commaNumbers
+      .map(s => parseInt(s.replace(/,/g, ''), 10))
+      .filter(n => n >= 1 && n <= 1000000)
+      .sort((a, b) => b - a);
+    if (parsed.length > 0) return parsed[0];
+  }
+  // Strategy 3: standalone 3-7 digit number, not part of a longer digit run
+  const standalone = text.match(/(?<!\d)\d{3,7}(?!\d)/g) || [];
+  if (standalone.length > 0) {
+    const candidates = standalone
+      .map(s => parseInt(s, 10))
+      .filter(n => n >= 100 && n <= 1000000)
+      .sort((a, b) => b - a);
+    if (candidates.length > 0) return candidates[0];
+  }
   return null;
 }
 
 function extractVPA(text: string): string | null {
-  const vpaMatch = text.match(/[a-zA-Z0-9._-]+@[a-zA-Z][a-zA-Z0-9]+/);
-  return vpaMatch ? vpaMatch[0] : null;
+  // Strategy 1: VPA near keyword (paid to / from / to / vpa / upi id).
+  const vpaContextPatterns = [
+    /(?:paid\s*to|from|to|vpa|upi\s*id)[\s:]+([a-z0-9._-]+@[a-z0-9.-]+)/gi,
+  ];
+  for (const pattern of vpaContextPatterns) {
+    const matches = text.matchAll(pattern);
+    for (const match of matches) return match[1];
+  }
+  // Strategy 2: any handle@domain.
+  const vpaPattern = /[a-z0-9._-]{3,}@[a-z0-9.-]{2,}/gi;
+  const matches = text.match(vpaPattern);
+  if (matches && matches.length > 0) return matches[0];
+  return null;
 }
 
 function extractTimestamp(text: string): string | null {
@@ -70,12 +123,12 @@ function extractTimestamp(text: string): string | null {
 }
 
 function detectApp(text: string): string | null {
-  const t = text.toLowerCase();
-  if (t.includes('phonepe') || t.includes('phone pe')) return 'PhonePe';
-  if (t.includes('google pay') || t.includes('gpay')) return 'Google Pay';
+  const t = text.toLowerCase().replace(/\s+/g, ' ');
+  if (t.includes('phonepe') || t.includes('phone pe') || t.includes('phone_pe')) return 'PhonePe';
+  if (t.includes('googlepay') || t.includes('google pay') || t.includes('gpay') || t.includes('g pay')) return 'Google Pay';
   if (t.includes('paytm')) return 'Paytm';
   if (t.includes('bhim')) return 'BHIM';
-  if (t.includes('amazon pay')) return 'Amazon Pay';
+  if (t.includes('amazon pay') || t.includes('amazonpay')) return 'Amazon Pay';
   return null;
 }
 

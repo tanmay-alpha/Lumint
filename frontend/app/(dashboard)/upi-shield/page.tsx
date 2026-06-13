@@ -701,6 +701,29 @@ export default function UPIShieldPage() {
             </div>
           )}
 
+          {/* Debug panel — dev mode only. Shows raw OCR + extracted fields. */}
+          {result && process.env.NODE_ENV === "development" && (
+            <details className="mt-4 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-4">
+              <summary className="cursor-pointer text-sm text-[var(--text-2)] font-semibold">
+                Debug: Raw OCR &amp; Extracted Fields
+              </summary>
+              <div className="mt-4 space-y-2 text-xs font-mono">
+                <div><span className="text-[var(--brand)]">UTR:</span> {result.utr_number || "(not found)"}</div>
+                <div><span className="text-[var(--brand)]">Amount:</span> {result.amount || "(not found)"}</div>
+                <div><span className="text-[var(--brand)]">VPA (receiver):</span> {result.receiver_upi_id || "(not found)"}</div>
+                <div><span className="text-[var(--brand)]">App:</span> {result.app_detected || "(not found)"}</div>
+                <div><span className="text-[var(--brand)]">Timestamp:</span> {result.timestamp_extracted || "(not found)"}</div>
+                <div><span className="text-[var(--brand)]">Confidence:</span> {result.ocr_confidence ?? "?"}%</div>
+                <div>
+                  <span className="text-[var(--brand)]">OCR text (first 800 chars):</span>
+                  <pre className="mt-1 max-h-48 overflow-auto rounded bg-[var(--surface-2)] p-2 text-[var(--text-2)] whitespace-pre-wrap">
+                    {(result.raw_ocr_text || "").slice(0, 800)}
+                  </pre>
+                </div>
+              </div>
+            </details>
+          )}
+
           {/* Empty state (UPI Shield) */}
           {!result && !uploading && (
             <EmptyState
