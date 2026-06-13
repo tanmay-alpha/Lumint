@@ -157,7 +157,12 @@ export default function UPIShieldPage() {
 
     try {
       // Client-side analyzer: Tesseract.js OCR + Canvas ELA, no backend.
-      const res = await analyzeUPIClientSide(file);
+      const res = await analyzeUPIClientSide(file, (ocrProgress, stage) => {
+        // Real Tesseract progress: 0.0–1.0, scale to 0–100
+        const scaled = Math.round(ocrProgress * 100);
+        setProgress((prev) => Math.max(prev, Math.min(scaled, 95)));
+        if (stage) console.log('[UPI Analyzer]', stage, Math.round(ocrProgress * 100) + '%');
+      });
       clearInterval(tick);
       setProgress(100);
       // Map the analyzer result into the page's UPIAnalysisResult shape.
@@ -339,8 +344,30 @@ export default function UPIShieldPage() {
             )}
 
             {uploading && (
-              <div className="mt-4 text-center text-[12px] font-bold text-[var(--text-3)] animate-pulse">
-                Running forensic analysis…
+              <div className="mt-4 space-y-2">
+                <div className="flex items-center justify-between text-[11px] font-bold text-[var(--text-3)]">
+                  <span className="uppercase tracking-wider">
+                    {progress < 15
+                      ? "Loading AI engine…"
+                      : progress < 30
+                      ? "Pre-processing image…"
+                      : progress < 90
+                      ? "Reading text (OCR)…"
+                      : progress < 100
+                      ? "Analyzing patterns…"
+                      : "Done!"}
+                  </span>
+                  <span className="text-[var(--brand)]">{progress}%</span>
+                </div>
+                <div className="h-1.5 bg-[var(--surface-3)] rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-[var(--brand)] transition-all duration-300"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+                <div className="text-center text-[10px] text-[var(--text-3)] font-medium">
+                  First run may take 10–20s while engine initializes
+                </div>
               </div>
             )}
 
