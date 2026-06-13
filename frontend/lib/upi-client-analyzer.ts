@@ -29,7 +29,17 @@ export interface UPIAnalysisResult {
 }
 
 async function runOCR(imageFile: File): Promise<{ text: string; confidence: number }> {
-  const result = await Tesseract.recognize(imageFile, 'eng');
+  const result = await Tesseract.recognize(imageFile, 'eng', {
+    // Explicit CDN paths so the worker/wasm/lang files are reachable
+    // from the Vercel-deployed site (the v7 default CDN can be blocked
+    // by strict CSP / network egress).
+    workerPath: 'https://unpkg.com/tesseract.js@4.1.1/dist/worker.min.js',
+    corePath: 'https://unpkg.com/tesseract.js-core@4.1.1/tesseract-core.wasm.js',
+    langPath: 'https://tessdata.projectnaptha.com/4.0.0',
+    logger: (m: any) => {
+      console.log('[Tesseract]', m.status || m);
+    },
+  });
   return {
     text: result.data.text,
     confidence: result.data.confidence / 100,
@@ -267,20 +277,37 @@ export async function analyzeUPIClientSide(imageFile: File): Promise<UPIAnalysis
   const startTime = performance.now();
 
   try {
-    const ocr = await runOCR(imageFile);
-    const text = ocr.text;
-
-    if (!text || text.trim().length < 5) {
+    let ocr: { text: string; confidence: number };
+    try {
+      ocr = await runOCR(imageFile);
+    } catch (ocrErr: any) {
+      console.error('Tesseract OCR failed to run:', ocrErr);
       return {
-        verdict: 'NOT_UPI',
-        label: 'Not a UPI Screenshot',
+        verdict: 'ERROR',
+        label: 'Could not read the image',
         score: 0,
         confidence: 0,
         extracted: { utr: null, amount: null, vpa: null, timestamp: null, app: null },
-        signals: [{ check: 'No readable text found', passed: false, detail: 'Image may be blank, rotated, or not a payment screenshot' }],
+        signals: [{ check: 'OCR failed', passed: false, detail: 'The image could not be read. Please try a clearer screenshot.' }],
+        ocr_text: '',
+        processing_time_ms: Math.round(performance.now() - startTime),
+        model_version: 'client-v1.0-ocr-error',
+      };
+    }
+    const text = ocr.text;
+
+    if (!text || text.trim().length < 5) {
+      console.error('Tesseract OCR returned insufficient text. Length:', (text || '').length);
+      return {
+        verdict: 'ERROR',
+        label: 'Could not read the image',
+        score: 0,
+        confidence: 0,
+        extracted: { utr: null, amount: null, vpa: null, timestamp: null, app: null },
+        signals: [{ check: 'OCR failed', passed: false, detail: 'The image could not be read. Please try a clearer screenshot.' }],
         ocr_text: text || '',
         processing_time_ms: Math.round(performance.now() - startTime),
-        model_version: 'client-v1.0-ocr-only',
+        model_version: 'client-v1.0-ocr-error',
       };
     }
 
