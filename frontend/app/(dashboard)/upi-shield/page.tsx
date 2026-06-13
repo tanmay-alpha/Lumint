@@ -188,7 +188,10 @@ export default function UPIShieldPage() {
         // Real Tesseract progress: 0.0–1.0, scale to 0–100
         const scaled = Math.round(ocrProgress * 100);
         setProgress((prev) => Math.max(prev, Math.min(scaled, 95)));
-        if (stage) setStatusMessage(`${stage}…`);
+        // stage is reported by the analyzer for diagnostics; the progress bar
+        // already surfaces progress to the user, so we don't render a separate
+        // status line. Silence the unused-parameter warning.
+        void stage;
       });
       clearInterval(tick);
       setProgress(100);
