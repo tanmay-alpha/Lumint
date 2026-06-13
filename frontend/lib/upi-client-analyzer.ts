@@ -84,15 +84,8 @@ function extractAmount(text: string): number | null {
       .sort((a, b) => b - a);
     if (parsed.length > 0) return parsed[0];
   }
-  // Strategy 3: standalone 3-7 digit number, not part of a longer digit run
-  const standalone = text.match(/(?<!\d)\d{3,7}(?!\d)/g) || [];
-  if (standalone.length > 0) {
-    const candidates = standalone
-      .map(s => parseInt(s, 10))
-      .filter(n => n >= 100 && n <= 1000000)
-      .sort((a, b) => b - a);
-    if (candidates.length > 0) return candidates[0];
-  }
+  // Strategy 3 (REMOVED): the "pick any 3-7 digit number" fallback caused
+  // college-ID years and roll numbers to be reported as amounts.
   return null;
 }
 
@@ -247,6 +240,37 @@ export async function analyzeUPIClientSide(imageFile: File): Promise<UPIAnalysis
         ocr_text: text || '',
         processing_time_ms: Math.round(performance.now() - startTime),
         model_version: 'client-v1.0-ocr-only',
+      };
+    }
+
+    // UPI-presence gate. Non-UPI images (college IDs, PDFs, random photos) fail
+    // here and never reach extraction/ELA, so we don't fabricate amounts.
+    const textLower = text.toLowerCase();
+    const hasPaymentKeyword = /(?:amount|paid|received|sent|debited|credited|utr|transaction|upi|@)/i.test(text);
+    const hasUPIApp = /(phonepe|google\s*pay|gpay|paytm|bhim|amazon\s*pay)/i.test(textLower);
+    const hasVPA = /@/.test(text);
+    const hasUTR = /\d{10,18}/.test(text);
+    const hasRupee = /(rs\.?|inr|₹)/i.test(text);
+
+    const upiSignals = [hasPaymentKeyword, hasUPIApp, hasVPA, hasUTR, hasRupee].filter(Boolean).length;
+    if (upiSignals < 3) {
+      const missing: Array<{ check: string; passed: false }> = [];
+      if (!hasPaymentKeyword) missing.push({ check: 'No payment keywords', passed: false });
+      if (!hasUPIApp) missing.push({ check: 'No UPI app detected', passed: false });
+      if (!hasVPA) missing.push({ check: 'No @VPA detected', passed: false });
+      return {
+        verdict: 'NOT_UPI',
+        label: 'Not a UPI Screenshot',
+        score: 0,
+        confidence: ocr.confidence,
+        extracted: { utr: null, amount: null, vpa: null, timestamp: null, app: null },
+        signals: [
+          { check: 'Missing UPI evidence', passed: false, detail: "This doesn't appear to be a UPI payment screenshot. Look for UTR, amount, or @VPA." },
+          ...missing,
+        ],
+        ocr_text: text.substring(0, 1000),
+        processing_time_ms: Math.round(performance.now() - startTime),
+        model_version: 'client-v1.0-gate-fail',
       };
     }
 
