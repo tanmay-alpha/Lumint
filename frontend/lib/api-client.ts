@@ -1,118 +1,83 @@
-import {
-  StatsResponse,
-  RecentEventsResponse,
-  CampaignsResponse,
-  GraphResponse,
-  ThreatSummaryResponse,
-  RecentEvent
-} from "@/types";
 import { apiBaseUrl } from "./config";
 
-// State to track if we are in live or mock mode
-export let isLiveMode = false;
-let modeListeners: ((live: boolean) => void)[] = [];
+/**
+ * Centralized API client used by `services/*`.
+ * Falls back to throwing if NEXT_PUBLIC_API_URL is unset, so callers can
+ * opt into mock data via `lib/api/*` (modular clients) when no backend is
+ * available. The UPI Shield service requires a real backend.
+ */
 
-export function subscribeToModeChange(listener: (live: boolean) => void) {
-  modeListeners.push(listener);
-  listener(isLiveMode);
-  return () => {
-    modeListeners = modeListeners.filter(l => l !== listener);
-  };
+export interface ApiRequestOptions extends Omit<RequestInit, "body"> {
+  body?: BodyInit | null;
+  /** Skip the Authorization header (used for endpoints that don't require auth). */
+  skipAuth?: boolean;
+  /** Per-request timeout override (ms). */
+  timeoutMs?: number;
 }
 
-function setLiveMode(live: boolean) {
-  if (isLiveMode !== live) {
-    isLiveMode = live;
-    modeListeners.forEach(listener => listener(live));
+export class ApiError extends Error {
+  constructor(public status: number, message: string, public detail?: unknown) {
+    super(message);
+    this.name = "ApiError";
   }
 }
 
-/**
- * The single network entry point for all Lumint dashboard API calls.
- *
- * Timeouts:
- *   - 30 seconds for file uploads (OCR + ELA + ML takes 5-10s in production,
- *     sometimes longer for large images). A 3-second timeout was the root
- *     cause of the mock-fallback bug: real analysis was always timing out
- *     and the user saw fake `₹1,500 / score 87` data instead.
- *   - 10 seconds for normal JSON endpoints.
- *
- * No mock fallback. If the backend is unreachable, the real error is
- * thrown to the caller so the UI can show a meaningful message.
- */
-export async function apiRequest<T>(
+function buildHeaders(opts: ApiRequestOptions): HeadersInit {
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    ...(opts.headers as Record<string, string> | undefined),
+  };
+  if (!opts.skipAuth) {
+    const apiKey = process.env.NEXT_PUBLIC_API_KEY;
+    if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
+  }
+  return headers;
+}
+
+export async function apiRequest<T = unknown>(
   path: string,
-  options?: RequestInit
+  opts: ApiRequestOptions = {}
 ): Promise<T> {
   const base = apiBaseUrl();
   if (!base) {
-    throw {
-      message: "Backend not configured. Set NEXT_PUBLIC_API_URL to your FastAPI host.",
-      status: 0,
-      path,
-      isNetworkError: true,
-    };
+    throw new ApiError(0, "API base URL is not configured");
   }
-  const url = `${base}${path}`;
+  const url = `${base.replace(/\/+$/, "")}${path}`;
+  const timeout = opts.timeoutMs ?? 30_000;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeout);
 
-  // Inject authorization header if API key is configured.
-  const apiKey = process.env.NEXT_PUBLIC_API_KEY;
-  const headers = new Headers(options?.headers);
-  if (apiKey) {
-    headers.set("Authorization", `Bearer ${apiKey}`);
-  }
-
-  // Dynamic timeout: uploads need 30s, normal calls 10s.
-  const isUpload = options?.body instanceof FormData;
-  const timeoutMs = isUpload ? 30000 : 10000;
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-  // Composite signal: caller signal (for unmount cancellation) + timeout.
-  const callerSignal = options?.signal;
-  const signal = callerSignal
-    ? AbortSignal.any([callerSignal, controller.signal])
-    : controller.signal;
-
+  let res: Response;
   try {
-    const response = await fetch(url, {
-      ...options,
-      headers,
-      signal,
+    res = await fetch(url, {
+      ...opts,
+      headers: buildHeaders(opts),
+      signal: ctrl.signal,
     });
-
-    if (!response.ok) {
-      let errorMessage = `API Error: ${response.status} ${response.statusText}`;
-      try {
-        const errJson = await response.json();
-        if (errJson && errJson.detail) {
-          if (typeof errJson.detail === "string") {
-            errorMessage = errJson.detail;
-          } else if (Array.isArray(errJson.detail)) {
-            errorMessage = errJson.detail.map((d: any) => d.msg || JSON.stringify(d)).join(", ");
-          }
-        }
-      } catch (_) {}
-      const errorObj: any = new Error(errorMessage);
-      errorObj.status = response.status;
-      errorObj.path = path;
-      throw errorObj;
-    }
-
-    setLiveMode(true);
-    return (await response.json()) as T;
-  } catch (error: any) {
-    setLiveMode(false);
-    console.error(`[Lumint API] ${options?.method || "GET"} ${path} failed:`, error);
-
-    // Propagate the real error — no mock fallback.
-    throw {
-      message: error?.message || "Backend unavailable",
-      status: error?.status || 0,
-      path,
-      isNetworkError: !error?.status,
-    };
   } finally {
-    clearTimeout(timeoutId);
+    clearTimeout(timer);
+  }
+
+  if (!res.ok) {
+    let detail: unknown = undefined;
+    try {
+      detail = await res.json();
+    } catch {
+      // ignore body parse errors
+    }
+    const message =
+      (detail && typeof detail === "object" && "detail" in detail
+        ? String((detail as { detail: unknown }).detail)
+        : null) || `HTTP ${res.status}`;
+    throw new ApiError(res.status, message, detail);
+  }
+
+  // 204 / empty body
+  const text = await res.text();
+  if (!text) return undefined as T;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return text as unknown as T;
   }
 }

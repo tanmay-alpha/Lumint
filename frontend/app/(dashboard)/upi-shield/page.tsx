@@ -188,7 +188,7 @@ export default function UPIShieldPage() {
         // Real Tesseract progress: 0.0–1.0, scale to 0–100
         const scaled = Math.round(ocrProgress * 100);
         setProgress((prev) => Math.max(prev, Math.min(scaled, 95)));
-        if (stage) console.log('[UPI Analyzer]', stage, Math.round(ocrProgress * 100) + '%');
+        if (stage) setStatusMessage(`${stage}…`);
       });
       clearInterval(tick);
       setProgress(100);

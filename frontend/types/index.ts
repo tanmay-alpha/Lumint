@@ -326,4 +326,3 @@ export interface PhishingAIResponse {
   model_used: string;
   latency_ms: number;
 }
-
