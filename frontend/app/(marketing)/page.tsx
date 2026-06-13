@@ -229,8 +229,8 @@ export default function LandingPage() {
             <a href="#research" className="hover:text-text-primary transition-colors">
               Research
             </a>
-            <Link href="/dashboard/research" className="hover:text-text-primary transition-colors">
-              Paper
+            <Link href="/about" className="hover:text-text-primary transition-colors">
+              About
             </Link>
             <a
               href="https://github.com/tanmay-alpha/lumint"
