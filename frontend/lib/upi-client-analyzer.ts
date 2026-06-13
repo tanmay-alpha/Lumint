@@ -37,29 +37,23 @@ async function runOCR(imageFile: File): Promise<{ text: string; confidence: numb
 }
 
 function extractUTR(text: string): string | null {
-  // Strategy 1: Find "UTR"/"Txn ID"/"Transaction ID" etc followed by digits
-  // (Tesseract often inserts spaces/colons, so be lenient).
-  const utrContextPatterns = [
-    /(?:UTR|Txn\s*ID|Transaction\s*ID|Txn\s*Ref|UPI\s*Ref)[\s:.]*(\d{9,18})/gi,
-    /T(\d{18,22})/g, // PhonePe: T + 21 digits
+  // NPCI standard: UPI UTR is exactly 12 digits. Reject anything else.
+  // Strategy 1: UTR/Txn ID/Transaction ID/PhonePe Transaction ID context,
+  // followed by digits (Tesseract may insert spaces — strip them out).
+  const utrContext = [
+    /(?:UTR|Txn\s*ID|Transaction\s*ID|Txn\s*Ref|UPI\s*Ref|PhonePe\s*Transaction\s*ID)[\s:.]*([\d\s]{10,25})/gi,
   ];
-
-  for (const pattern of utrContextPatterns) {
+  for (const pattern of utrContext) {
     const matches = text.matchAll(pattern);
     for (const match of matches) {
       const digits = (match[1] || '').replace(/\D/g, '');
       if (digits.length === 12) return digits;
-      if (digits.length >= 10 && digits.length <= 22) return digits;
     }
   }
-
-  // Strategy 2: find any 10-22 digit run; prefer 12-digit UTRs.
-  const allNumbers = text.match(/\d{10,22}/g) || [];
-  if (allNumbers.length === 0) return null;
-  const twelveDigit = allNumbers.find(n => n.length === 12);
-  if (twelveDigit) return twelveDigit;
-  const first = allNumbers[0];
-  return first ? first.replace(/^T/, '') : null;
+  // Strategy 2: any standalone 12-digit run in the text.
+  const allNumbers = text.match(/(?<!\d)\d{12}(?!\d)/g) || [];
+  if (allNumbers.length > 0) return allNumbers[0] || null;
+  return null;
 }
 
 function extractAmount(text: string): number | null {
@@ -116,12 +110,13 @@ function extractTimestamp(text: string): string | null {
 }
 
 function detectApp(text: string): string | null {
-  const t = text.toLowerCase().replace(/\s+/g, ' ');
-  if (t.includes('phonepe') || t.includes('phone pe') || t.includes('phone_pe')) return 'PhonePe';
-  if (t.includes('googlepay') || t.includes('google pay') || t.includes('gpay') || t.includes('g pay')) return 'Google Pay';
-  if (t.includes('paytm')) return 'Paytm';
-  if (t.includes('bhim')) return 'BHIM';
-  if (t.includes('amazon pay') || t.includes('amazonpay')) return 'Amazon Pay';
+  const t = text.toLowerCase();
+  // Word boundaries prevent false matches (e.g. "phone" in an address).
+  if (/\b(phonepe|phone pe|phone_pe)\b/.test(t)) return 'PhonePe';
+  if (/\b(googlepay|google pay|gpay|g pay)\b/.test(t)) return 'Google Pay';
+  if (/\b(paytm)\b/.test(t)) return 'Paytm';
+  if (/\b(bhim)\b/.test(t)) return 'BHIM';
+  if (/\b(amazonpay|amazon pay)\b/.test(t)) return 'Amazon Pay';
   return null;
 }
 
@@ -129,6 +124,52 @@ interface ELAResult {
   score: number;
   regionCount: number;
   maxRegionArea: number;
+}
+
+async function isScreenshotLikely(img: HTMLImageElement): Promise<boolean> {
+  // Screenshots have:
+  // 1. Sharp edges (not blurred from camera)
+  // 2. Solid color backgrounds (white/dark)
+  // 3. No skin tones (not a photo of a person)
+  // 4. Pixel-perfect text (not OCR-noisy)
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.min(img.width, 400);
+  canvas.height = Math.min(img.height, 400);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return true; // Assume yes if we can't analyze
+
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+
+  const totalPixels = canvas.width * canvas.height;
+  let whitePixels = 0;
+  let darkPixels = 0;
+  let skinTonePixels = 0;
+
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    // White/near-white (typical screenshot background)
+    if (r > 230 && g > 230 && b > 230) whitePixels++;
+    // Dark/near-black
+    if (r < 25 && g < 25 && b < 25) darkPixels++;
+    // Skin tone (rough): high R, mid G, lower B, R>G>B
+    if (r > 180 && g > 130 && g < 200 && b > 100 && b < 160 && r > g && g > b) {
+      skinTonePixels++;
+    }
+  }
+
+  const whiteRatio = whitePixels / totalPixels;
+  const darkRatio = darkPixels / totalPixels;
+  const skinRatio = skinTonePixels / totalPixels;
+
+  // Reject if too much skin tone (photo of a person, like an ID card).
+  if (skinRatio > 0.15) return false;
+  // Screenshots typically have either lots of white OR lots of dark.
+  if (whiteRatio + darkRatio < 0.40) return false;
+
+  return true;
 }
 
 async function computeELA(imageFile: File): Promise<ELAResult> {
@@ -243,6 +284,31 @@ export async function analyzeUPIClientSide(imageFile: File): Promise<UPIAnalysis
       };
     }
 
+    // Screenshot detection: reject photos of ID cards / documents / people.
+    // Skin-tone-heavy or natural-photo images are not payment screenshots.
+    const imgEl = new Image();
+    await new Promise<void>((resolve) => {
+      imgEl.onload = () => resolve();
+      imgEl.onerror = () => resolve();
+      imgEl.src = URL.createObjectURL(imageFile);
+    });
+    if (imgEl.width > 0) {
+      const isScreenshot = await isScreenshotLikely(imgEl);
+      if (!isScreenshot) {
+        return {
+          verdict: 'NOT_UPI',
+          label: 'Not a UPI Screenshot',
+          score: 0,
+          confidence: 0,
+          extracted: { utr: null, amount: null, vpa: null, timestamp: null, app: null },
+          signals: [{ check: 'Image appears to be a photo, not a screenshot', passed: false, detail: 'UPI Shield analyzes payment screenshots, not photos of documents or ID cards.' }],
+          ocr_text: text.substring(0, 1000),
+          processing_time_ms: Math.round(performance.now() - startTime),
+          model_version: 'client-v1.0-screenshot-fail',
+        };
+      }
+    }
+
     // UPI-presence gate. Non-UPI images (college IDs, PDFs, random photos) fail
     // here and never reach extraction/ELA, so we don't fabricate amounts.
     const textLower = text.toLowerCase();
@@ -253,7 +319,7 @@ export async function analyzeUPIClientSide(imageFile: File): Promise<UPIAnalysis
     const hasRupee = /(rs\.?|inr|₹)/i.test(text);
 
     const upiSignals = [hasPaymentKeyword, hasUPIApp, hasVPA, hasUTR, hasRupee].filter(Boolean).length;
-    if (upiSignals < 3) {
+    if (upiSignals < 4) {
       const missing: Array<{ check: string; passed: false }> = [];
       if (!hasPaymentKeyword) missing.push({ check: 'No payment keywords', passed: false });
       if (!hasUPIApp) missing.push({ check: 'No UPI app detected', passed: false });

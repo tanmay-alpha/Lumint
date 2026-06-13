@@ -127,6 +127,21 @@ export default function UPIShieldPage() {
     setError(null);
   };
 
+  // Load a sample image from /public/samples and pipe it through the same
+  // selection path as a real upload. Lets users try the analyzer without
+  // having to find a screenshot on disk.
+  const loadSampleImage = async (path: string) => {
+    try {
+      const res = await fetch(path);
+      const blob = await res.blob();
+      const name = path.split("/").pop() || "sample.png";
+      const file = new File([blob], name, { type: blob.type || "image/png" });
+      handleFileSelected(file);
+    } catch (e) {
+      console.error("Failed to load sample:", e);
+    }
+  };
+
   const handleAnalyze = async () => {
     if (!file) return;
     setUploading(true);
@@ -273,6 +288,38 @@ export default function UPIShieldPage() {
               disabled={uploading}
               progress={uploading ? progress : 0}
             />
+
+            {/* Test gallery: 3 sample images for instant trial. */}
+            {!file && !uploading && (
+              <div className="mt-4 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-4">
+                <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-[var(--text-3)]">
+                  Try a sample screenshot
+                </h3>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => loadSampleImage("/samples/genuine-phonepe.png")}
+                    className="rounded border border-[var(--border)] bg-[var(--surface-2)] p-2.5 text-[11px] font-semibold text-[var(--text-2)] hover:border-[var(--brand)] hover:text-[var(--brand)] transition-colors"
+                  >
+                    Genuine PhonePe
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => loadSampleImage("/samples/tampered-screenshot.png")}
+                    className="rounded border border-[var(--border)] bg-[var(--surface-2)] p-2.5 text-[11px] font-semibold text-[var(--text-2)] hover:border-[var(--high)] hover:text-[var(--high)] transition-colors"
+                  >
+                    Tampered
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => loadSampleImage("/samples/college-id.png")}
+                    className="rounded border border-[var(--border)] bg-[var(--surface-2)] p-2.5 text-[11px] font-semibold text-[var(--text-2)] hover:border-[var(--warn)] hover:text-[var(--warn)] transition-colors"
+                  >
+                    College ID (reject)
+                  </button>
+                </div>
+              </div>
+            )}
 
             {file && !uploading && !result && (
               <motion.div
