@@ -59,16 +59,6 @@ export function Footer() {
             <ul className="mt-3 space-y-2 text-sm text-text-secondary">
               <li>
                 <a
-                  href="https://github.com/tanmay-alpha/Lumint"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-text-primary transition-colors"
-                >
-                  ⭐ Star on GitHub
-                </a>
-              </li>
-              <li>
-                <a
                   href="https://www.linkedin.com/in/tanmaymangal/"
                   target="_blank"
                   rel="noopener noreferrer"

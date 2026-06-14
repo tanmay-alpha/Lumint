@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Sidebar from "@/components/layout/Sidebar";
 import Topbar from "@/components/layout/Topbar";
 import { DemoModeBanner } from "@/components/DemoModeBanner";
@@ -24,9 +24,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  // User can dismiss the demo-mode banner; session-scoped state.
+  const [bannerDismissed, setBannerDismissed] = useState(false);
   // Polls /health every 60s. Exposes status + latency + last error so the
   // banner and topbar can render accurate diagnostics.
   const apiHealth = useApiHealth();
+
+  const showBanner = apiHealth.status !== "online" && !bannerDismissed;
 
   return (
     <div className="relative min-h-screen bg-canvas text-text-primary flex overflow-hidden">
@@ -64,31 +68,44 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         )}
 
-        {/* Demo-mode banner — hidden once the backend reports online. */}
-        {apiHealth.status !== "online" && (
-          <div className="px-6 pt-4 lg:px-8">
-            <div className="max-w-7xl mx-auto">
-              <DemoModeBanner
-                status={apiHealth.status}
-                latency={apiHealth.latency}
-                lastError={apiHealth.lastError}
-                onRetry={apiHealth.recheck}
-              />
-            </div>
-          </div>
-        )}
+        {/* Demo-mode banner — hidden once the backend reports online.
+            User can dismiss; setting is per-session only. */}
+        <AnimatePresence>
+          {showBanner && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className="px-6 pt-3 lg:px-8 sticky top-0 z-40"
+            >
+              <div className="max-w-7xl mx-auto">
+                <DemoModeBanner
+                  status={apiHealth.status}
+                  latency={apiHealth.latency}
+                  lastError={apiHealth.lastError}
+                  onRetry={apiHealth.recheck}
+                  onDismiss={() => setBannerDismissed(true)}
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        {/* Dynamic page contents */}
+        {/* Dynamic page contents — page transition fade */}
         <main className="flex-1 overflow-y-auto p-6 lg:p-8">
-          <motion.div
-            key={pathname}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
-            className="max-w-7xl mx-auto space-y-8"
-          >
-            {children}
-          </motion.div>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={pathname}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.1, ease: "easeOut" }}
+              className="max-w-7xl mx-auto space-y-8"
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
     </div>

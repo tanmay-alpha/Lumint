@@ -7,6 +7,7 @@ interface DemoModeBannerProps {
   latency: number | null;
   lastError: string | null;
   onRetry: () => void;
+  onDismiss?: () => void;
 }
 
 /**
@@ -22,6 +23,7 @@ export function DemoModeBanner({
   latency,
   lastError,
   onRetry,
+  onDismiss,
 }: DemoModeBannerProps) {
   if (status === "offline") {
     const apiUrl =
@@ -51,13 +53,24 @@ export function DemoModeBanner({
                 : "The backend is not responding. Render free tier can take 30–60s to wake on first request."}
             </p>
           </div>
-          <button
-            onClick={onRetry}
-            className="flex items-center gap-1 text-[var(--critical)] hover:underline shrink-0"
-          >
-            <RefreshCw className="h-3 w-3" />
-            Retry
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={onRetry}
+              className="flex items-center gap-1 text-[var(--critical)] hover:underline"
+            >
+              <RefreshCw className="h-3 w-3" />
+              Retry
+            </button>
+            {onDismiss && (
+              <button
+                onClick={onDismiss}
+                className="text-text-muted hover:text-text-primary transition-colors"
+                title="Dismiss for this session"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
         <div className="pl-7 space-y-2">
           <p className="text-[var(--text-2)]">

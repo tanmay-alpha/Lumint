@@ -124,8 +124,11 @@ const HeroPreviewCard = ({
         className="card-elevated backdrop-blur-md bg-surface/85 border border-border-default/60 rounded-xl px-5 py-4 shadow-xl min-w-[290px] max-w-[320px]"
       >
         <div className="flex items-center justify-between gap-3 mb-2.5">
-          <span className="text-[11px] font-sans font-semibold tracking-wider text-text-secondary uppercase">
+          <span className="text-[11px] font-sans font-semibold tracking-wider text-text-secondary uppercase flex items-center gap-1.5">
             {label}
+            <span className="text-[8px] font-bold tracking-wider uppercase bg-brand/15 text-brand px-1 py-0.5 rounded-sm leading-none">
+              PREVIEW
+            </span>
           </span>
           <div className="flex items-center gap-2">
             <span className="font-mono text-[12px] font-medium text-text-primary">
@@ -317,30 +320,32 @@ export default function LandingPage() {
               <Link href="/dashboard">
                 <Button
                   variant="solid"
-                  className="h-10 px-5 flex items-center justify-center rounded-[8px] bg-brand hover:bg-brand-hover text-white text-[14px] font-semibold transition-colors shadow-[0_0_30px_rgba(220,38,38,0.3)]"
+                  className="h-10 px-5 flex items-center justify-center gap-2 rounded-[8px] bg-brand hover:bg-brand-hover text-white text-[14px] font-semibold transition-colors shadow-[0_0_30px_rgba(220,38,38,0.3)]"
                 >
-                  Try It Live →
+                  <Shield className="h-4 w-4" strokeWidth={2.5} />
+                  Try It Live
                 </Button>
               </Link>
               <Link href="/dashboard/research">
                 <Button
                   variant="outline"
-                  className="h-10 px-5 flex items-center justify-center rounded-[8px] border border-border-default hover:bg-surface-raised text-text-primary text-[14px] font-semibold transition-colors"
+                  className="h-10 px-5 flex items-center justify-center gap-2 rounded-[8px] border border-border-default hover:bg-surface-raised text-text-primary text-[14px] font-semibold transition-colors"
                 >
-                  📄 Read Research Paper
+                  <FileSearch className="h-4 w-4" />
+                  Read Research Paper
                 </Button>
               </Link>
             </motion.div>
 
-            {/* Trust stats row */}
+            {/* Trust stats row — AI engine first as the strongest credibility signal */}
             <motion.div
               variants={fadeUpVariants}
               className="pt-4 mt-6 border-t border-border-default/50 w-full max-w-md"
             >
-              <div className="flex items-center justify-center lg:justify-start gap-2.5 text-[13px] text-text-secondary/80 font-sans">
-                <span>4 detection modalities</span>
+              <div className="flex items-center justify-center lg:justify-start gap-2.5 text-[13px] text-text-secondary/80 font-sans flex-wrap">
+                <span className="font-semibold text-text-primary">LLaMA 3.3 70B AI engine</span>
                 <span className="text-text-muted font-bold">·</span>
-                <span>LLaMA 3.3 70B AI engine</span>
+                <span>4 detection modalities</span>
                 <span className="text-text-muted font-bold">·</span>
                 <span>Open source</span>
               </div>

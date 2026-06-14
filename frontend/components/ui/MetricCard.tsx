@@ -9,6 +9,7 @@ export interface MetricCardProps {
   label: string;
   value: string | number;
   unit?: string;
+  sublabel?: string;
   trend?: { delta?: string; value?: string; isPositive: boolean; period?: string };
   sparkData?: number[];
   icon?: React.ReactNode;
@@ -51,6 +52,7 @@ export const MetricCard = ({
   label,
   value,
   unit,
+  sublabel,
   trend,
   sparkData,
   icon,
@@ -111,6 +113,11 @@ export const MetricCard = ({
       </div>
 
       {/* Trend row */}
+      {sublabel && !trend && (
+        <div className="mt-2 text-[11px] font-medium text-[var(--text-4)] uppercase tracking-wider">
+          {sublabel}
+        </div>
+      )}
       {trend && trendVal && (
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}

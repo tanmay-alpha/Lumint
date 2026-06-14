@@ -18,6 +18,7 @@ import {
   Scan,
   Layers,
   Sparkles,
+  Upload,
 } from "lucide-react";
 import { UploadZone } from "@/components/ui/UploadZone";
 import { Badge } from "@/components/ui/Badge";
@@ -322,15 +323,67 @@ export default function UPIShieldPage() {
             <span className="text-[11px] font-bold text-[var(--text-3)] uppercase tracking-wider block mb-4">
               Upload Payment Screenshot
             </span>
-            <UploadZone
-              accept=".png,.jpg,.jpeg"
-              maxSizeMB={10}
-              label="Drop payment screenshot here"
-              subLabel="PhonePe · Google Pay · Paytm · BHIM"
-              onFileSelected={handleFileSelected}
-              disabled={uploading}
-              progress={uploading ? progress : 0}
-            />
+            {!file && !uploading && !result ? (
+              // Animated upload zone with pulsing dashed border
+              <motion.div
+                className="rounded-xl border-2 border-dashed border-[var(--border)] p-8 text-center cursor-pointer transition-colors hover:border-[var(--brand)]"
+                animate={{
+                  borderColor: [
+                    "var(--border)",
+                    "var(--brand)",
+                    "var(--border)",
+                  ],
+                }}
+                transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                onClick={() => document.getElementById("upi-file-input")?.click()}
+              >
+                <Upload className="h-10 w-10 mx-auto text-[var(--text-4)] mb-3" />
+                <h3 className="text-[15px] font-semibold text-[var(--text-1)]">
+                  Drop a UPI transaction screenshot
+                </h3>
+                <p className="text-[12px] text-[var(--text-3)] mt-1">
+                  OCR runs in your browser. Nothing is uploaded.
+                </p>
+                <input
+                  id="upi-file-input"
+                  type="file"
+                  accept="image/png,image/jpeg"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleFileSelected(f);
+                    e.target.value = "";
+                  }}
+                />
+              </motion.div>
+            ) : (
+              <UploadZone
+                accept=".png,.jpg,.jpeg"
+                maxSizeMB={10}
+                label="Drop payment screenshot here"
+                subLabel="PhonePe · Google Pay · Paytm · BHIM"
+                onFileSelected={handleFileSelected}
+                disabled={uploading}
+                progress={uploading ? progress : 0}
+              />
+            )}
+
+            {/* Ghost preview of what the results panel will look like */}
+            {!file && !uploading && !result && (
+              <div className="mt-6 opacity-30 pointer-events-none select-none" aria-hidden="true">
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-5">
+                  <div className="text-[10px] font-mono font-bold text-[var(--text-4)] uppercase tracking-wider">
+                    Verdict
+                  </div>
+                  <div className="h-7 bg-[var(--surface-2)] rounded mt-2 w-2/3" />
+                  <div className="grid grid-cols-3 gap-2 mt-4">
+                    <div className="h-14 bg-[var(--surface-2)] rounded" />
+                    <div className="h-14 bg-[var(--surface-2)] rounded" />
+                    <div className="h-14 bg-[var(--surface-2)] rounded" />
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Test gallery: 3 sample images for instant trial. */}
             {!file && !uploading && (
@@ -344,21 +397,21 @@ export default function UPIShieldPage() {
                     onClick={() => loadSampleImage("/samples/genuine-phonepe.png")}
                     className="rounded border border-[var(--border)] bg-[var(--surface-2)] p-2.5 text-[11px] font-semibold text-[var(--text-2)] hover:border-[var(--brand)] hover:text-[var(--brand)] transition-colors"
                   >
-                    Genuine PhonePe
+                    ✓ Genuine PhonePe
                   </button>
                   <button
                     type="button"
                     onClick={() => loadSampleImage("/samples/tampered-screenshot.png")}
                     className="rounded border border-[var(--border)] bg-[var(--surface-2)] p-2.5 text-[11px] font-semibold text-[var(--text-2)] hover:border-[var(--high)] hover:text-[var(--high)] transition-colors"
                   >
-                    Tampered
+                    ⚠ Tampered
                   </button>
                   <button
                     type="button"
                     onClick={() => loadSampleImage("/samples/college-id.png")}
                     className="rounded border border-[var(--border)] bg-[var(--surface-2)] p-2.5 text-[11px] font-semibold text-[var(--text-2)] hover:border-[var(--warn)] hover:text-[var(--warn)] transition-colors"
                   >
-                    College ID (reject)
+                    ❌ College ID
                   </button>
                 </div>
               </div>

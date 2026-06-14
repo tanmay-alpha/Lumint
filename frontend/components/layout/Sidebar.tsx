@@ -24,22 +24,22 @@ import { twMerge } from "tailwind-merge";
 
 const NAV_GROUPS = [
   {
-    title: "OVERVIEW",
+    title: "Overview",
     items: [
       { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, desc: "Threat telemetry overview" },
     ],
   },
   {
-    title: "ANALYSIS",
+    title: "Analysis",
     items: [
-      { name: "DocShield", href: "/docshield", icon: FileSearch, desc: "Document forensics" },
-      { name: "PhishShield", href: "/phishshield", icon: ShieldAlert, desc: "URL & domain analysis" },
-      { name: "Fraud DNA", href: "/fraud-dna", icon: Network, desc: "Campaign network graph" },
+      { name: "DocShield", href: "/docshield", icon: FileSearch, desc: "Document forensics", beta: true },
+      { name: "PhishShield", href: "/phishshield", icon: ShieldAlert, desc: "URL & domain analysis", beta: true },
+      { name: "Fraud DNA", href: "/fraud-dna", icon: Network, desc: "Campaign network graph", beta: true },
       { name: "UPI Shield", href: "/upi-shield", icon: Smartphone, desc: "Payment screenshot scan" },
     ],
   },
   {
-    title: "INTELLIGENCE",
+    title: "Intelligence",
     items: [
       { name: "Activity", href: "/events", icon: Activity, desc: "Event timeline" },
       { name: "History", href: "/dashboard/history", icon: History, desc: "Past scans (local)" },
@@ -47,12 +47,12 @@ const NAV_GROUPS = [
     ],
   },
   {
-    title: "SYSTEM",
+    title: "System",
     items: [
       { name: "Settings", href: "/settings", icon: Settings, desc: "Configuration" },
     ],
   },
-] as const;
+];
 
 export interface SidebarProps {
   collapsed: boolean;
@@ -62,7 +62,7 @@ export interface SidebarProps {
 }
 
 const LumintLogo = ({ collapsed }: { collapsed: boolean }) => (
-  <div className="flex items-center gap-2.5 select-none font-sans">
+  <Link href="/" className="flex items-center gap-2.5 select-none font-sans no-underline">
     <div className="relative flex h-9 w-9 items-center justify-center shrink-0">
       <div className="absolute inset-0 rounded-lg bg-brand/10 opacity-60 blur-sm" />
       <div className="relative h-9 w-9 rounded-lg bg-brand flex items-center justify-center shadow-md">
@@ -70,16 +70,13 @@ const LumintLogo = ({ collapsed }: { collapsed: boolean }) => (
       </div>
     </div>
     {!collapsed && (
-      <div className="flex flex-col">
-        <span className="text-[18px] tracking-tight text-text-primary leading-tight font-semibold">
+      <div className="flex flex-col leading-tight">
+        <span className="text-[18px] tracking-tight text-text-primary font-semibold">
           Lumint
-        </span>
-        <span className="text-[10px] tracking-wider uppercase font-semibold text-text-muted mt-0.5 leading-none">
-          Research Platform
         </span>
       </div>
     )}
-  </div>
+  </Link>
 );
 
 const SystemStatus = ({
@@ -183,10 +180,15 @@ export const Sidebar = ({
         {(!collapsed || isMobile) && (
           <div className="flex flex-col overflow-hidden whitespace-nowrap">
             <span className={twMerge(
-              "text-[13px] font-medium font-sans leading-tight",
+              "text-[13px] font-medium font-sans leading-tight flex items-center gap-1.5",
               isActive ? "text-brand" : "text-text-primary"
             )}>
               {item.name}
+              {item.beta && (
+                <span className="text-[8px] font-bold tracking-wider uppercase bg-brand/15 text-brand px-1 py-0.5 rounded-sm leading-none">
+                  BETA
+                </span>
+              )}
             </span>
             <span className="text-[10px] text-text-muted font-normal leading-tight mt-0.5">
               {item.desc}
@@ -221,7 +223,7 @@ export const Sidebar = ({
         {NAV_GROUPS.map((group) => (
           <div key={group.title} className="space-y-1">
             {(!collapsed || isMobile) && (
-              <div className="font-sans text-[8px] font-semibold tracking-wider text-text-muted uppercase px-3.5 select-none block border-b border-border-default/20 pb-0.5 mb-1.5">
+              <div className="px-3.5 mt-3 mb-1.5 text-[10px] font-mono tracking-wider text-text-muted uppercase font-semibold select-none">
                 {group.title}
               </div>
             )}

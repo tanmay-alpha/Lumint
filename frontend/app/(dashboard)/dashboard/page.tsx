@@ -146,11 +146,38 @@ export default function DashboardOverviewPage() {
     );
   }
 
-  // Demo mode: backend is not connected — stats load returns null. Show a
-  // friendly empty state instead of a dashboard full of zeros and dead links.
+  // Demo mode: backend is not connected — stats load returns null. Show
+  // demo telemetry cards so the user can see the UI shape instead of an
+  // empty page. Each card shows a realistic placeholder.
   if (!stats) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <MetricCard
+            label="Scans today"
+            value="0"
+            sublabel="Demo data"
+            icon={<Activity className="h-4 w-4 text-text-muted" />}
+          />
+          <MetricCard
+            label="Risk events"
+            value="—"
+            sublabel="Awaiting first scan"
+            icon={<AlertTriangle className="h-4 w-4 text-text-muted" />}
+          />
+          <MetricCard
+            label="Active campaigns"
+            value="0"
+            sublabel="Backend offline"
+            icon={<Network className="h-4 w-4 text-text-muted" />}
+          />
+          <MetricCard
+            label="Threat intel feeds"
+            value="0 / 4"
+            sublabel="Demo mode"
+            icon={<ShieldAlert className="h-4 w-4 text-text-muted" />}
+          />
+        </div>
         <EmptyStateWithCTA
           icon="shield"
           title="Dashboard is empty"
