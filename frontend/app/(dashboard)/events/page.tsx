@@ -287,7 +287,9 @@ export default function ThreatEventsPage() {
               primaryAction={{ label: "Try UPI Shield →", href: "/upi-shield" }}
             />
           ) : (
-            <GlassCard className="p-0 overflow-hidden">
+            <>
+              {/* Desktop Table View */}
+              <GlassCard className="hidden sm:block p-0 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse text-left text-xs text-text-secondary">
                   <thead>
@@ -312,10 +314,10 @@ export default function ThreatEventsPage() {
                       filteredEvents.map((event) => {
                         const targetName = event.original_filename || event.source_domain || "Unknown Asset";
                         const isExpanded = expandedEventId === event.event_id;
-                        
+
                         return (
                           <React.Fragment key={event.event_id}>
-                            <tr 
+                            <tr
                               onClick={() => toggleRow(event.event_id)}
                               className={`hover:bg-bg-base/30 cursor-pointer transition-colors ${isExpanded ? "bg-bg-base/50" : ""}`}
                             >
@@ -347,8 +349,8 @@ export default function ThreatEventsPage() {
                                 <RiskBadge variant={getRiskVariant(event.risk_level)} />
                               </td>
                               <td className="py-4 px-6 text-text-secondary font-medium max-w-xs truncate" title={event.risk_indicators?.join(", ")}>
-                                {event.risk_indicators && event.risk_indicators.length > 0 
-                                  ? event.risk_indicators.join(", ") 
+                                {event.risk_indicators && event.risk_indicators.length > 0
+                                  ? event.risk_indicators.join(", ")
                                   : event.document_type_hint || "No anomalies flagged"}
                               </td>
                               <td className="py-4 px-6 text-center">
@@ -421,7 +423,93 @@ export default function ThreatEventsPage() {
                   </tbody>
                 </table>
               </div>
-            </GlassCard>
+              </GlassCard>
+
+              {/* Mobile Cards View */}
+              <div className="sm:hidden space-y-3">
+                {filteredEvents.length === 0 ? (
+                  <GlassCard className="p-8 text-center text-text-secondary italic font-semibold">
+                    No matching threat records found in log cache.
+                  </GlassCard>
+                ) : (
+                  filteredEvents.map((event) => {
+                    const targetName = event.original_filename || event.source_domain || "Unknown Asset";
+                    const isExpanded = expandedEventId === event.event_id;
+                    return (
+                      <GlassCard
+                        key={event.event_id}
+                        className="p-4 cursor-pointer"
+                        onClick={() => toggleRow(event.event_id)}
+                      >
+                        <div className="space-y-2.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="inline-flex items-center gap-1.5 font-bold text-[10px]">
+                              {event.source_type === "DOCUMENT" ? (
+                                <>
+                                  <FileText className="h-3.5 w-3.5 text-accent-blue" />
+                                  <span className="text-accent-blue">Document</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Globe className="h-3.5 w-3.5 text-accent-teal" />
+                                  <span className="text-accent-teal">URL / Host</span>
+                                </>
+                              )}
+                            </span>
+                            <RiskBadge variant={getRiskVariant(event.risk_level)} />
+                          </div>
+
+                          <div className="font-bold text-text-primary truncate" title={targetName}>
+                            {targetName}
+                          </div>
+
+                          <div className="flex items-center justify-between gap-3 text-[11px] font-mono">
+                            <span className="text-text-secondary/80 truncate">
+                              {new Date(event.created_at).toLocaleString()}
+                            </span>
+                            <span className="font-extrabold text-text-primary shrink-0">
+                              Score {event.risk_score}
+                            </span>
+                          </div>
+
+                          {event.risk_indicators && event.risk_indicators.length > 0 && (
+                            <p className="text-[11px] text-text-secondary line-clamp-2">
+                              {event.risk_indicators.join(", ")}
+                            </p>
+                          )}
+
+                          <div className="flex items-center justify-end pt-1 border-t border-border/30">
+                            {isExpanded ? <ChevronUp className="h-4 w-4 text-text-secondary" /> : <ChevronDown className="h-4 w-4 text-text-secondary" />}
+                          </div>
+
+                          {isExpanded && (
+                            <div className="pt-2 border-t border-border/30 space-y-2 text-[11px] text-text-secondary">
+                              <div>Event ID: <code className="text-text-primary bg-bg-base/70 px-1 py-0.5 rounded font-mono text-[10px]">{event.event_id}</code></div>
+                              {event.doc_id && <div>Doc ID: <code className="text-text-primary bg-bg-base/70 px-1 py-0.5 rounded font-mono text-[10px]">{event.doc_id}</code></div>}
+                              {event.file_hash && <div className="truncate">SHA-256: <code className="text-text-primary bg-bg-base/70 px-1 py-0.5 rounded font-mono text-[10px]">{event.file_hash.substring(0, 16)}...</code></div>}
+                              {!event.risk_indicators || event.risk_indicators.length === 0 ? (
+                                <div className="flex items-center gap-1.5 text-risk-safe font-bold">
+                                  <ShieldCheck className="h-4 w-4" /> Validated Clean Asset
+                                </div>
+                              ) : (
+                                <ul className="space-y-1">
+                                  {event.risk_indicators.map((ind, i) => (
+                                    <li key={i} className="flex gap-1.5 items-start">
+                                      <CornerDownRight className="h-3 w-3 text-text-secondary/70 shrink-0 mt-0.5" />
+                                      <span>{ind}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </GlassCard>
+                    );
+                  })
+                )}
+              </div>
+            </>
           )}
         </div>
       )}
