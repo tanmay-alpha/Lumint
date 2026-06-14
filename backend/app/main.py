@@ -391,10 +391,15 @@ app.add_middleware(RequestIDMiddleware)
 app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(WildcardCorsMiddleware)
 # CORS — origins are env-driven (see app.config.origins_list).
+# In dev mode (no LUMINT_API_KEY set) we use a wildcard so any frontend
+# (including previews, custom domains, etc.) can talk to the API without
+# needing to redeploy the backend to update env vars.
+_cors_origins = ["*"] if is_dev_mode() else settings.origins_list
+_cors_creds = False if is_dev_mode() else True
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.origins_list,
-    allow_credentials=True,
+    allow_origins=_cors_origins,
+    allow_credentials=_cors_creds,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
     # We never let the response leak beyond an hour.
