@@ -74,7 +74,26 @@ async function forward(req: NextRequest, params: { path: string[] }) {
     );
   }
 
+  // Whitelist the prefixes we proxy. This is a closed allowlist so a
+  // malicious caller can't use the proxy to reach other backends.
   const subPath = (params?.path || []).join("/");
+  const allowedPrefixes = [
+    "api/",
+    "health",
+    "docs",
+    "openapi.json",
+    "redoc",
+  ];
+  const isAllowed = allowedPrefixes.some(
+    (p) => subPath === p || subPath.startsWith(p),
+  );
+  if (!isAllowed) {
+    return NextResponse.json(
+      { detail: `Path '/${subPath}' is not proxied` },
+      { status: 404 },
+    );
+  }
+
   const url = `${BACKEND}/${subPath}${req.nextUrl.search}`;
 
   let body: BodyInit | undefined = undefined;
