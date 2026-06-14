@@ -61,7 +61,10 @@ function buildHeaders(incoming: Headers): Headers {
   return out;
 }
 
-async function forward(req: NextRequest, params: { path: string[] }) {
+async function forward(
+  req: NextRequest,
+  context: { params: Promise<{ path: string[] }> },
+) {
   // Pre-flight from the browser: just return 204 with the right headers.
   if (req.method === "OPTIONS") {
     return new NextResponse(null, { status: 204 });
@@ -76,7 +79,8 @@ async function forward(req: NextRequest, params: { path: string[] }) {
 
   // Whitelist the prefixes we proxy. This is a closed allowlist so a
   // malicious caller can't use the proxy to reach other backends.
-  const subPath = (params?.path || []).join("/");
+  const { path } = await context.params;
+  const subPath = (path || []).join("/");
   const allowedPrefixes = [
     "api/",
     "health",
@@ -152,3 +156,7 @@ export const PATCH = forward;
 export const DELETE = forward;
 export const HEAD = forward;
 export const OPTIONS = forward;
+
+// Explicit param marker for the route compiler
+export const dynamicParams = true;
+export const revalidate = 0;
