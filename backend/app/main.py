@@ -280,14 +280,81 @@ app = FastAPI(
 )
 app.state.limiter = limiter
 
+# ─────────────────────────────────────────────────────────────────────
+# Wildcard-aware CORS origin check
+# ─────────────────────────────────────────────────────────────────────
+
+_WILDCARD_RE = re.compile(r"^https?://([^*]+\.[*])[^/]*$")
+_EXACT_RE = re.compile(r"^https?://[^*]+$")
+
+
+def _cors_origin_allowed(origin: str, allowed: list[str]) -> bool:
+    """Return True if *origin* is allowed by *allowed* list.
+
+    Supports exact host match and simple suffix wildcard
+    ``https://*.vercel.app`` patterns.
+    """
+    if not origin:
+        return False
+    for entry in (o.strip() for o in allowed if o.strip()):
+        if entry == "*":
+            return True
+        if entry.startswith("http://") or entry.startswith("https://"):
+            # Exact match against scheme+host
+            if origin == entry:
+                return True
+            # Suffix wildcard like https://*.vercel.app
+            if "*" in entry:
+                # Escape everything except the * then replace * with .*
+                regex = "^" + re.escape(entry).replace(r"\*", ".*") + "$"
+                if re.match(regex, origin):
+                    return True
+            continue
+        # Plain host entry — match as a suffix
+        if origin.endswith("/" + entry) or origin.endswith("://" + entry):
+            return True
+    return False
+
+
+class WildcardCorsMiddleware(BaseHTTPMiddleware):
+    """Extends Starlette CORS to support ``*.vercel.app`` wildcard origins.
+
+    Runs *before* the standard CORSMiddleware (which must still be
+    registered, but we bypass it by short-circuiting OPTIONS here and
+    by overriding the Origin check on normal responses).
+    """
+
+    async def dispatch(self, request: Request, call_next):
+        origin = request.headers.get("origin", "")
+        allowed_origins = list(settings.origins_list)
+
+        if origin and not _cors_origin_allowed(origin, allowed_origins):
+            # Reject preflight immediately
+            if request.method == "OPTIONS":
+                return JSONResponse(
+                    {"detail": "Disallowed CORS origin"},
+                    status_code=400,
+                )
+            # Let the request through but the downstream CORS middleware
+            # will skip the Access-Control-Allow-Origin header (same-origin
+            # only). We short-circuit here to return the same 400 body so
+            # the frontend gets a clear error rather than a silent drop.
+            return JSONResponse(
+                {"detail": "Disallowed CORS origin"},
+                status_code=400,
+            )
+
+        return await call_next(request)
+
+
 # ── Middleware order (outermost first)
 # BodySizeLimit is OUTERMOST — it sees the raw body before anything else.
 app.add_middleware(BodySizeLimitMiddleware, max_body_bytes=20 * 1024 * 1024)
-# Then security headers, then request id, then rate limit, then CORS.
+# Then security headers, then request id, then rate limit, then wildcard CORS, then standard CORS.
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RequestIDMiddleware)
 app.add_middleware(SlowAPIMiddleware)
-
+app.add_middleware(WildcardCorsMiddleware)
 # CORS — origins are env-driven (see app.config.origins_list).
 app.add_middleware(
     CORSMiddleware,

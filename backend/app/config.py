@@ -32,6 +32,7 @@ class Settings(BaseSettings):
         "http://localhost:3000,"
         "http://localhost:3001,"
         "https://lumint.vercel.app,"
+        "https://lumint-pi.vercel.app,"
         "https://*.vercel.app"
     )
     # Env-driven CORS allowlist. Read from the `CORS_ALLOW_ORIGINS` env var.

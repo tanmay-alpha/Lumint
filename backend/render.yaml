@@ -13,9 +13,11 @@ services:
         fromService: redis
         type: ps1
       - key: ALLOWED_ORIGINS
-        value: "https://lumint-pi.vercel.app,http://localhost:3000"
+        value: "https://lumint-pi.vercel.app,https://lumint.vercel.app,http://localhost:3000,http://localhost:3001"
       - key: CORS_ORIGINS
-        value: "https://lumint-pi.vercel.app,http://localhost:3000"
+        value: "https://lumint-pi.vercel.app,https://lumint.vercel.app,http://localhost:3000,http://localhost:3001"
+      - key: CORS_ALLOW_ORIGINS
+        value: "https://lumint-pi.vercel.app,https://lumint.vercel.app,http://localhost:3000,http://localhost:3001"
       - key: NEXT_PUBLIC_API_URL
         value: "https://lumint-api.onrender.com"
       - key: DATABASE_TYPE
