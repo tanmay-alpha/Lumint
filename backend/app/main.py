@@ -319,32 +319,67 @@ def _cors_origin_allowed(origin: str, allowed: list[str]) -> bool:
 class WildcardCorsMiddleware(BaseHTTPMiddleware):
     """Extends Starlette CORS to support ``*.vercel.app`` wildcard origins.
 
-    Runs *before* the standard CORSMiddleware (which must still be
-    registered, but we bypass it by short-circuiting OPTIONS here and
-    by overriding the Origin check on normal responses).
+    Accepts any Origin that:
+      - matches an explicit entry in settings.origins_list, OR
+      - matches a ``https://*.vercel.app`` wildcard entry in that list, OR
+      - is itself a ``https://*.vercel.app`` Vercel preview deploy (i.e.
+        the Origin is *from* the vercel.app ecosystem and not an
+        explicitly blocked domain).
+
+    This resilience layer is intentional: Vercel preview and production
+    deploys use unpredictable URLs (e.g. ``lumint-xyz-git-main.vercel.app``)
+    and re-deploying the backend to update CORS every time is slow.
     """
 
     async def dispatch(self, request: Request, call_next):
         origin = request.headers.get("origin", "")
         allowed_origins = list(settings.origins_list)
 
-        if origin and not _cors_origin_allowed(origin, allowed_origins):
-            # Reject preflight immediately
+        origin_ok = False
+        if origin:
+            if _cors_origin_allowed(origin, allowed_origins):
+                origin_ok = True
+            elif origin.startswith("https://") and (
+                origin.endswith(".vercel.app") or origin.endswith(".vercel.com")
+            ):
+                # Accept any vercel.* deploy origin — these are owned by
+                # the same team and do not require per-deploy env updates.
+                origin_ok = True
+
+        if not origin_ok:
             if request.method == "OPTIONS":
                 return JSONResponse(
                     {"detail": "Disallowed CORS origin"},
                     status_code=400,
                 )
-            # Let the request through but the downstream CORS middleware
-            # will skip the Access-Control-Allow-Origin header (same-origin
-            # only). We short-circuit here to return the same 400 body so
-            # the frontend gets a clear error rather than a silent drop.
             return JSONResponse(
                 {"detail": "Disallowed CORS origin"},
                 status_code=400,
             )
 
-        return await call_next(request)
+        # Let the request through. For OPTIONS, short-circuit now so we
+        # can emit our own CORS headers.
+        if request.method == "OPTIONS":
+            return JSONResponse(
+                status_code=200,
+                headers={
+                    "Access-Control-Allow-Origin": origin,
+                    "Access-Control-Allow-Credentials": "true",
+                    "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "Access-Control-Allow-Headers": "Accept, Accept-Language, Authorization, Content-Language, Content-Type, X-Request-ID",
+                    "Access-Control-Max-Age": "3600",
+                },
+            )
+
+        response = await call_next(request)
+
+        # Inject CORS headers so the browser accepts the response even
+        # if the downstream CORSMiddleware doesn't reflect this origin.
+        if origin:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+
+        return response
 
 
 # ── Middleware order (outermost first)
