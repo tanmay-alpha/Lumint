@@ -54,6 +54,13 @@ function buildHeaders(incoming: Headers): Headers {
     if (HOP_BY_HOP.has(k.toLowerCase())) continue;
     out.set(k, v);
   }
+  // Ask the backend for a plain (uncompressed) response. We handle
+  // decompression ourselves so the browser sees an exact `Content-Length`
+  // and decodes the body with the right encoding header. Without this,
+  // the backend sends `Content-Encoding: gzip` but Vercel's edge has
+  // already stripped it, and the browser sees a mismatch and throws
+  // ERR_CONTENT_DECODING_FAILED.
+  out.set("accept-encoding", "identity");
   // Always tell the backend who the original request was for.
   const xfwdHost = incoming.get("host");
   if (xfwdHost) out.set("x-forwarded-host", xfwdHost);
@@ -121,9 +128,14 @@ async function forward(
     // Copy response headers, dropping hop-by-hop ones.
     const responseHeaders = new Headers();
     for (const [k, v] of upstream.headers.entries()) {
-      if (HOP_BY_HOP.has(k.toLowerCase())) continue;
+      const lk = k.toLowerCase();
+      if (HOP_BY_HOP.has(lk)) continue;
+      // Strip any compression header — we asked for `identity` and will
+      // not re-encode. If the backend ignores accept-encoding, this
+      // prevents the browser from trying to double-decompress.
+      if (lk === "content-encoding") continue;
       // CORS: allow the browser to call this proxy freely.
-      if (k.toLowerCase() === "access-control-allow-origin") {
+      if (lk === "access-control-allow-origin") {
         responseHeaders.set(k, "*");
         continue;
       }
