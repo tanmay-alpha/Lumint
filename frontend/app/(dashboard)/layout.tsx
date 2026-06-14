@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import Sidebar from "@/components/layout/Sidebar";
 import Topbar from "@/components/layout/Topbar";
 import { DemoModeBanner } from "@/components/DemoModeBanner";
+import { useApiHealth } from "@/hooks/useApiHealth";
 
 const PAGE_LABELS: Record<string, string> = {
   "/dashboard":   "Dashboard Overview",
@@ -23,6 +24,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  // Polls /health every 60s. "unknown" until a backend is configured; the
+  // demo-mode banner and the topbar pill both react to this status.
+  const apiHealth = useApiHealth(60_000);
 
   return (
     <div className="relative min-h-screen bg-canvas text-text-primary flex overflow-hidden">
@@ -45,14 +49,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           setMobileOpen={setMobileOpen}
           pathname={pathname}
           pageLabels={PAGE_LABELS}
+          apiHealth={apiHealth}
         />
 
-        {/* Demo-mode banner — above the page content, below the topbar. */}
-        <div className="px-6 pt-4 lg:px-8">
-          <div className="max-w-7xl mx-auto">
-            <DemoModeBanner />
+        {/* Demo-mode banner — hidden once the backend reports online. */}
+        {apiHealth !== "online" && (
+          <div className="px-6 pt-4 lg:px-8">
+            <div className="max-w-7xl mx-auto">
+              <DemoModeBanner />
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Dynamic page contents */}
         <main className="flex-1 overflow-y-auto p-6 lg:p-8">

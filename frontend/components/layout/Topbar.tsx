@@ -4,17 +4,26 @@ import React, { useEffect, useState } from "react";
 import { Menu, Bell, Sun, Moon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import Badge from "@/components/ui/Badge";
+import type { ApiHealthStatus } from "@/hooks/useApiHealth";
 
 export interface TopbarProps {
   setMobileOpen: (v: boolean) => void;
   pathname: string;
   pageLabels: Record<string, string>;
+  /**
+   * Current API connection state. Drives the right-hand status pill:
+   *   - "online"  → green "API CONNECTED"
+   *   - "offline" → red   "API DISCONNECTED"
+   *   - "unknown" → pill is hidden (no backend configured yet)
+   */
+  apiHealth?: ApiHealthStatus;
 }
 
 export const Topbar = ({
   setMobileOpen,
   pathname,
   pageLabels,
+  apiHealth = "unknown",
 }: TopbarProps) => {
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
@@ -59,10 +68,17 @@ export const Topbar = ({
       </div>
 
       <div className="flex items-center gap-3.5">
-        {/* Demo mode indicator — no backend is connected in this deployment. */}
-        <Badge variant="warn" size="md" dot={true} className="gap-1">
-          DEMO MODE
-        </Badge>
+        {/* API connection status pill */}
+        {apiHealth === "online" && (
+          <Badge variant="safe" size="md" dot={true} className="gap-1">
+            API CONNECTED
+          </Badge>
+        )}
+        {apiHealth === "offline" && (
+          <Badge variant="critical" size="md" dot={true} className="gap-1">
+            API DISCONNECTED
+          </Badge>
+        )}
 
         {/* Theme Toggle Button */}
         <button

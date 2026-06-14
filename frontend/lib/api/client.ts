@@ -69,7 +69,7 @@ export async function fetchApi<T>(path: string, options?: RequestInit): Promise<
 // API methods
 export const client = {
   getHealth: async (): Promise<HealthResponse | null> => {
-    return fetchApi<HealthResponse>("/api/health", {});
+    return fetchApi<HealthResponse>("/health", {});
   },
 
   getStats: async (): Promise<DashboardStats | null> => {
