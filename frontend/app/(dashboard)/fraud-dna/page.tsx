@@ -16,6 +16,7 @@ import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import RiskScore from "@/components/ui/RiskScore";
 import DataPoint from "@/components/ui/DataPoint";
+import { EmptyStateWithCTA } from "@/components/ui/EmptyStateWithCTA";
 import {
   Fingerprint,
   RefreshCw,
@@ -404,8 +405,9 @@ export default function FraudDnaPage() {
 
         <button
           onClick={handleRecluster}
-          disabled={isReclustering || isLoading}
-          className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-2)] text-xs font-bold text-[var(--text-1)] px-4 py-2.5 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 shrink-0 cursor-pointer"
+          disabled={isReclustering || isLoading || !campaigns}
+          className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-2)] text-xs font-bold text-[var(--text-1)] px-4 py-2.5 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none shrink-0 cursor-pointer"
+          title={!campaigns ? "Backend not connected" : "Re-run clustering"}
         >
           <RefreshCw
             className={`h-3.5 w-3.5 ${
@@ -420,6 +422,49 @@ export default function FraudDnaPage() {
         <div className="min-h-[400px] flex flex-col items-center justify-center">
           <div className="h-10 w-10 border-4 border-[var(--border-2)] border-t-[var(--brand)] animate-spin rounded-full mb-3" />
           <p className="text-sm text-[var(--text-3)] font-semibold">Generating campaign graph nodes...</p>
+        </div>
+      ) : !campaigns ? (
+        /* Demo mode: backend is not connected. Show a friendly empty state
+           instead of the (empty) tab/table UI. */
+        <div className="space-y-4">
+          <EmptyStateWithCTA
+            icon="network"
+            title="No fraud events to display"
+            description="In a full deployment, this page shows threat actor campaigns correlated from PhishShield, DocShield, and UPI Shield."
+            technicalDetails="Backend not connected · Demo mode"
+            primaryAction={{ label: "Try UPI Shield →", href: "/upi-shield" }}
+            secondaryAction={{ label: "View Sample Scans", href: "/dashboard/history" }}
+          />
+
+          {/* "How it works" — only visible in demo mode so users understand
+              what the page is meant to do. */}
+          <Card className="p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="h-4 w-4 text-[var(--brand)]" />
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-1)]">
+                How Fraud DNA works
+              </h4>
+            </div>
+            <ol className="space-y-2.5 text-xs text-[var(--text-2)] font-semibold">
+              {[
+                { src: "PhishShield", desc: "extracts domain hashes from scanned URLs" },
+                { src: "DocShield",   desc: "extracts file hashes from uploaded documents" },
+                { src: "UPI Shield",  desc: "extracts UPI handle hashes from screenshots" },
+                { src: "DBSCAN",      desc: "clusters related threats using density-based grouping" },
+                { src: "Force graph", desc: "visualizes relationships between domains, files, and campaigns" },
+              ].map((step, i) => (
+                <li key={i} className="flex items-start gap-3">
+                  <span className="h-5 w-5 rounded-full bg-[var(--brand-muted)] text-[var(--brand)] flex items-center justify-center text-[10px] font-bold shrink-0">
+                    {i + 1}
+                  </span>
+                  <span>
+                    <span className="text-[var(--text-1)] font-bold">{step.src}</span>{" "}
+                    {step.desc}.
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </Card>
         </div>
       ) : (
         <>
@@ -489,6 +534,16 @@ export default function FraudDnaPage() {
               </button>
             ))}
           </div>
+
+          {/* Tab description — short copy that explains what each view contains. */}
+          <p className="text-xs text-[var(--text-3)] font-semibold -mt-2" aria-live="polite">
+            {activeTab === "fingerprints" &&
+              "Individual forensic records matching visual anomalies or spoofed headers."}
+            {activeTab === "campaigns" &&
+              "Threat actor groups and patterns correlated from multiple events."}
+            {activeTab === "graph" &&
+              "Visual force-directed graph showing relationships between domains, files, and campaigns."}
+          </p>
 
           {/* Tab Content Areas */}
           <AnimatePresence mode="wait">

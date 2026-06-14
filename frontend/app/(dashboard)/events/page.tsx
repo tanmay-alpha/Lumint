@@ -23,6 +23,7 @@ import {
 import GlassCard from "@/components/ui/GlassCard";
 import RiskBadge from "@/components/ui/RiskBadge";
 import SkeletonLoader from "@/components/ui/SkeletonLoader";
+import { EmptyStateWithCTA } from "@/components/ui/EmptyStateWithCTA";
 import client from "@/lib/api/client";
 import { RecentEvent } from "@/lib/types";
 import { useThreatStream } from "@/hooks/useThreatStream";
@@ -274,6 +275,17 @@ export default function ThreatEventsPage() {
               <SkeletonLoader variant="card" className="h-16" />
               <SkeletonLoader variant="card" className="h-16" />
             </div>
+          ) : events.length === 0 ? (
+            /* Demo mode: backend is not connected — the events load returned
+               an empty list. Show a friendly empty state instead of an
+               empty table with a single "No matching…" row. */
+            <EmptyStateWithCTA
+              icon="history"
+              title="No activity yet"
+              description="Event timeline will show recent scans across all shields once a backend is connected."
+              technicalDetails="Backend not connected · Demo mode"
+              primaryAction={{ label: "Try UPI Shield →", href: "/upi-shield" }}
+            />
           ) : (
             <GlassCard className="p-0 overflow-hidden">
               <div className="overflow-x-auto">

@@ -8,6 +8,7 @@ import { MetricCard } from "@/components/ui/MetricCard";
 import { DataCard } from "@/components/ui/DataCard";
 import { Badge } from "@/components/ui/Badge";
 import { SkeletonLoader } from "@/components/ui/SkeletonLoader";
+import { EmptyStateWithCTA } from "@/components/ui/EmptyStateWithCTA";
 import { Button } from "@/components/ui/Button";
 import { IntelligenceTable, Column } from "@/components/ui/IntelligenceTable";
 import {
@@ -141,6 +142,22 @@ export default function DashboardOverviewPage() {
             <SkeletonLoader variant="rect" className="h-[450px] rounded-xl" />
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // Demo mode: backend is not connected — stats load returns null. Show a
+  // friendly empty state instead of a dashboard full of zeros and dead links.
+  if (!stats) {
+    return (
+      <div className="space-y-4">
+        <EmptyStateWithCTA
+          icon="shield"
+          title="Dashboard is empty"
+          description="Threat telemetry requires a backend. In a full deployment, you'd see recent scans, attack vectors, and campaign heatmaps."
+          technicalDetails="Backend not connected · Demo mode"
+          primaryAction={{ label: "Try UPI Shield →", href: "/upi-shield" }}
+        />
       </div>
     );
   }

@@ -8,6 +8,7 @@ import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import RiskScore from "@/components/ui/RiskScore";
 import DataPoint from "@/components/ui/DataPoint";
+import { EmptyStateWithCTA } from "@/components/ui/EmptyStateWithCTA";
 import {
   Link2,
   AlertTriangle,
@@ -515,15 +516,18 @@ export default function PhishShieldPage() {
             key="empty-scan-state"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="min-h-[300px] flex flex-col items-center justify-center text-center p-8 bg-[var(--surface)] border border-[var(--border)] border-dashed rounded-[var(--r-4)]"
+            className="space-y-4"
           >
-            <div className="h-12 w-12 rounded-full border border-[var(--border)] flex items-center justify-center bg-[var(--surface-2)] text-[var(--text-3)] shadow-sm mb-4">
-              <Link2 className="h-5 w-5" />
-            </div>
-            <h3 className="text-sm font-bold text-[var(--text-1)]">Awaiting Link Scan</h3>
-            <p className="text-xs text-[var(--text-3)] mt-1.5 max-w-xs font-semibold">
-              Input a domain hyperlink above to verify character entropy, host registrars, and typosquatting signatures.
-            </p>
+            <EmptyStateWithCTA
+              icon="alert"
+              title="PhishShield requires a backend"
+              description="URL analysis uses a database of known phishing patterns. Demo mode has limited local checks."
+              technicalDetails="Backend not connected · Demo mode"
+              primaryAction={{ label: "Try UPI Shield →", href: "/upi-shield" }}
+            />
+            <Card className="p-4 text-center text-xs font-semibold text-[var(--text-3)]">
+              You can still enter a URL above to run local typosquatting heuristics — full backend checks are disabled.
+            </Card>
           </motion.div>
         )}
       </AnimatePresence>
