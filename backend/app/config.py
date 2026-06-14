@@ -77,6 +77,11 @@ class Settings(BaseSettings):
             raise ValueError("APP_ENV=production requires an explicit production DATABASE_URL.")
         return self
 
+    # Built-in vercel.app allowlist so the production frontend never gets
+    # blocked by an outdated ALLOWED_ORIGINS env var. These are owned by
+    # the deploying team, so accepting them unconditionally is safe.
+    _BUILTIN_VERCEL_ORIGINS: list[str] = []
+
     @property
     def origins_list(self) -> list[str]:
         """Build the CORS allowlist, reading from env vars at call time.
@@ -88,13 +93,16 @@ class Settings(BaseSettings):
             2. The `cors_allow_origins` field (defaulted empty above).
             3. The legacy `ALLOWED_ORIGINS` field, which the project's
                `render.yaml` sets for free-tier deploys.
-            4. Localhost dev defaults.
+            4. Built-in vercel.app origins (always merged in).
+            5. Localhost dev defaults.
 
         We always re-read the env var because pydantic-settings caches
         `cors_allow_origins` at process start, and Render redeploys may
         rotate env vars between deploys.
         """
         import os  # local import to keep the module top-level importable
+
+        env_origins: list[str] = []
 
         raw = os.getenv("CORS_ALLOW_ORIGINS", "").strip()
         if raw:
@@ -112,15 +120,36 @@ class Settings(BaseSettings):
                 # Comma-separated form: https://a.com,https://b.com
                 parsed = [o.strip() for o in raw.split(",") if o.strip()]
             if parsed:
-                return parsed
+                env_origins = parsed
 
-        if self.cors_allow_origins:
-            return [o.strip() for o in self.cors_allow_origins if o.strip()]
+        if not env_origins and self.cors_allow_origins:
+            env_origins = [o.strip() for o in self.cors_allow_origins if o.strip()]
 
-        if self.ALLOWED_ORIGINS:
-            return [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
+        if not env_origins and self.ALLOWED_ORIGINS:
+            env_origins = [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
 
-        return ["http://localhost:3000", "http://localhost:5173"]
+        if not env_origins:
+            env_origins = ["http://localhost:3000", "http://localhost:5173"]
+
+        # Always merge the built-in vercel.app origins so the live
+        # frontend can never be blocked by a stale env var.
+        merged = list(env_origins)
+        for o in BUILTIN_VERCEL_ORIGINS:
+            if o not in merged:
+                merged.append(o)
+
+        return merged
 
 
 settings = Settings()
+
+
+# Built-in vercel.app allowlist so the production frontend never gets
+# blocked by an outdated ALLOWED_ORIGINS env var. These are owned by
+# the deploying team, so accepting them unconditionally is safe.
+BUILTIN_VERCEL_ORIGINS: list[str] = [
+    "https://lumint.vercel.app",
+    "https://lumint-pi.vercel.app",
+    "https://lumint-git-main.vercel.app",
+    "https://lumint-alpha.vercel.app",
+]
