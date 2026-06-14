@@ -53,6 +53,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           apiLatency={apiHealth.latency}
         />
 
+        {/* Debug: Show current API URL in development */}
+        {process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_API_URL && (
+          <div className="px-6 pt-1 lg:px-8">
+            <div className="max-w-7xl mx-auto">
+              <div className="text-[10px] text-[var(--text-4)] font-mono px-4 py-1 bg-[var(--surface-raised)] rounded">
+                API: {process.env.NEXT_PUBLIC_API_URL}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Demo-mode banner — hidden once the backend reports online. */}
         {apiHealth.status !== "online" && (
           <div className="px-6 pt-4 lg:px-8">

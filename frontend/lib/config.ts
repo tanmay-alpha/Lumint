@@ -13,30 +13,44 @@
  */
 
 const DEFAULT_DEV_API_URL = "http://localhost:8000";
+const FALLBACK_API_URL = "https://lumint-api.onrender.com";
 
 /**
  * The configured API base URL, or `null` if no API is reachable from this environment.
  * Use this to gate network calls: `if (apiBaseUrl()) { fetch(...) } else { useMock() }`.
  */
 export function apiBaseUrl(): string | null {
+  // Priority: manual override (localStorage) > env var > hardcoded fallback > localhost (dev only)
+  if (typeof window !== "undefined") {
+    try {
+      const stored = window.localStorage.getItem("lumint_api_url");
+      if (stored && stored.trim().length > 0) {
+        return stored.replace(/\/+$/, "");
+      }
+    } catch {
+      // localStorage may throw in private mode or restricted contexts — ignore.
+    }
+  }
+
   const fromEnv = process.env.NEXT_PUBLIC_API_URL;
   if (fromEnv && fromEnv.trim().length > 0) {
     return fromEnv.replace(/\/+$/, "");
   }
 
-  // In the browser, only fall back to localhost if the page itself is on localhost.
-  // On a deployed Vercel site, the user is NOT on localhost, so we return null and
-  // let the caller short-circuit to mock data instead of spamming CORS/SSL errors.
+  // If the env var is missing on a deployed site, fall back to the known
+  // Render backend so the frontend still works. This is a hardcoded safety net
+  // — operators can override it by setting NEXT_PUBLIC_API_URL in Vercel.
   if (typeof window !== "undefined") {
     const host = window.location.hostname;
-    if (host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0") {
-      return DEFAULT_DEV_API_URL;
+    if (host !== "localhost" && host !== "127.0.0.1" && host !== "0.0.0.0") {
+      return FALLBACK_API_URL;
     }
-    return null;
+    return DEFAULT_DEV_API_URL;
   }
 
-  // SSR / build time: assume local dev so server-rendered fetches still work.
-  return DEFAULT_DEV_API_URL;
+  // SSR / build time: prefer the fallback so server-rendered fetches hit the
+  // real backend instead of localhost.
+  return FALLBACK_API_URL;
 }
 
 /**
