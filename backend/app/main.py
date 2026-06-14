@@ -345,6 +345,12 @@ class WildcardCorsMiddleware(BaseHTTPMiddleware):
                 # Accept any vercel.* deploy origin — these are owned by
                 # the same team and do not require per-deploy env updates.
                 origin_ok = True
+        else:
+            # No Origin header → not a CORS request (e.g. tests, curl,
+            # server-to-server via the Next.js proxy). These are always
+            # safe to allow — CORS only protects browser-initiated
+            # cross-origin XHR, not same-origin or non-browser traffic.
+            origin_ok = True
 
         if not origin_ok:
             if request.method == "OPTIONS":
