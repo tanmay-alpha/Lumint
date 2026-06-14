@@ -87,3 +87,24 @@ class CampaignAIResponse(BaseModel):
     ttps: List[str]
     model_used: str
     latency_ms: int
+
+
+class UPIAIRequest(BaseModel):
+    utr_number: Optional[str] = None
+    risk_score: int = 0
+    sender: Optional[str] = None
+    receiver: Optional[str] = None
+    amount: Optional[float] = None
+    font_anomalies: bool = False
+    suspicious_handle: bool = False
+
+
+class UPIAIResponse(BaseModel):
+    verdict: Literal["GENUINE", "SUSPICIOUS", "FORGED"]
+    confidence: int
+    forgery_method: Optional[str] = None
+    evidence_points: List[str]
+    analyst_note: str
+    recommended_action: str
+    model_used: str
+    latency_ms: int
