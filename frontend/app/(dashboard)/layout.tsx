@@ -24,9 +24,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  // Polls /health every 60s. "unknown" until a backend is configured; the
-  // demo-mode banner and the topbar pill both react to this status.
-  const apiHealth = useApiHealth(60_000);
+  // Polls /health every 60s. Exposes status + latency + last error so the
+  // banner and topbar can render accurate diagnostics.
+  const apiHealth = useApiHealth();
 
   return (
     <div className="relative min-h-screen bg-canvas text-text-primary flex overflow-hidden">
@@ -49,14 +49,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           setMobileOpen={setMobileOpen}
           pathname={pathname}
           pageLabels={PAGE_LABELS}
-          apiHealth={apiHealth}
+          apiHealth={apiHealth.status}
+          apiLatency={apiHealth.latency}
         />
 
         {/* Demo-mode banner — hidden once the backend reports online. */}
-        {apiHealth !== "online" && (
+        {apiHealth.status !== "online" && (
           <div className="px-6 pt-4 lg:px-8">
             <div className="max-w-7xl mx-auto">
-              <DemoModeBanner />
+              <DemoModeBanner
+                status={apiHealth.status}
+                latency={apiHealth.latency}
+                lastError={apiHealth.lastError}
+                onRetry={apiHealth.recheck}
+              />
             </div>
           </div>
         )}

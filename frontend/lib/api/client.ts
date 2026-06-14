@@ -19,8 +19,15 @@ import { apiBaseUrl } from "../config";
 export async function fetchApi<T>(path: string, options?: RequestInit): Promise<T | null> {
   const base = apiBaseUrl();
   if (!base) {
-    // Demo deployment: no backend configured. Return null so the page
-    // can render its empty state.
+    // No backend configured. Emit a one-time error so the user can see
+    // *why* requests are returning null in the browser console.
+    if (typeof console !== "undefined") {
+      console.error(
+        "[Lumint API] NEXT_PUBLIC_API_URL is not set. " +
+        "Add it in Vercel → Project → Settings → Environment Variables " +
+        "(Production) and redeploy. Backend calls will fail until then."
+      );
+    }
     return null;
   }
   const url = `${base}${path}`;
@@ -58,8 +65,21 @@ export async function fetchApi<T>(path: string, options?: RequestInit): Promise<
     }
     return (await response.json()) as T;
   } catch (error: any) {
+    // Surface CORS and network errors prominently so the user can
+    // diagnose without digging into the Network tab.
+    const msg = error?.message || "network error";
+    if (
+      typeof console !== "undefined" &&
+      (msg === "Failed to fetch" || msg.includes("CORS") || msg.includes("NetworkError"))
+    ) {
+      console.error(
+        `[Lumint API CORS] ${options?.method || "GET"} ${path} failed.\n` +
+        `  Base URL: ${base}\n` +
+        `  Error:    ${msg}\n` +
+        `  Fix:      Ensure ALLOWED_ORIGINS in Render includes https://lumint-pi.vercel.app`
+      );
+    }
     console.warn(`[Lumint API] ${options?.method || "GET"} ${path} unreachable; returning null:`, error?.message);
-    // Network or server error — fail soft.
     return null;
   } finally {
     clearTimeout(timeoutId);

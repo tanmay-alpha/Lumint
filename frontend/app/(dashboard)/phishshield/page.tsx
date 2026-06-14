@@ -162,7 +162,7 @@ export default function PhishShieldPage() {
             <button
               type="submit"
               disabled={isScanning || !urlInput.trim()}
-              className="absolute right-1 top-1 bottom-1 px-5 rounded-[var(--r-2)] bg-[var(--text-1)] text-[var(--text-inverse)] hover:bg-[var(--text-1)]/90 font-bold text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-all select-none"
+              className="absolute right-1 top-1 bottom-1 px-5 rounded-[var(--r-2)] bg-[var(--critical)] text-white hover:opacity-90 font-bold text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-all select-none"
             >
               {isScanning ? (
                 <>

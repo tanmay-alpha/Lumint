@@ -12,11 +12,13 @@ export interface TopbarProps {
   pageLabels: Record<string, string>;
   /**
    * Current API connection state. Drives the right-hand status pill:
-   *   - "online"  → green "API CONNECTED"
+   *   - "online"  → green "API CONNECTED" (+ latency)
    *   - "offline" → red   "API DISCONNECTED"
    *   - "unknown" → pill is hidden (no backend configured yet)
    */
   apiHealth?: ApiHealthStatus;
+  /** Last successful probe latency in ms; appended to the pill text when set. */
+  apiLatency?: number | null;
 }
 
 export const Topbar = ({
@@ -24,6 +26,7 @@ export const Topbar = ({
   pathname,
   pageLabels,
   apiHealth = "unknown",
+  apiLatency = null,
 }: TopbarProps) => {
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
@@ -70,8 +73,14 @@ export const Topbar = ({
       <div className="flex items-center gap-3.5">
         {/* API connection status pill */}
         {apiHealth === "online" && (
-          <Badge variant="safe" size="md" dot={true} className="gap-1">
-            API CONNECTED
+          <Badge
+            variant="safe"
+            size="md"
+            dot={true}
+            className="gap-1"
+            title={apiLatency != null ? `Latency: ${apiLatency}ms` : "Healthy"}
+          >
+            API CONNECTED{apiLatency != null ? ` · ${apiLatency}ms` : ""}
           </Badge>
         )}
         {apiHealth === "offline" && (
