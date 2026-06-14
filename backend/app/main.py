@@ -356,3 +356,18 @@ def root():
         "message": f"{settings.APP_NAME} backend running",
         "version": settings.APP_VERSION,
     }
+
+
+# ── Aliases for `/health` and `/ready` so the frontend `useApiHealth`
+# ── hook (which polls `/health`) and Render's health-check path work
+# ── without changing the existing k8s-style `/healthz` + `/readyz` routes.
+@app.get("/health", include_in_schema=False)
+def health_alias():
+    from app.routers.probes import healthz  # local import avoids circulars
+    return healthz()
+
+
+@app.get("/ready", include_in_schema=False)
+def ready_alias():
+    from app.routers.probes import readyz
+    return readyz()

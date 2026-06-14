@@ -1,0 +1,46 @@
+services:
+  - type: web
+    name: lumint-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app.main:app --bind 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromService: database
+        type: ps1
+      - key: REDIS_URL
+        fromService: redis
+        type: ps1
+      - key: ALLOWED_ORIGINS
+        value: "https://lumint-pi.vercel.app,http://localhost:3000"
+      - key: CORS_ORIGINS
+        value: "https://lumint-pi.vercel.app,http://localhost:3000"
+      - key: NEXT_PUBLIC_API_URL
+        value: "https://lumint-api.onrender.com"
+      - key: DATABASE_TYPE
+        value: "postgres"
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+    healthCheckPath: /health
+    serviceHealthCheck:
+      httpPath: /health
+      httpMethod: GET
+      intervalSeconds: 60
+      successCodes: 200
+      responseTimeoutSeconds: 30
+      healthyThresholdCount: 3
+      unhealthyThresholdCount: 3
+      initTimeoutSeconds: 600
+
+databases:
+  - name: database
+    databaseName: lumint
+    user: lumint
+    plan: free
+    version: "13"
+
+caches:
+  - name: redis
+    plan: free
+    version: "6"
