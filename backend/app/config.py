@@ -40,10 +40,12 @@ class Settings(BaseSettings):
     # var is unset or empty, falls back to the localhost dev origins below.
     # In production, set this explicitly to the deployed frontend origin(s),
     # e.g. CORS_ALLOW_ORIGINS='["https://fraud-intelligence.vercel.app"]'
-    cors_allow_origins: list[str] = [
-        "http://localhost:3000",
-        "http://localhost:5173",
-    ]
+    #
+    # IMPORTANT: default is `[]` (empty). The `origins_list` property below
+    # must always read the env var at request time — a non-empty default
+    # would shadow the env var and silently block production deploys
+    # (this bug caused `lumint-pi.vercel.app` to be CORS-blocked).
+    cors_allow_origins: list[str] = []
 
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
@@ -76,12 +78,48 @@ class Settings(BaseSettings):
 
     @property
     def origins_list(self) -> list[str]:
-        # New env-driven allowlist takes precedence when it has any entries.
-        # The legacy `ALLOWED_ORIGINS` (comma-separated string) is kept as a
-        # fallback so existing deploys that haven't migrated keep working.
+        """Build the CORS allowlist, reading from env vars at call time.
+
+        Precedence (most specific first):
+            1. `CORS_ALLOW_ORIGINS` env var — read raw via `os.getenv` so it
+               picks up changes without a settings reload. Accepts a JSON
+               array or a comma-separated string.
+            2. The `cors_allow_origins` field (defaulted empty above).
+            3. The legacy `ALLOWED_ORIGINS` field, which the project's
+               `render.yaml` sets for free-tier deploys.
+            4. Localhost dev defaults.
+
+        We always re-read the env var because pydantic-settings caches
+        `cors_allow_origins` at process start, and Render redeploys may
+        rotate env vars between deploys.
+        """
+        import os  # local import to keep the module top-level importable
+
+        raw = os.getenv("CORS_ALLOW_ORIGINS", "").strip()
+        if raw:
+            parsed: list[str] = []
+            # JSON-array form: ["https://a.com","https://b.com"]
+            if raw.startswith("["):
+                try:
+                    import json
+                    arr = json.loads(raw)
+                    if isinstance(arr, list):
+                        parsed = [str(x).strip() for x in arr if str(x).strip()]
+                except Exception:
+                    parsed = []
+            if not parsed:
+                # Comma-separated form: https://a.com,https://b.com
+                parsed = [o.strip() for o in raw.split(",") if o.strip()]
+            if parsed:
+                return parsed
+
         if self.cors_allow_origins:
             return [o.strip() for o in self.cors_allow_origins if o.strip()]
-        return [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
+
+        if self.ALLOWED_ORIGINS:
+            return [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
+
+        return ["http://localhost:3000", "http://localhost:5173"]
 
 
 settings = Settings()
