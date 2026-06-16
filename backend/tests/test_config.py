@@ -45,7 +45,15 @@ def test_empty_json_cors_env_falls_back_to_localhost_defaults(monkeypatch):
 
 
 def test_default_origins_list_does_not_trust_wildcard_vercel(monkeypatch):
+    # Wipe every env source that contributes to origins_list, then assert the
+    # built-in defaults contain no implicit *.vercel.app wildcard.
     monkeypatch.delenv("CORS_ALLOW_ORIGINS", raising=False)
-    test_settings = Settings(APP_ENV="test", DATABASE_URL=TEST_DATABASE_URL)
+    monkeypatch.setenv("ALLOWED_ORIGINS", "")
+    test_settings = Settings(
+        APP_ENV="test",
+        DATABASE_URL=TEST_DATABASE_URL,
+        ALLOWED_ORIGINS="",
+        cors_allow_origins=[],
+    )
 
     assert "https://*.vercel.app" not in test_settings.origins_list
