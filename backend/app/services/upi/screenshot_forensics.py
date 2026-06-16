@@ -171,7 +171,7 @@ def run_image_ela(image_path: Path) -> Dict[str, Any]:
     """
     try:
         if not image_path.exists():
-            return _empty_result([f"Image path {image_path} does not exist"])
+            return _empty_result(["Image file does not exist."])
 
         with Image.open(image_path) as img:
             img_rgb = img.convert("RGB")
@@ -241,9 +241,9 @@ def run_image_ela(image_path: Path) -> Dict[str, Any]:
             "warnings": [],
         }
 
-    except Exception as e:
-        logger.error("Error during UPI ELA: %s", e)
-        return _empty_result([f"ELA processing error: {str(e)}"])
+    except Exception:
+        logger.exception("Error during UPI ELA")
+        return _empty_result(["ELA processing failed."])
 
 
 def estimate_tamper_regions(image_path: Path) -> List[Dict[str, Any]]:

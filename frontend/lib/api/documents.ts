@@ -12,13 +12,6 @@ export const documentApi = {
     const url = `${base}/api/documents/analyze`;
     const formData = new FormData();
     formData.append("file", file);
-
-    const apiKey = process.env.NEXT_PUBLIC_API_KEY;
-    const requestHeaders: Record<string, string> = {};
-    if (apiKey) {
-      requestHeaders["Authorization"] = `Bearer ${apiKey}`;
-    }
-
     // 30s timeout — OCR + ELA + ML can take 5-10s in production.
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
@@ -26,7 +19,6 @@ export const documentApi = {
     try {
       const response = await fetch(url, {
         method: "POST",
-        headers: requestHeaders,
         body: formData,
         signal: controller.signal,
       });
@@ -38,15 +30,16 @@ export const documentApi = {
           if (errJson && errJson.detail) {
             if (typeof errJson.detail === "string") errorMessage = errJson.detail;
           }
-        } catch (_) {}
-        const errorObj: any = new Error(errorMessage);
+        } catch {}
+        const errorObj = new Error(errorMessage) as Error & { status?: number };
         errorObj.status = response.status;
         throw errorObj;
       }
 
       return (await response.json()) as DocumentAnalysisResult;
-    } catch (error: any) {
-      console.warn("[Lumint DocShield] analyze unreachable; returning null:", error?.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "network error";
+      console.warn("[Lumint DocShield] analyze unreachable; returning null:", message);
       // Network or server error — fail soft, return null. The page's
       // try/catch will display the friendly empty state.
       return null;

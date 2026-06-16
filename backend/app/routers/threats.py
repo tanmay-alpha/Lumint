@@ -9,6 +9,8 @@ from app.schemas.threats import ThreatFeedCreate, ThreatFeedResponse
 
 router = APIRouter(prefix="/api/threats", tags=["threat-feed"], dependencies=[Depends(get_current_user)])
 
+MAX_WS_MESSAGE_BYTES = 1024
+
 # Active WebSocket connections list
 class ConnectionManager:
     def __init__(self):
@@ -79,7 +81,12 @@ async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
     try:
         while True:
-            # Keep connection alive by waiting for message or pong
-            await websocket.receive_text()
+            # Keep connection alive by waiting for small ping/pong messages.
+            message = await websocket.receive_text()
+            if len(message.encode("utf-8")) > MAX_WS_MESSAGE_BYTES:
+                await websocket.close(code=1009, reason="Message too large")
+                break
     except WebSocketDisconnect:
+        pass
+    finally:
         manager.disconnect(websocket)

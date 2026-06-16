@@ -10,8 +10,6 @@ import {
   ShieldAlert,
   Network,
   Smartphone,
-  BookOpen,
-  Check,
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";

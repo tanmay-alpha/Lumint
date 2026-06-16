@@ -77,9 +77,9 @@ def save_upi_event_bg(event_data: dict, metadata_json: dict):
         db_event = UPIShieldEvent(**event_data, metadata_json=metadata_json)
         db.add(db_event)
         db.commit()
-    except Exception as e:
+    except Exception:
         import logging
-        logging.getLogger("lumint.routers.upi").error(f"Failed to save UPI event in background: {str(e)}")
+        logging.getLogger("lumint.routers.upi").exception("Failed to save UPI event in background")
     finally:
         db.close()
 

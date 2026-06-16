@@ -74,7 +74,7 @@ export function DemoModeBanner({
         </div>
         <div className="pl-7 space-y-2">
           <p className="text-[var(--text-2)]">
-            Or paste a different backend URL:
+            In local development, paste a different backend URL:
           </p>
           <div className="flex gap-2">
             <input
@@ -89,14 +89,28 @@ export function DemoModeBanner({
                 const input = document.getElementById(
                   "manual-api-url",
                 ) as HTMLInputElement | null;
-                const url = input?.value?.trim();
-                if (url) {
+                const rawUrl = input?.value?.trim();
+                if (rawUrl) {
                   try {
-                    window.localStorage.setItem("lumint_api_url", url);
+                    if (process.env.NODE_ENV === "production") {
+                      window.alert("Manual backend overrides are disabled in production.");
+                      return;
+                    }
+                    const parsed = new URL(rawUrl);
+                    const isLocalHttp =
+                      parsed.protocol === "http:" &&
+                      ["localhost", "127.0.0.1", "0.0.0.0"].includes(parsed.hostname);
+                    if (parsed.protocol !== "https:" && !isLocalHttp) {
+                      window.alert("Use an HTTPS URL, or localhost over HTTP for local development.");
+                      return;
+                    }
+                    parsed.hash = "";
+                    parsed.search = "";
+                    window.localStorage.setItem("lumint_api_url", parsed.toString().replace(/\/+$/, ""));
+                    window.location.reload();
                   } catch {
-                    // localStorage may be unavailable in private mode.
+                    window.alert("Enter a valid backend URL.");
                   }
-                  window.location.reload();
                 }
               }}
               className="text-xs bg-[var(--accent)] text-white px-3 py-1 rounded"

@@ -317,34 +317,20 @@ def _cors_origin_allowed(origin: str, allowed: list[str]) -> bool:
 
 
 class WildcardCorsMiddleware(BaseHTTPMiddleware):
-    """Extends Starlette CORS to support ``*.vercel.app`` wildcard origins.
+    """Reject CORS origins not present in ``settings.origins_list``.
 
-    Accepts any Origin that:
-      - matches an explicit entry in settings.origins_list, OR
-      - matches a ``https://*.vercel.app`` wildcard entry in that list, OR
-      - is itself a ``https://*.vercel.app`` Vercel preview deploy (i.e.
-        the Origin is *from* the vercel.app ecosystem and not an
-        explicitly blocked domain).
-
-    This resilience layer is intentional: Vercel preview and production
-    deploys use unpredictable URLs (e.g. ``lumint-xyz-git-main.vercel.app``)
-    and re-deploying the backend to update CORS every time is slow.
+    The allowlist supports exact origins and explicit wildcard entries such as
+    ``https://*.vercel.app``. It intentionally does not trust every Vercel
+    preview URL by default; any preview wildcard must be configured in the
+    deployment environment.
     """
 
     async def dispatch(self, request: Request, call_next):
         origin = request.headers.get("origin", "")
         allowed_origins = list(settings.origins_list)
 
-        origin_ok = False
         if origin:
-            if _cors_origin_allowed(origin, allowed_origins):
-                origin_ok = True
-            elif origin.startswith("https://") and (
-                origin.endswith(".vercel.app") or origin.endswith(".vercel.com")
-            ):
-                # Accept any vercel.* deploy origin — these are owned by
-                # the same team and do not require per-deploy env updates.
-                origin_ok = True
+            origin_ok = _cors_origin_allowed(origin, allowed_origins)
         else:
             # No Origin header → not a CORS request (e.g. tests, curl,
             # server-to-server via the Next.js proxy). These are always
@@ -372,7 +358,7 @@ class WildcardCorsMiddleware(BaseHTTPMiddleware):
                     "Access-Control-Allow-Origin": origin,
                     "Access-Control-Allow-Credentials": "true",
                     "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
-                    "Access-Control-Allow-Headers": "Accept, Accept-Language, Authorization, Content-Language, Content-Type, X-Request-ID",
+                    "Access-Control-Allow-Headers": "Accept, Accept-Language, Authorization, Content-Language, Content-Type, X-Api-Key, X-Request-ID",
                     "Access-Control-Max-Age": "3600",
                 },
             )
@@ -402,7 +388,7 @@ app.add_middleware(
     allow_origins=settings.origins_list,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
+    allow_headers=["Authorization", "Content-Type", "X-Api-Key", "X-Request-ID"],
     # We never let the response leak beyond an hour.
     max_age=3600,
 )

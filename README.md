@@ -11,7 +11,7 @@ Analyze screenshots, documents, and links in under 3 seconds — with plain-Engl
 
 [![MIT License](https://img.shields.io/badge/License-MIT-crimson.svg?style=for-the-badge)](https://choosealicense.com/licenses/mit/)
 [![Python 3.11](https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
-[![Next.js 14](https://img.shields.io/badge/Next.js-14-000000?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
+[![Next.js 16](https://img.shields.io/badge/Next.js-16-000000?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![263 Tests](https://img.shields.io/badge/Tests-263-brightgreen?style=for-the-badge&logo=pytest&logoColor=white)]()
 [![Production Ready](https://img.shields.io/badge/Production-Live-success?style=for-the-badge&logo=checkmarx&logoColor=white)](https://lumint-pi.vercel.app)
@@ -113,7 +113,7 @@ flowchart TB
         U["🌐 User<br/>(Browser)"]
     end
 
-    subgraph FRONTEND["🌐 Frontend (Next.js 14 · TypeScript)"]
+    subgraph FRONTEND["🌐 Frontend (Next.js 16 · TypeScript)"]
         UI["📊 Dashboard UI<br/>Tailwind + Framer Motion"]
         G3D["🌍 ThreatGlobe 3D<br/>(Cobe library)"]
         TC["🎴 TiltCard<br/>(3D mouse tilt)"]
@@ -121,7 +121,7 @@ flowchart TB
     end
 
     subgraph BACKEND["⚙️ Backend (FastAPI · Python 3.11)"]
-        AUTH["🔐 JWT Auth<br/>Rate Limiting"]
+        AUTH["🔐 API Key Auth<br/>Rate Limiting"]
         R1["/api/phishing"]
         R2["/api/upi"]
         R3["/api/documents"]
@@ -155,7 +155,7 @@ flowchart TB
     UI -.visual.-> G3D
     UI -.interaction.-> TC
     UI -.states.-> LL
-    UI -->|"HTTPS + JWT"| AUTH
+    UI -->|"HTTPS + X-Api-Key"| AUTH
 
     AUTH --> R1
     AUTH --> R2
@@ -318,7 +318,7 @@ flowchart LR
 | 🏦 **A bank or fintech** | Catch fraudulent transactions before they clear — across UPI, documents, and URLs in one place |
 | 🛡️ **A security analyst** | Investigate suspicious activity with full provenance and SHAP-based feature explanations |
 | 📚 **A researcher** | Study Indian fraud patterns with reproducible benchmarks, 5 published research reports, and cross-dataset evaluation |
-| 👨‍💻 **A developer** | Integrate fraud detection into your own app via a clean REST API with JWT auth and OpenAPI docs |
+| 👨‍💻 **A developer** | Integrate fraud detection into your own app via a clean REST API with X-Api-Key auth and OpenAPI docs |
 | 🧑 **A regular person** | Verify that the UPI screenshot your friend sent isn't fake — paste a link to check if it's a phishing site |
 
 ---
@@ -412,7 +412,7 @@ mindmap
       DBSCAN
       Adversarial-Robustness-Toolbox
     Frontend
-      Next.js 14
+      Next.js 16
       TypeScript
       Tailwind CSS
       Framer Motion
@@ -430,7 +430,7 @@ mindmap
 
 ### Security (Enterprise-grade by default)
 
-- 🔐 JWT bearer auth on all API endpoints
+- 🔐 API key auth on protected API endpoints
 - 🛡️ SSRF guard (blocks cloud metadata, private IPs, `file://`)
 - ⏱️ Rate limiting (10/min on UPI, 30/min on phishing)
 - 🔒 Constant-time API key comparison (timing attack prevention)
@@ -495,8 +495,8 @@ graph TD
 ## ⚙️ Run It Locally (For Developers)
 
 ### Prerequisites
-- Python 3.10+
-- Node.js 18+
+- Python 3.11
+- Node.js 20+
 - Git
 - Tesseract OCR (optional, for UPI analysis)
 
@@ -519,9 +519,9 @@ python -m venv venv
 source venv/bin/activate
 
 pip install -r requirements.txt
-cp ../.env.example .env       # Add GROQ_API_KEY (optional) and LUMINT_API_KEY
+cp .env.example .env       # Add LUMINT_API_KEY; GROQ_API_KEY is optional
 python scripts/seed_demo_data.py
-uvicorn main:app --reload
+python main.py
 ```
 
 ✅ Backend running at `http://localhost:8000`  
@@ -543,6 +543,8 @@ npm run dev
 ```bash
 cd backend
 pytest --tb=short -q
+cd ..
+npm test
 ```
 
 ### 5. Re-train the ML models (optional, takes ~5 min)
@@ -576,8 +578,8 @@ gantt
 
 | Report | Topic | Reproducible with |
 |--------|-------|-------------------|
-| **R10** | Baseline benchmarks (accuracy, latency, consensus) | `make benchmark` |
-| **R11** | Ablation studies (what if you remove a module?) | `make ablation` |
+| **R10** | Baseline benchmarks (accuracy, latency, consensus) | `python backend/scripts/run_research_benchmark.py` |
+| **R11** | Ablation studies (what if you remove a module?) | `python backend/scripts/run_ablation_study.py` |
 | **R12** | Cross-dataset generalization (synthetic vs real) | `python ml/experiments/run_real_data.py` |
 | **R15** | Drift detection (does the model age in production?) | `backend/reports/r15_drift_table.md` |
 | **R16** | Adversarial robustness (can fraudsters evade detection?) | `python ml/adversarial/run_attacks.py` |
@@ -637,7 +639,7 @@ flowchart LR
 
 ## 🛡️ Security & Compliance
 
-- 🔐 All API endpoints require JWT bearer auth (except health probes)
+- 🔐 Protected API endpoints require `X-Api-Key` (legacy bearer tokens still accepted)
 - 🛡️ SSRF guard (blocks private IPs, cloud metadata, `file://`)
 - ⏱️ Rate limiting (10/min on UPI, 30/min on phishing, 200/min global)
 - 🔒 Constant-time API key comparison (timing-attack resistant)
@@ -663,7 +665,7 @@ git checkout -b feature/amazing-feature
 # 3. Make your changes
 # 4. Run the test suite (both backend and frontend)
 cd backend && pytest -q
-cd frontend && npm run build
+cd .. && npm test && npm run build
 
 # 5. Commit and push
 git commit -m "feat: add amazing feature"

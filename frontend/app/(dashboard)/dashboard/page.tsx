@@ -13,12 +13,8 @@ import { Button } from "@/components/ui/Button";
 import { IntelligenceTable, Column } from "@/components/ui/IntelligenceTable";
 import {
   RefreshCw,
-  Clock,
   ShieldCheck,
   AlertTriangle,
-  FileSpreadsheet,
-  Link as LinkIcon,
-  Fingerprint,
   FileSearch,
   ShieldAlert,
   Smartphone,

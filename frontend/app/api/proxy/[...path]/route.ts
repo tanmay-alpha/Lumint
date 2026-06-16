@@ -12,9 +12,27 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 
-const BACKEND = (
-  process.env.NEXT_PUBLIC_API_URL || "https://lumint-api.onrender.com"
-).replace(/\/+$/, "");
+const DEFAULT_BACKEND = "https://lumint-api.onrender.com";
+
+function backendOrigin(): string {
+  const configured =
+    process.env.LUMINT_BACKEND_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    DEFAULT_BACKEND;
+  try {
+    const url = new URL(configured);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return DEFAULT_BACKEND;
+    url.pathname = "";
+    url.search = "";
+    url.hash = "";
+    return url.toString().replace(/\/+$/, "");
+  } catch {
+    return DEFAULT_BACKEND;
+  }
+}
+
+const BACKEND = backendOrigin();
+const API_KEY = process.env.LUMINT_API_KEY?.trim();
 
 // Methods we forward (anything else is rejected).
 const ALLOWED_METHODS = new Set([
@@ -40,7 +58,8 @@ const HOP_BY_HOP = new Set([
   "trailer",
   "upgrade",
   "cookie",
-  // CORS-related — we add our own
+  "x-api-key",
+  // CORS-related — this same-origin proxy does not forward browser origins.
   "origin",
   "referer",
   "sec-fetch-mode",
@@ -64,6 +83,7 @@ function buildHeaders(incoming: Headers): Headers {
   // Always tell the backend who the original request was for.
   const xfwdHost = incoming.get("host");
   if (xfwdHost) out.set("x-forwarded-host", xfwdHost);
+  if (API_KEY) out.set("x-api-key", API_KEY);
   out.set("x-lumint-proxy", "1");
   return out;
 }
@@ -84,20 +104,30 @@ async function forward(
     );
   }
 
+  if (!API_KEY) {
+    return NextResponse.json(
+      { detail: "Proxy API key is not configured." },
+      { status: 503 },
+    );
+  }
+
   // Whitelist the prefixes we proxy. This is a closed allowlist so a
   // malicious caller can't use the proxy to reach other backends.
   const { path } = await context.params;
   const subPath = (path || []).join("/");
   const allowedPrefixes = [
-    "api/",
+    "api",
     "health",
     "docs",
     "openapi.json",
     "redoc",
   ];
-  const isAllowed = allowedPrefixes.some(
-    (p) => subPath === p || subPath.startsWith(p),
+  const hasUnsafeSegment = (path || []).some(
+    (segment) => segment === "." || segment === ".." || segment.includes("/") || segment.includes("\\") || segment.includes("\0"),
   );
+  const isAllowed =
+    !hasUnsafeSegment &&
+    allowedPrefixes.some((p) => subPath === p || subPath.startsWith(`${p}/`));
   if (!isAllowed) {
     return NextResponse.json(
       { detail: `Path '/${subPath}' is not proxied` },
@@ -105,7 +135,9 @@ async function forward(
     );
   }
 
-  const url = `${BACKEND}/${subPath}${req.nextUrl.search}`;
+  const safePath = (path || []).map((segment) => encodeURIComponent(segment)).join("/");
+  const targetUrl = new URL(`/${safePath}`, BACKEND);
+  targetUrl.search = req.nextUrl.search;
 
   let body: BodyInit | undefined = undefined;
   if (req.method !== "GET" && req.method !== "HEAD") {
@@ -117,7 +149,7 @@ async function forward(
   }
 
   try {
-    const upstream = await fetch(url, {
+    const upstream = await fetch(targetUrl, {
       method: req.method,
       headers: buildHeaders(req.headers),
       body,
@@ -134,17 +166,10 @@ async function forward(
       // not re-encode. If the backend ignores accept-encoding, this
       // prevents the browser from trying to double-decompress.
       if (lk === "content-encoding") continue;
-      // CORS: allow the browser to call this proxy freely.
-      if (lk === "access-control-allow-origin") {
-        responseHeaders.set(k, "*");
-        continue;
-      }
+      // CORS is intentionally omitted: callers use this route as same-origin,
+      // and upstream CORS policy should not be reflected by the proxy.
+      if (lk.startsWith("access-control-")) continue;
       responseHeaders.set(k, v);
-    }
-    // Set permissive CORS — the proxy is server-side, so the browser
-    // sees Vercel as same-origin and never sends a preflight to us.
-    if (!responseHeaders.has("access-control-allow-origin")) {
-      responseHeaders.set("access-control-allow-origin", "*");
     }
 
     const responseBody = await upstream.arrayBuffer();
@@ -153,9 +178,10 @@ async function forward(
       statusText: upstream.statusText,
       headers: responseHeaders,
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
+    console.error("API proxy upstream request failed:", e);
     return NextResponse.json(
-      { detail: `Upstream unreachable: ${e?.message || String(e)}` },
+      { detail: "Upstream service is unreachable." },
       { status: 502 },
     );
   }

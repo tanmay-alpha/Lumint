@@ -68,7 +68,7 @@ async def analyze_document(
         "doc_id": doc_id,
         "original_filename": file.filename,
         "saved_filename": saved_filename,
-        "file_path": str(save_path),
+        "file_path": f"uploads/{saved_filename}",
         "file_size": len(contents),
         "content_type": file.content_type or "unknown",
     }
@@ -77,13 +77,15 @@ async def analyze_document(
     if suffix != ".pdf":
         try:
             result = await run_in_threadpool(analyze_image_document, save_path, len(contents))
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Image analysis failed: {str(e)}")
+        except Exception:
+            logger.exception("Image analysis failed for document upload %s", doc_id)
+            raise HTTPException(status_code=500, detail="Image analysis failed.")
     else:
         try:
             result = await run_in_threadpool(analyze_pdf_document, save_path, len(contents))
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+        except Exception:
+            logger.exception("PDF analysis failed for document upload %s", doc_id)
+            raise HTTPException(status_code=500, detail="Analysis failed.")
 
     # Try using trained ML model if available
     try:
@@ -134,11 +136,13 @@ async def analyze_document(
             analysis_result=result,
         )
         save_fingerprint(fingerprint)
-    except Exception as e:
-        # Surface as warning, never crash upload
+    except Exception:
+        # Surface as warning, never crash upload. Keep implementation
+        # details and filesystem paths in the server logs only.
+        logger.exception("Fraud DNA fingerprint storage failed for document upload %s", doc_id)
         if result.get("analysis_warnings") is None:
             result["analysis_warnings"] = []
-        result["analysis_warnings"].append(f"Fraud DNA fingerprint storage failed: {str(e)}")
+        result["analysis_warnings"].append("Fraud DNA fingerprint storage failed.")
 
     response_obj = DocumentAnalysisResponse(**base, **result)
     if ground_truth is not None:
@@ -160,4 +164,4 @@ async def analyze_document(
         drift_signal=drift_signal
     )
 
-    return response_obj
+    return response_obj

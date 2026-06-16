@@ -8,22 +8,21 @@ async function realFetch<T>(path: string, init?: RequestInit): Promise<T | null>
     return null;
   }
   const url = `${base}${path}`;
-  const apiKey = process.env.NEXT_PUBLIC_API_KEY;
-  const requestHeaders: Record<string, string> = { ...(init?.headers as any) };
-  if (apiKey) requestHeaders["Authorization"] = `Bearer ${apiKey}`;
+  const requestHeaders: Record<string, string> = { ...(init?.headers as Record<string, string> | undefined) };
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 10000);
   try {
     const response = await fetch(url, { ...init, headers: requestHeaders, signal: controller.signal });
     if (!response.ok) {
-      const errorObj: any = new Error(`API Error: ${response.status} ${response.statusText}`);
+      const errorObj = new Error(`API Error: ${response.status} ${response.statusText}`) as Error & { status?: number };
       errorObj.status = response.status;
       throw errorObj;
     }
     return (await response.json()) as T;
-  } catch (error: any) {
-    console.warn(`[Lumint FraudDNA] ${init?.method || "GET"} ${path} unreachable; returning null:`, error?.message);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "network error";
+    console.warn(`[Lumint FraudDNA] ${init?.method || "GET"} ${path} unreachable; returning null:`, message);
     // Network or server error — fail soft.
     return null;
   } finally {

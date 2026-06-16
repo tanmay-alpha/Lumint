@@ -33,9 +33,8 @@ export function useThreatStream(simulate = false, simulationRate = 1.0) {
     setStatus("connecting");
     const wsBase = wsOrigin();
     if (!wsBase) {
-      // No backend configured (deployed demo without NEXT_PUBLIC_API_URL):
-      // mark disconnected and skip the WebSocket connection entirely so the
-      // browser doesn't spam wss://localhost:8000 errors.
+      // No backend WebSocket endpoint is configured. Skip the connection so
+      // the browser does not spam connection errors.
       setStatus("disconnected");
       return;
     }

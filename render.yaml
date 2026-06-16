@@ -1,17 +1,18 @@
 # Render Blueprint — Lumint backend.
 #
-# Uses Docker runtime so the Dockerfile.prod (which installs tesseract-ocr
-# + libgl + libglib for Pillow/OpenCV) is used instead of the plain Python
-# buildpack — tesseract is required for UPI OCR.
+# Canonical Render config lives at the repository root. The backend uses the
+# Docker runtime so Dockerfile.prod installs tesseract-ocr and system libraries
+# required by OCR/Pillow/OpenCV before Gunicorn starts FastAPI with Uvicorn
+# workers.
 
 services:
   - type: web
-    name: lumint-backend
+    name: lumint-api
     runtime: docker
     rootDir: backend
     dockerfilePath: ./Dockerfile.prod
     dockerContext: .
-    plan: starter
+    plan: free
     healthCheckPath: /healthz
     autoDeploy: true
     envVars:
@@ -24,9 +25,7 @@ services:
           name: lumint-db
           property: connectionString
       - key: CORS_ALLOW_ORIGINS
-        value: '["https://lumint-pi.vercel.app"]'
-      - key: JWT_SECRET
-        generateValue: true
+        value: '["https://lumint-pi.vercel.app","https://lumint.vercel.app"]'
       - key: LUMINT_API_KEY
         generateValue: true
       - key: GROQ_API_KEY
@@ -38,6 +37,6 @@ services:
 
 databases:
   - name: lumint-db
-    plan: starter
+    plan: free
     databaseName: lumint
     user: lumint

@@ -5,11 +5,12 @@ import time
 from typing import Any
 
 import psutil
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from app.core.cache import phish_cache, upi_cache
+from app.dependencies.auth import get_current_user
 
-router = APIRouter(prefix="/api/metrics", tags=["metrics"])
+router = APIRouter(prefix="/api/metrics", tags=["metrics"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("/system")

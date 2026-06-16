@@ -17,7 +17,6 @@ import {
   Play,
   Pause,
   Trash2,
-  Sliders,
   Database
 } from "lucide-react";
 import GlassCard from "@/components/ui/GlassCard";

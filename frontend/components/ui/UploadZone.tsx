@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useRef, useState, useEffect } from "react";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { UploadCloud, X, File, Image as ImageIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -147,11 +148,14 @@ export const UploadZone = ({
             >
               {/* Thumbnail / Icon */}
               {isImage && thumbUrl ? (
-                <div className="relative group/thumb shadow-md rounded-lg overflow-hidden border border-[var(--border-2)]">
-                  <img
+                <div className="relative h-24 w-18 group/thumb shadow-md rounded-lg overflow-hidden border border-[var(--border-2)]">
+                  <Image
                     src={thumbUrl}
                     alt="Uploaded screenshot preview"
-                    className="h-24 w-18 object-cover transition-transform duration-200 group-hover/thumb:scale-105"
+                    fill
+                    sizes="72px"
+                    unoptimized
+                    className="object-cover transition-transform duration-200 group-hover/thumb:scale-105"
                   />
                 </div>
               ) : (

@@ -63,6 +63,8 @@ def test_readyz_returns_200_when_all_checks_pass(client, monkeypatch):
     assert body["checks"]["database"]["ok"] is True
     assert body["checks"]["ml_registry"]["ok"] is True
     assert body["checks"]["tesseract"]["ok"] is True
+    assert body["checks"]["tesseract"]["detail"] == "available"
+    assert "app_env" not in body["checks"]
 
 
 def test_readyz_returns_503_when_db_check_fails(client, monkeypatch):

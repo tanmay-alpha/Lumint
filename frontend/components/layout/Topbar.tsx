@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from "react";
 import { Menu, Bell, Sun, Moon } from "lucide-react";
-import { twMerge } from "tailwind-merge";
 import Badge from "@/components/ui/Badge";
 import type { ApiHealthStatus } from "@/hooks/useApiHealth";
 

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import type { Variants } from "framer-motion";
 import {
   Smartphone,
@@ -14,7 +14,6 @@ import {
   Eye,
   Cpu,
   BarChart2,
-  Zap,
   Scan,
   Layers,
   Sparkles,
@@ -32,8 +31,7 @@ import { RiskScore } from "@/components/ui/RiskScore";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { analyzeUPIClientSide } from "@/lib/upi-client-analyzer";
 import { saveScan } from "@/lib/scan-history";
-import { upiService } from "@/services/upi";
-import type { UPIAnalysisResult, UPIAIResult } from "@/types";
+import type { UPIAnalysisResult } from "@/types";
 
 // ─── Stagger animation variants ────────────────────────────────────────────
 const container: Variants = {
@@ -118,8 +116,7 @@ export default function UPIShieldPage() {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<UPIAnalysisResult | null>(null);
-  const [aiResult, setAIResult] = useState<UPIAIResult | null>(null);
-  const [aiLoading, setAILoading] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -151,7 +148,6 @@ export default function UPIShieldPage() {
     }
     setFile(f);
     setResult(null);
-    setAIResult(null);
     setError(null);
   };
 
@@ -175,7 +171,6 @@ export default function UPIShieldPage() {
     setUploading(true);
     setError(null);
     setResult(null);
-    setAIResult(null);
 
     let p = 0;
     const tick = setInterval(() => {
@@ -252,28 +247,6 @@ export default function UPIShieldPage() {
     }
   };
 
-  // Note: This is a structural-analysis fallback. Real LLM integration is a future enhancement.
-  const handleAIAnalyze = async () => {
-    if (!result) return;
-    setAILoading(true);
-    try {
-      const ai = await upiService.analyzeWithAI(result);
-      setAIResult(ai);
-    } catch {
-      setAIResult({
-        verdict: "SUSPICIOUS",
-        confidence: 72,
-        forgery_method: null,
-        evidence_points: ["AI service temporarily unavailable. Structural analysis used as fallback."],
-        analyst_note: "Please retry AI analysis for a full LLM-generated narrative report.",
-        recommended_action: "Verify directly with your bank using the UTR number.",
-        model_used: "fallback",
-        latency_ms: 0,
-      });
-    } finally {
-      setAILoading(false);
-    }
-  };
 
   const xaiFeatures = result ? buildXAIFeatures(result) : [];
 
@@ -836,107 +809,6 @@ export default function UPIShieldPage() {
                         </p>
                       </div>
                     </div>
-                  </AIInsightCard>
-                </motion.div>
-              )}
-                {(aiLoading || aiResult) && (
-                <motion.div variants={item}>
-                  <AIInsightCard
-                    isLoading={aiLoading}
-                    title="UPI FORENSIC INSIGHT"
-                    timestamp={aiResult ? new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : undefined}
-                    modelInfo={aiResult ? `${aiResult.model_used} · ${aiResult.latency_ms}ms` : undefined}
-                    className="border-2 border-dashed border-[var(--ai-border)] bg-[var(--ai-muted)]"
-                  >
-                    {aiResult && (
-                      <div className="space-y-5 text-body text-[var(--text-1)]">
-                        {/* Verdict row */}
-                        <div className="flex items-center gap-4 flex-wrap pb-4 border-b border-[var(--ai-border)]/30">
-                          <div className="flex flex-col">
-                            <span className="text-[10px] text-[var(--text-3)] font-bold uppercase">
-                              AI Verdict
-                            </span>
-                            <span
-                              className={`font-mono text-[16px] font-bold mt-0.5 ${
-                                aiResult.verdict === "FORGED"
-                                  ? "text-[var(--high)]"
-                                  : aiResult.verdict === "SUSPICIOUS"
-                                  ? "text-[var(--warn)]"
-                                  : "text-[var(--safe)]"
-                              }`}
-                            >
-                              {aiResult.verdict}
-                            </span>
-                          </div>
-                          
-                          <div className="flex flex-col">
-                            <span className="text-[10px] text-[var(--text-3)] font-bold uppercase">Confidence</span>
-                            <div className="mt-0.5">
-                              <Badge variant={aiResult.confidence > 80 ? "safe" : aiResult.confidence > 60 ? "warn" : "high"} className="text-xs px-2.5 py-0.5">
-                                {aiResult.confidence}%
-                              </Badge>
-                            </div>
-                          </div>
-
-                          {aiResult.forgery_method && (
-                            <div className="flex flex-col">
-                              <span className="text-[10px] text-[var(--text-3)] font-bold uppercase">Method</span>
-                              <span className="font-mono text-[11px] text-[var(--text-2)] bg-[var(--surface)] border border-[var(--border)] px-2 py-0.5 rounded-md mt-0.5">
-                                {aiResult.forgery_method}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* XAI bars */}
-                        <FeatureContribution features={xaiFeatures} title="Feature contributions (SHAP)" />
-
-                        {/* Evidence points */}
-                        <div>
-                          <span className="text-[11px] font-bold text-[var(--text-3)] uppercase tracking-wider block mb-2">
-                            Evidence points
-                          </span>
-                          <ul className="space-y-2">
-                            {aiResult.evidence_points.map((pt, i) => (
-                              <li key={i} className="flex items-start gap-2 text-[12px] text-[var(--text-2)] leading-relaxed">
-                                <span className="font-mono text-[10px] text-[var(--brand)] mt-0.5 shrink-0 font-bold">{i + 1}.</span>
-                                {pt}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-
-                        {/* Analyst note */}
-                        <div className="border-l-2 border-[var(--ai-border)] pl-4 bg-[var(--surface)]/50 py-2.5 pr-2 rounded-r-lg">
-                          <p className="text-[13px] italic font-serif text-[var(--text-2)] leading-relaxed">
-                            &ldquo;{aiResult.analyst_note}&rdquo;
-                          </p>
-                        </div>
-
-                        {/* Recommended action */}
-                        <div className={`rounded-xl border px-4 py-3 ${
-                          aiResult.verdict === "FORGED" 
-                            ? "bg-[var(--high-bg)] border-[var(--high-border)]/40 text-[var(--high)]" 
-                            : aiResult.verdict === "SUSPICIOUS" 
-                            ? "bg-[var(--warn-bg)] border-[var(--warn-border)]/40 text-[var(--warn)]" 
-                            : "bg-[var(--safe-bg)] border-[var(--safe-border)]/40 text-[var(--safe)]"
-                        }`}>
-                          <span className="text-[11px] font-bold uppercase tracking-wider block mb-1">
-                            Recommended Action
-                          </span>
-                          <p className="text-[13px] font-semibold text-[var(--text-1)]">
-                            {aiResult.recommended_action}
-                          </p>
-                        </div>
-
-                        {/* Timestamp */}
-                        <div className="flex justify-end pt-2">
-                          <span className="font-mono text-[10px] text-[var(--text-4)] uppercase tracking-widest">
-                            TIMESTAMP: {new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }).toUpperCase()}
-                          </span>
-                        </div>
-                      </div>
-                    )}
                   </AIInsightCard>
                 </motion.div>
               )}

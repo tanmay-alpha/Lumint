@@ -2,14 +2,14 @@
  * Runtime API configuration for the Lumint frontend.
  *
  * Resolution order for the HTTP base URL:
- *   1. `process.env.NEXT_PUBLIC_API_URL` (injected at build time by Next.js / Vercel)
- *   2. `http://localhost:8000` in development (when running `next dev` against a local FastAPI)
- *   3. `null` in production when no env var is set — callers should detect this and
- *      skip network calls (go straight to mock data) instead of trying to fetch
- *      `http://localhost:8000` from a public deployment, which is what was producing
- *      the 20+ console errors on the live Vercel site.
+ *   1. same-origin Next.js proxy in production browsers
+ *   2. validated development-only `localStorage.lumint_api_url` override
+ *   3. validated `process.env.NEXT_PUBLIC_API_URL`
+ *   4. `http://localhost:8000` in development (when running `next dev` against a local FastAPI)
+ *   5. `null` in production when no API is reachable
  *
- * WebSocket host is derived from the HTTP base URL by stripping the protocol.
+ * WebSocket origin is derived by parsing the configured HTTP URL and changing
+ * only the protocol. Invalid or non-http(s) URLs are rejected.
  */
 
 const DEFAULT_DEV_API_URL = "http://localhost:8000";
@@ -27,12 +27,35 @@ const FALLBACK_API_URL = "https://lumint-api.onrender.com";
 function shouldUseProxy(): boolean {
   if (typeof window === "undefined") return false;
   if (process.env.NEXT_PUBLIC_DISABLE_PROXY === "1") return false;
-  // Only use the proxy on non-localhost hosts (deployed Vercel site).
-  const host = window.location.hostname;
-  if (host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0") {
-    return false;
+  return process.env.NODE_ENV === "production";
+}
+
+function isLocalHost(hostname: string): boolean {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "0.0.0.0";
+}
+
+function normalizeHttpBaseUrl(value: string | undefined | null, allowLocalHttp: boolean): string | null {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+    if (url.protocol === "http:" && !(allowLocalHttp && isLocalHost(url.hostname))) return null;
+    url.hash = "";
+    url.search = "";
+    return url.toString().replace(/\/+$/, "");
+  } catch {
+    return null;
   }
-  return true;
+}
+
+function developmentOverrideUrl(): string | null {
+  if (typeof window === "undefined" || process.env.NODE_ENV === "production") return null;
+  try {
+    return normalizeHttpBaseUrl(window.localStorage.getItem("lumint_api_url"), true);
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -40,28 +63,18 @@ function shouldUseProxy(): boolean {
  * Use this to gate network calls: `if (apiBaseUrl()) { fetch(...) } else { useMock() }`.
  */
 export function apiBaseUrl(): string | null {
-  // Priority: manual override (localStorage) > env var > hardcoded fallback > localhost (dev only)
-  if (typeof window !== "undefined") {
-    try {
-      const stored = window.localStorage.getItem("lumint_api_url");
-      if (stored && stored.trim().length > 0) {
-        return stored.replace(/\/+$/, "");
-      }
-    } catch {
-      // localStorage may throw in private mode or restricted contexts — ignore.
-    }
-  }
+  const override = developmentOverrideUrl();
+  if (override) return override;
 
-  // On a deployed Vercel site, use a same-origin proxy. This avoids
-  // CORS preflight and any CSP/connect-src issues. See
-  // app/api/proxy/[...path]/route.ts.
+  // On deployed sites, use a same-origin proxy. This avoids leaking server
+  // authentication headers into the browser and keeps CORS/connect-src simple.
   if (shouldUseProxy()) {
     return "/api/proxy";
   }
 
-  const fromEnv = process.env.NEXT_PUBLIC_API_URL;
-  if (fromEnv && fromEnv.trim().length > 0) {
-    return fromEnv.replace(/\/+$/, "");
+  const fromEnv = normalizeHttpBaseUrl(process.env.NEXT_PUBLIC_API_URL, true);
+  if (fromEnv) {
+    return fromEnv;
   }
 
   // If the env var is missing on a deployed site, fall back to the known
@@ -69,7 +82,7 @@ export function apiBaseUrl(): string | null {
   // — operators can override it by setting NEXT_PUBLIC_API_URL in Vercel.
   if (typeof window !== "undefined") {
     const host = window.location.hostname;
-    if (host !== "localhost" && host !== "127.0.0.1" && host !== "0.0.0.0") {
+    if (!isLocalHost(host)) {
       return FALLBACK_API_URL;
     }
     return DEFAULT_DEV_API_URL;
@@ -85,29 +98,27 @@ export function apiBaseUrl(): string | null {
  * Derives `wss://` from `https://` and `ws://` from `http://`. Returns `null`
  * when no API is configured.
  *
- * Note: the same-origin proxy at `/api/proxy` does NOT forward WebSockets,
- * so on a deployed Vercel site we still need to talk to Render directly
- * for the threat stream. The browser's CSP must allow `wss://*.onrender.com`
- * for this to work.
+ * For production, threat streaming uses the configured backend/fallback origin
+ * directly because the same-origin proxy is HTTP-only. Production CSP should
+ * allow `wss://lumint-api.onrender.com` unless the backend origin changes.
  */
 export function wsOrigin(): string | null {
-  // WebSockets always go direct to the backend, even on a deployed site
-  // (the proxy is HTTP-only).
-  if (typeof window !== "undefined") {
-    try {
-      const stored = window.localStorage.getItem("lumint_api_url");
-      if (stored && stored.trim().length > 0) {
-        return stored.replace(/\/+$/, "").replace(/^http/i, "ws");
-      }
-    } catch {
-      // ignore
+  const override = developmentOverrideUrl();
+  const httpBase = override ?? normalizeHttpBaseUrl(process.env.NEXT_PUBLIC_API_URL, true) ?? FALLBACK_API_URL;
+  try {
+    const url = new URL(httpBase);
+    if (url.protocol === "https:") {
+      url.protocol = "wss:";
+    } else if (url.protocol === "http:" && isLocalHost(url.hostname)) {
+      url.protocol = "ws:";
+    } else {
+      return null;
     }
+    url.pathname = "";
+    url.search = "";
+    url.hash = "";
+    return url.toString().replace(/\/+$/, "");
+  } catch {
+    return null;
   }
-
-  const fromEnv = process.env.NEXT_PUBLIC_API_URL;
-  if (fromEnv && fromEnv.trim().length > 0) {
-    return fromEnv.replace(/\/+$/, "").replace(/^http/i, "ws");
-  }
-
-  return FALLBACK_API_URL.replace(/\/+$/, "").replace(/^http/i, "ws");
 }

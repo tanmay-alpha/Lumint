@@ -24,7 +24,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Lumint · Multimodal Fraud Intelligence",
   description:
-    "Privacy-first fraud detection for UPI payments, documents, and URLs. 100% client-side analysis. No uploads.",
+    "Fraud detection for UPI payments, documents, and URLs with local-first analysis and optional FastAPI intelligence.",
   keywords: [
     "fraud detection",
     "AI",
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
   authors: [{ name: "Lumint Research" }],
   openGraph: {
     title: "Lumint · Illuminate the threat",
-    description: "Free, open-source fraud detection that runs in your browser.",
+    description: "Open-source fraud detection for UPI screenshots, documents, and suspicious URLs.",
     type: "website",
   },
 };

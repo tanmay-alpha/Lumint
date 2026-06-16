@@ -10,7 +10,43 @@ on:
       - main
       - dev
 
+permissions:
+  contents: read
+
+
 jobs:
+  dependency-audits:
+    name: Dependency vulnerability audits
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install frontend dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts
+
+      - name: Audit frontend production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Audit backend Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pip-audit
+          python -m pip_audit -r backend/requirements.txt
+
   python-backend-checks:
     name: Python backend checks
     runs-on: ubuntu-latest

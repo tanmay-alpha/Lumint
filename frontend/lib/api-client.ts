@@ -9,8 +9,6 @@ import { apiBaseUrl } from "./config";
 
 export interface ApiRequestOptions extends Omit<RequestInit, "body"> {
   body?: BodyInit | null;
-  /** Skip the Authorization header (used for endpoints that don't require auth). */
-  skipAuth?: boolean;
   /** Per-request timeout override (ms). */
   timeoutMs?: number;
 }
@@ -27,10 +25,6 @@ function buildHeaders(opts: ApiRequestOptions): HeadersInit {
     Accept: "application/json",
     ...(opts.headers as Record<string, string> | undefined),
   };
-  if (!opts.skipAuth) {
-    const apiKey = process.env.NEXT_PUBLIC_API_KEY;
-    if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
-  }
   return headers;
 }
 

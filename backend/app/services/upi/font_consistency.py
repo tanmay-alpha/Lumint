@@ -21,7 +21,7 @@ def check_font_consistency(image_path: Path, ocr_text: Optional[str] = None) -> 
                 "confidence": 0.50,
                 "component_count": 0,
                 "height_variance": None,
-                "warnings": [f"Image path {image_path} does not exist"]
+                "warnings": ["Image file does not exist."]
             }
             
         # Read image in grayscale
@@ -113,12 +113,12 @@ def check_font_consistency(image_path: Path, ocr_text: Optional[str] = None) -> 
             "height_variance": None,
             "warnings": warnings
         }
-    except Exception as e:
-        logger.error("Error during font consistency check: %s", e)
+    except Exception:
+        logger.exception("Error during font consistency check")
         return {
             "font_consistent": True,
             "confidence": 0.50,
             "component_count": 0,
             "height_variance": None,
-            "warnings": [f"Font analysis failed: {str(e)}"]
+            "warnings": ["Font analysis failed."]
         }

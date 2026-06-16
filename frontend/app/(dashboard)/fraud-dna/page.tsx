@@ -6,15 +6,12 @@ import {
   CampaignsResponse,
   GraphResponse,
   ThreatSummary,
-  GraphNode,
-  GraphEdge,
   CampaignAIResult,
   FraudCampaignDetail
 } from "@/lib/types";
 import aiApi from "@/lib/api/ai";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
-import RiskScore from "@/components/ui/RiskScore";
 import DataPoint from "@/components/ui/DataPoint";
 import { EmptyStateWithCTA } from "@/components/ui/EmptyStateWithCTA";
 import {
@@ -26,14 +23,10 @@ import {
   Network,
   Sparkles,
   Cpu,
-  ShieldCheck,
-  ShieldAlert,
   Calendar,
   Clock,
   CheckSquare,
-  AlertTriangle,
   Maximize2,
-  ListFilter
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import * as d3 from "d3";

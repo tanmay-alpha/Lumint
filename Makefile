@@ -25,9 +25,9 @@ help:
 	@echo "  make install        Install backend + frontend dependencies"
 	@echo "  make lint           Run ruff on the backend"
 	@echo "  make typecheck      Run mypy on the backend app"
-	@echo "  make test           Run all tests (backend pytest + frontend vitest)"
+	@echo "  make test           Run backend pytest + frontend lint/typecheck"
 	@echo "  make test-backend   Run only the backend pytest suite"
-	@echo "  make test-frontend  Run only the frontend test suite"
+	@echo "  make test-frontend  Run frontend lint/typecheck"
 	@echo "  make build          Build frontend production bundle"
 	@echo "  make smoke          Run end-to-end smoke test (starts uvicorn, curls probes)"
 	@echo "  make eval           Run research evaluation harness"
@@ -54,7 +54,7 @@ test-backend:
 	cd $(BACKEND) && $(PY) -m pytest -q
 
 test-frontend:
-	cd $(FRONTEND) && npm run test --silent
+	cd $(FRONTEND) && npm run test
 
 build:
 	cd $(FRONTEND) && npm run build

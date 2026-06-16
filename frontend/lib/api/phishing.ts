@@ -11,13 +11,9 @@ export const phishingApi = {
     }
     const apiEndpoint = `${base}/api/phishing/check`;
 
-    const apiKey = process.env.NEXT_PUBLIC_API_KEY;
     const requestHeaders: Record<string, string> = {
       "Content-Type": "application/json",
     };
-    if (apiKey) {
-      requestHeaders["Authorization"] = `Bearer ${apiKey}`;
-    }
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
@@ -37,15 +33,16 @@ export const phishingApi = {
           if (errJson && errJson.detail) {
             if (typeof errJson.detail === "string") errorMessage = errJson.detail;
           }
-        } catch (_) {}
-        const errorObj: any = new Error(errorMessage);
+        } catch {}
+        const errorObj = new Error(errorMessage) as Error & { status?: number };
         errorObj.status = response.status;
         throw errorObj;
       }
 
       return (await response.json()) as PhishingAnalysisResult;
-    } catch (error: any) {
-      console.warn("[Lumint PhishShield] check unreachable; returning null:", error?.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "network error";
+      console.warn("[Lumint PhishShield] check unreachable; returning null:", message);
       // Network or server error — fail soft, return null.
       return null;
     } finally {

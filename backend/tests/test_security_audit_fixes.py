@@ -147,3 +147,71 @@ def test_auth_x_api_key_header_supported(enforce_auth):
     assert get_current_user(
         authorization="Bearer test-key-for-testing-12345", x_api_key="test-key-for-testing-12345"
     )["token_valid"] is True
+
+
+def test_operational_metrics_require_api_key(unauthed_client):
+    """System metrics disclose host resource usage and must not be public."""
+    response = unauthed_client.get("/api/metrics/system")
+
+    assert response.status_code == 401
+
+
+def test_metrics_version_does_not_leak_without_auth(unauthed_client):
+    """Version metrics include runtime config and must be behind auth too."""
+    response = unauthed_client.get("/api/metrics/version")
+
+    assert response.status_code == 401
+
+
+def test_router_http_500_details_do_not_interpolate_exception_text():
+    """HTTP 500 client details must stay generic; internals belong in logs."""
+    import inspect
+    from app.routers import ai, documents, export, fusion, research
+
+    for module in (ai, documents, export, fusion, research):
+        source = inspect.getsource(module)
+        assert "detail=f" not in source
+        assert "{str(e)}" not in source
+
+
+def test_document_analysis_warnings_do_not_interpolate_exception_text():
+    """Document analysis warnings are returned to clients, so keep them generic."""
+    import inspect
+    from app.services.docshield import analyzer, ela_forensics, layout_checker, text_extractor
+
+    combined = (
+        inspect.getsource(analyzer)
+        + inspect.getsource(ela_forensics)
+        + inspect.getsource(layout_checker)
+        + inspect.getsource(text_extractor)
+    )
+    assert "failed: {e}" not in combined
+    assert "completed: {e}" not in combined
+    assert "{str(e)}" not in combined
+    assert "str(e)" not in combined
+
+
+def test_upi_client_facing_diagnostics_do_not_return_exception_text():
+    """UPI API diagnostics may reach responses; errors must stay generic."""
+    import inspect
+    from app.services.upi import analyzer_v2, font_consistency, screenshot_forensics
+
+    combined = (
+        inspect.getsource(analyzer_v2)
+        + inspect.getsource(font_consistency)
+        + inspect.getsource(screenshot_forensics)
+    )
+    assert '"error": str(e)' not in combined
+    assert "{str(e)}" not in combined
+    assert "str(e)" not in combined
+    assert "Image path " not in combined
+
+
+def test_threat_feed_websocket_enforces_message_size_cap():
+    """Every WebSocket receive loop must reject oversized client messages."""
+    import inspect
+    from app.routers import threats
+
+    source = inspect.getsource(threats.websocket_endpoint)
+    assert "MAX_WS_MESSAGE_BYTES" in inspect.getsource(threats)
+    assert "1009" in source

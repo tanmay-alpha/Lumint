@@ -1,8 +1,11 @@
+import logging
+
 from fastapi import APIRouter, HTTPException, Depends
 from app.dependencies.auth import get_current_user
 from app.schemas.fusion import FusionRequest, FusionResponse
 from app.core.fusion import compute_lumint_score
 
+logger = logging.getLogger("lumint.routers.fusion")
 router = APIRouter(prefix="/api/fusion", tags=["fusion"], dependencies=[Depends(get_current_user)])
 
 @router.post("/score", response_model=FusionResponse)
@@ -24,8 +27,9 @@ def get_fusion_score(body: FusionRequest):
             y_pred = 1 if score_details.unified_score >= 50 else 0
             DriftRegistry.update_all("fusion", body.ground_truth, y_pred)
         return score_details
-    except Exception as e:
+    except Exception:
+        logger.exception("Cross-modal score fusion calculation failed")
         raise HTTPException(
             status_code=500,
-            detail=f"Cross-modal score fusion calculation failed: {str(e)}"
+            detail="Cross-modal score fusion calculation failed."
         )
