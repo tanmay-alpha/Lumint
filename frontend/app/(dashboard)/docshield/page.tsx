@@ -334,6 +334,24 @@ export default function DocShieldPage() {
                   </div>
                 </Card>
 
+                {/* OCR + analysis warnings — surface anything the user
+                    should know (e.g. OCR was skipped, only metadata was
+                    checked) above the tab content. */}
+                {(() => {
+                  const warnings = (result.text_analysis as any)?.text_warnings as string[] | undefined;
+                  if (!warnings || warnings.length === 0) return null;
+                  return (
+                    <div className="rounded-xl border border-[var(--warn)]/30 bg-[var(--warn-bg)]/40 px-4 py-3 text-[12px] text-[var(--text-1)] font-semibold flex items-start gap-2">
+                      <AlertTriangle className="h-4 w-4 text-[var(--warn)] shrink-0 mt-0.5" />
+                      <div className="space-y-1">
+                        {warnings.map((w: string, i: number) => (
+                          <div key={i}>{w}</div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* Tab Menu */}
                 <div className="flex border-b border-[var(--border)]/40 gap-1 overflow-x-auto">
                   {tabs.map((tab) => {
