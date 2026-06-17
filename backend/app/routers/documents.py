@@ -97,7 +97,18 @@ async def analyze_document(
         if registry.is_available("doc"):
             feats = extract_doc_features(result)
             prob = registry.predict_proba("doc", feats)
-            risk_score = round(prob * 100)
+            ml_score = round(prob * 100)
+
+            # Use the rule-based score as a FLOOR — if our heuristics
+            # already flagged the document as risky (e.g. a phishing
+            # screenshot whose OCR triggered the suspicious_keywords
+            # rule), don't let the ML model down-rank it back to CLEAN
+            # just because its training set didn't cover that variant.
+            # We add the two scores and clamp to 100; this way a strong
+            # signal from either side still surfaces, and a strong
+            # signal from both compounds.
+            rule_score = int(result.get("risk_score") or 0)
+            risk_score = min(100, rule_score + ml_score)
 
             risk_level = "CLEAN"
             if 31 <= risk_score <= 60:
@@ -107,6 +118,8 @@ async def analyze_document(
 
             result["risk_score"] = risk_score
             result["risk_level"] = risk_level
+            result["ml_score"] = ml_score
+            result["rule_score"] = rule_score
 
             # Use SHAP explanation for XAI contributions
             from app.core.xai import get_feature_contributions
