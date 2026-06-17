@@ -90,9 +90,29 @@ async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
     try:
         while True:
-            # Keep connection alive by waiting for small ping/pong messages.
-            message = await websocket.receive_text()
-            if len(message.encode("utf-8")) > MAX_WS_MESSAGE_BYTES:
+            # Receive the raw event dict. We use ``receive()`` (not
+            # ``receive_text()``) so we can read the bytes/receive
+            # structure first and reject oversized payloads BEFORE the
+            # ASGI server finishes buffering them. ``receive_text()``
+            # on a 1GB message would allocate the full string first;
+            # the size check would then close the connection — but only
+            # after the worker had already been pushed into OOM.
+            #
+            # In practice the threat stream is a server -> client push,
+            # not client -> server, so we expect to see ``websocket.receive``
+            # events of type ``websocket.disconnect`` quickly. Any text/
+            # bytes frames we *do* get are treated as keepalive pings
+            # and rejected if oversized.
+            event = await websocket.receive()
+            event_type = event.get("type")
+            if event_type == "websocket.disconnect":
+                break
+            text = event.get("text")
+            if text is not None and len(text.encode("utf-8")) > MAX_WS_MESSAGE_BYTES:
+                await websocket.close(code=1009, reason="Message too large")
+                break
+            raw = event.get("bytes")
+            if raw is not None and len(raw) > MAX_WS_MESSAGE_BYTES:
                 await websocket.close(code=1009, reason="Message too large")
                 break
     except WebSocketDisconnect:

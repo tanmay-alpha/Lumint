@@ -56,6 +56,15 @@ export default function DocShieldPage() {
   const [error, setError] = useState<{ message: string; status?: number } | null>(null);
 
   const handleFileAccepted = async (acceptedFile: File) => {
+    // Guard against double-submit: if a scan is already in flight, drop
+    // the new file on the floor with a clear message rather than racing
+    // two analyses against the same backend quota. Previously a user
+    // could drop two files in quick succession and the second would
+    // silently start a parallel analyzeDocument + analyzeDocumentAI pair.
+    if (isAnalyzing) {
+      setError({ message: "A scan is already in progress. Please wait for it to finish." });
+      return;
+    }
     if (acceptedFile.size > 10 * 1024 * 1024) {
       setError({ message: "File too large. Please use an image under 10MB." });
       return;

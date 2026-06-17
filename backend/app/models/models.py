@@ -3,6 +3,15 @@ from sqlalchemy import Column, String, Integer, Float, DateTime, ForeignKey, Tex
 from sqlalchemy.orm import relationship
 from app.database import Base
 
+# ``_utc_now`` is deprecated in Python 3.12 and will be
+# removed in 3.14. We use ``datetime.datetime.now(timezone.utc)`` as the
+# canonical aware-UTC factory. The ``_utc_now`` helper keeps the model
+# declarations terse (we still reference a zero-arg callable for SQLAlchemy
+# column defaults).
+def _utc_now() -> datetime.datetime:
+    """Timezone-aware UTC ``now()``. Replaces ``datetime.utcnow``."""
+    return datetime.datetime.now(datetime.timezone.utc)
+
 class UPIShieldEvent(Base):
     """
     Tracks screenshot OCR detections, UTR verifications, and QR code scans.
@@ -10,7 +19,7 @@ class UPIShieldEvent(Base):
     __tablename__ = "upi_shield_events"
 
     id = Column(Integer, primary_key=True, index=True)
-    timestamp = Column(DateTime, default=datetime.datetime.utcnow, index=True)
+    timestamp = Column(DateTime, default=_utc_now, index=True)
     
     event_type = Column(String(50), nullable=False) # 'screenshot', 'utr_verify', 'qr_scan'
     
@@ -46,8 +55,8 @@ class Case(Base):
     severity = Column(String(50), default="medium") # low, medium, high, critical
     assigned_analyst = Column(String(255), nullable=True)
     
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=_utc_now)
+    updated_at = Column(DateTime, default=_utc_now, onupdate=_utc_now)
     
     saved_evidence = Column(JSON, default=list) # List of dicts representing linked threats
     analyst_notes = Column(Text, default="")
@@ -62,7 +71,7 @@ class ThreatFeedAlert(Base):
     __tablename__ = "threat_feed_alerts"
 
     id = Column(Integer, primary_key=True, index=True)
-    timestamp = Column(DateTime, default=datetime.datetime.utcnow, index=True)
+    timestamp = Column(DateTime, default=_utc_now, index=True)
     indicator_type = Column(String(100), nullable=False) # 'domain', 'ip', 'upi_handle', 'hash'
     value = Column(String(500), index=True, nullable=False)
     source = Column(String(255), nullable=False)

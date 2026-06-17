@@ -35,6 +35,12 @@ class CaseCreate(CaseBase):
     pass
 
 class CaseUpdate(BaseModel):
+    # Pydantic default is to silently drop unknown fields. We forbid them
+    # explicitly so a malicious client sending
+    # ``{"assigned_analyst": "X", "id": 0, "created_at": "1970-01-01"}``
+    # gets a 422, not a no-op or a partial write.
+    model_config = ConfigDict(extra="forbid")
+
     title: Optional[str] = Field(default=None, max_length=200, description="Case title")
     description: Optional[str] = Field(default=None, max_length=10000, description="Case description")
     status: Optional[str] = Field(default=None, max_length=20, description="Case status (whitelist)")
