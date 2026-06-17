@@ -104,12 +104,10 @@ async function forward(
     );
   }
 
-  if (!API_KEY) {
-    return NextResponse.json(
-      { detail: "Proxy API key is not configured." },
-      { status: 503 },
-    );
-  }
+  // Note: the backend now uses Bearer-token auth from the browser
+  // (NEXT_PUBLIC_API_KEY) so the proxy no longer needs to attach an
+  // X-Api-Key header. We keep reading LUMINT_API_KEY (server-only) in
+  // case the operator wants to inject one for backend ↔ Render auth.
 
   // Whitelist the prefixes we proxy. This is a closed allowlist so a
   // malicious caller can't use the proxy to reach other backends.
