@@ -53,7 +53,7 @@ export default function PhishShieldPage() {
       const response = await phishingApi.checkUrl(urlInput);
       if (!response) {
         // Soft-fail path: backend not configured or unreachable.
-        setError("PhishShield requires a backend connection. This is a demo deployment — only UPI Shield is fully functional.");
+        setError("PhishShield could not reach the backend. Check your connection and the LUMINT_API_KEY env var on Vercel.");
         return;
       }
       setResult(response);
@@ -68,9 +68,9 @@ export default function PhishShieldPage() {
       } finally {
         setIsAnalyzingAI(false);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Phishing scan failed:", err);
-      setError("An error occurred during URL audit.");
+      setError(err?.message || "An error occurred during URL audit.");
     } finally {
       setIsScanning(false);
     }

@@ -105,9 +105,14 @@ async function forward(
   }
 
   if (!API_KEY) {
-    return NextResponse.json(
-      { detail: "Proxy API key is not configured." },
-      { status: 503 },
+    // No LUMINT_API_KEY set in the Vercel project. The backend may still
+    // accept requests in dev mode (it logs a warning and returns
+    // `X-Lumint-Dev-Mode: true`), so we forward without the header rather
+    // than 503'ing the entire app. The backend's auth dependency will
+    // reject with 401/403 if the operator has set APP_ENV=production
+    // without provisioning a key.
+    console.warn(
+      "[proxy] LUMINT_API_KEY is not set on Vercel. Forwarding without auth header — backend dev mode required.",
     );
   }
 

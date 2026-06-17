@@ -42,9 +42,10 @@ export const phishingApi = {
       return (await response.json()) as PhishingAnalysisResult;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "network error";
-      console.warn("[Lumint PhishShield] check unreachable; returning null:", message);
-      // Network or server error — fail soft, return null.
-      return null;
+      console.warn("[Lumint PhishShield] check unreachable:", message);
+      // Surface a structured error to the caller so the UI can show the
+      // real reason (instead of the misleading "demo deployment" copy).
+      throw new Error(`PhishShield backend unreachable: ${message}`);
     } finally {
       clearTimeout(timeoutId);
     }

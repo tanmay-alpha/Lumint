@@ -22,9 +22,9 @@ async function realFetch<T>(path: string, init?: RequestInit): Promise<T | null>
     return (await response.json()) as T;
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "network error";
-    console.warn(`[Lumint FraudDNA] ${init?.method || "GET"} ${path} unreachable; returning null:`, message);
-    // Network or server error — fail soft.
-    return null;
+    console.warn(`[Lumint FraudDNA] ${init?.method || "GET"} ${path} unreachable:`, message);
+    // Surface the real reason instead of fabricating empty demo data.
+    throw new Error(`FraudDNA backend unreachable: ${message}`);
   } finally {
     clearTimeout(timeoutId);
   }

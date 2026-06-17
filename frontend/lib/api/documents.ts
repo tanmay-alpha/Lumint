@@ -39,10 +39,10 @@ export const documentApi = {
       return (await response.json()) as DocumentAnalysisResult;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "network error";
-      console.warn("[Lumint DocShield] analyze unreachable; returning null:", message);
-      // Network or server error — fail soft, return null. The page's
-      // try/catch will display the friendly empty state.
-      return null;
+      console.warn("[Lumint DocShield] analyze unreachable:", message);
+      // Surface the real reason to the caller instead of fabricating a
+      // fake "Will Smith" demo scan. The page's try/catch displays it.
+      throw new Error(`DocShield backend unreachable: ${message}`);
     } finally {
       clearTimeout(timeoutId);
     }

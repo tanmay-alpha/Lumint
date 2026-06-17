@@ -71,8 +71,10 @@ export async function fetchApi<T>(path: string, options?: RequestInit): Promise<
         `  Fix:      Ensure ALLOWED_ORIGINS in Render includes https://lumint-pi.vercel.app`
       );
     }
-    console.warn(`[Lumint API] ${options?.method || "GET"} ${path} unreachable; returning null:`, msg);
-    return null;
+    console.warn(`[Lumint API] ${options?.method || "GET"} ${path} unreachable:`, msg);
+    // Surface the real reason so the UI can show an actionable error
+    // (instead of silently rendering fake "demo" data).
+    throw new Error(`${path} → ${msg}`);
   } finally {
     clearTimeout(timeoutId);
   }

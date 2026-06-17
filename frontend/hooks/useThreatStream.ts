@@ -48,15 +48,15 @@ export function useThreatStream(simulate = false, simulationRate = 1.0) {
     const ws = new WebSocket(url);
     wsRef.current = ws;
 
-    ws.onopen = () => {
+    ws.addEventListener("open", () => {
       setStatus("connected");
       reconnectCountRef.current = 0;
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
-    };
+    });
 
-    ws.onmessage = (event) => {
+    ws.addEventListener("message", (event) => {
       try {
         const newEvent = JSON.parse(event.data) as ThreatEvent;
         setEvents((prev) => {
@@ -74,26 +74,28 @@ export function useThreatStream(simulate = false, simulationRate = 1.0) {
       } catch (err) {
         console.error("Failed to parse threat stream event:", err);
       }
-    };
+    });
 
-    ws.onclose = () => {
+    ws.addEventListener("close", () => {
       setStatus("disconnected");
       wsRef.current = null;
-      
+
       const delay = Math.min(1000 * Math.pow(2, reconnectCountRef.current), 3000);
       reconnectCountRef.current += 1;
-      
+
       reconnectTimeoutRef.current = setTimeout(() => {
         connectRef.current();
       }, delay);
-    };
+    });
 
-    ws.onerror = (err) => {
+    ws.addEventListener("error", (err) => {
       console.error("WebSocket error:", err);
       try {
         ws.close();
-      } catch {}
-    };
+      } catch {
+        // The socket may already be in a CLOSING/CLOSED state. No-op.
+      }
+    });
   }, [simulate, simulationRate]);
 
   useEffect(() => {

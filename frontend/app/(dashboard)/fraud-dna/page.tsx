@@ -37,6 +37,7 @@ export default function FraudDnaPage() {
   const [summary, setSummary] = useState<ThreatSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isReclustering, setIsReclustering] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [expandedCampaignId, setExpandedCampaignId] = useState<string | null>(null);
   const [selectedNode, setSelectedNode] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState<"fingerprints" | "campaigns" | "graph">("fingerprints");
@@ -75,6 +76,7 @@ export default function FraudDnaPage() {
   const fetchDnaData = async (reclustering = false) => {
     if (reclustering) setIsReclustering(true);
     else setIsLoading(true);
+    setLoadError(null);
 
     try {
       if (reclustering) {
@@ -89,8 +91,9 @@ export default function FraudDnaPage() {
       setCampaigns(campData);
       setGraphData(graphDataRes);
       setSummary(summaryRes);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error loading Fraud DNA cluster metrics:", err);
+      setLoadError(err?.message || "Could not reach the Fraud DNA backend.");
     } finally {
       setIsLoading(false);
       setIsReclustering(false);
@@ -416,17 +419,17 @@ export default function FraudDnaPage() {
           <div className="h-10 w-10 border-4 border-[var(--border-2)] border-t-[var(--brand)] animate-spin rounded-full mb-3" />
           <p className="text-sm text-[var(--text-3)] font-semibold">Generating campaign graph nodes...</p>
         </div>
-      ) : !campaigns ? (
-        /* Demo mode: backend is not connected. Show a friendly empty state
-           instead of the (empty) tab/table UI. */
+      ) : loadError ? (
+        /* Backend reachable but errored (or proxy 503'd). Show the real
+           reason so the operator can fix LUMINT_API_KEY / Render URL. */
         <div className="space-y-4">
           <EmptyStateWithCTA
             icon="network"
-            title="No fraud events to display"
-            description="In a full deployment, this page shows threat actor campaigns correlated from PhishShield, DocShield, and UPI Shield."
-            technicalDetails="Backend not connected · Demo mode"
-            primaryAction={{ label: "Try UPI Shield →", href: "/upi-shield" }}
-            secondaryAction={{ label: "View Sample Scans", href: "/dashboard/history" }}
+            title="Could not load Fraud DNA"
+            description={loadError}
+            technicalDetails="Check the LUMINT_API_KEY env var on Vercel, or visit /settings to override the backend URL."
+            primaryAction={{ label: "Retry", href: "#" }}
+            secondaryAction={{ label: "Open settings", href: "/settings" }}
           />
 
           {/* "How it works" — only visible in demo mode so users understand

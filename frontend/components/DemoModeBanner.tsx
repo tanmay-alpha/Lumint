@@ -49,8 +49,12 @@ export function DemoModeBanner({
             </div>
             <p className="text-[var(--text-2)]">
               {lastError
-                ? `Last error: ${lastError}. Render free tier can take 30–60s to wake on first request.`
-                : "The backend is not responding. Render free tier can take 30–60s to wake on first request."}
+                ? `Last error: ${lastError}.`
+                : "The backend is not responding."}
+              {" "}Render free tier can take 30–60s to wake on first request.
+              {!lastError?.includes("503") && !lastError?.includes("401") && (
+                <> If the problem persists, check the Vercel env vars (<code className="text-[10px]">LUMINT_API_KEY</code> must match the backend's key).</>
+              )}
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">

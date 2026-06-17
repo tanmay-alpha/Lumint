@@ -72,10 +72,10 @@ export default function DocShieldPage() {
     try {
       const response = await documentApi.analyzeDocument(acceptedFile);
       if (!response) {
-        // Soft-fail path: backend not configured or unreachable. Show
-        // friendly demo-mode message instead of a stack trace.
+        // Soft-fail path: backend not configured or unreachable. Show a
+        // concrete error message instead of a stack trace.
         setError({
-          message: "DocShield requires a backend connection. This is a demo deployment — only UPI Shield is fully functional.",
+          message: "DocShield could not reach the backend. Check your connection and the LUMINT_API_KEY env var on Vercel.",
         });
         return;
       }
