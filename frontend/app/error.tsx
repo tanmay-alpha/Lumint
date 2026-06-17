@@ -12,7 +12,6 @@ export default function GlobalError({
   useEffect(() => {
     // Log to console in development only — production logs go to Vercel
     if (process.env.NODE_ENV === "development") {
-      // eslint-disable-next-line no-console
       console.error("Lumint page error:", error);
     }
   }, [error]);

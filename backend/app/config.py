@@ -27,14 +27,8 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     DATABASE_URL: str = DEFAULT_DEV_DATABASE_URL
     GROQ_API_KEY: str = ""
-    # Comma-separated origins — set ALLOWED_ORIGINS in Vercel env vars
-    ALLOWED_ORIGINS: str = (
-        "http://localhost:3000,"
-        "http://localhost:3001,"
-        "https://lumint.vercel.app,"
-        "https://lumint-pi.vercel.app,"
-        "https://*.vercel.app"
-    )
+    # Legacy comma-separated origins. Prefer CORS_ALLOW_ORIGINS for new deployments.
+    ALLOWED_ORIGINS: str = ""
     # Env-driven CORS allowlist. Read from the `CORS_ALLOW_ORIGINS` env var.
     # Accepts a JSON array (["https://a.com","https://b.com"]) OR a
     # comma-separated string ("https://a.com,https://b.com"). When the env
@@ -77,9 +71,8 @@ class Settings(BaseSettings):
             raise ValueError("APP_ENV=production requires an explicit production DATABASE_URL.")
         return self
 
-    # Built-in vercel.app allowlist so the production frontend never gets
-    # blocked by an outdated ALLOWED_ORIGINS env var. These are owned by
-    # the deploying team, so accepting them unconditionally is safe.
+    # No built-in production allowlist: production origins must be configured
+    # explicitly in CORS_ALLOW_ORIGINS or ALLOWED_ORIGINS.
     _BUILTIN_VERCEL_ORIGINS: list[str] = []
 
     @property
@@ -91,10 +84,8 @@ class Settings(BaseSettings):
                picks up changes without a settings reload. Accepts a JSON
                array or a comma-separated string.
             2. The `cors_allow_origins` field (defaulted empty above).
-            3. The legacy `ALLOWED_ORIGINS` field, which the project's
-               `render.yaml` sets for free-tier deploys.
-            4. Built-in vercel.app origins (always merged in).
-            5. Localhost dev defaults.
+            3. The legacy `ALLOWED_ORIGINS` field.
+            4. Localhost dev defaults.
 
         We always re-read the env var because pydantic-settings caches
         `cors_allow_origins` at process start, and Render redeploys may
@@ -107,16 +98,18 @@ class Settings(BaseSettings):
         raw = os.getenv("CORS_ALLOW_ORIGINS", "").strip()
         if raw:
             parsed: list[str] = []
+            parsed_json = False
             # JSON-array form: ["https://a.com","https://b.com"]
             if raw.startswith("["):
                 try:
                     import json
                     arr = json.loads(raw)
                     if isinstance(arr, list):
+                        parsed_json = True
                         parsed = [str(x).strip() for x in arr if str(x).strip()]
                 except Exception:
                     parsed = []
-            if not parsed:
+            if not parsed and not parsed_json:
                 # Comma-separated form: https://a.com,https://b.com
                 parsed = [o.strip() for o in raw.split(",") if o.strip()]
             if parsed:
@@ -131,25 +124,9 @@ class Settings(BaseSettings):
         if not env_origins:
             env_origins = ["http://localhost:3000", "http://localhost:5173"]
 
-        # Always merge the built-in vercel.app origins so the live
-        # frontend can never be blocked by a stale env var.
-        merged = list(env_origins)
-        for o in BUILTIN_VERCEL_ORIGINS:
-            if o not in merged:
-                merged.append(o)
-
-        return merged
+        return list(env_origins)
 
 
 settings = Settings()
 
 
-# Built-in vercel.app allowlist so the production frontend never gets
-# blocked by an outdated ALLOWED_ORIGINS env var. These are owned by
-# the deploying team, so accepting them unconditionally is safe.
-BUILTIN_VERCEL_ORIGINS: list[str] = [
-    "https://lumint.vercel.app",
-    "https://lumint-pi.vercel.app",
-    "https://lumint-git-main.vercel.app",
-    "https://lumint-alpha.vercel.app",
-]

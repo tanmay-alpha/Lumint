@@ -1,3 +1,5 @@
+import logging
+
 from io import BytesIO
 from pathlib import Path
 from typing import List
@@ -5,6 +7,8 @@ from typing import List
 import fitz
 import numpy as np
 from PIL import Image
+logger = logging.getLogger("lumint.services.docshield.ela_forensics")
+
 
 MAX_PAGES = 3
 RENDER_DPI = 72
@@ -78,20 +82,22 @@ def run_ela(file_path: Path) -> dict:
         try:
             result = _classify(_ela_diff(Image.open(file_path).convert("RGB")), 1)
             return _build_response([result], [], 1)
-        except Exception as e:
+        except Exception:
+            logger.exception("Could not open image for ELA")
             return {**_ELA_BASE, "pages_analyzed": 0, "ela_score": 0,
                     "suspicious_pages": [], "page_results": [],
-                    "warnings": [f"Could not open image for ELA: {e}"]}
+                    "warnings": ["Could not open image for ELA."]}
 
     warnings: List[str] = []
     results: List[dict] = []
 
     try:
         doc = fitz.open(str(file_path))
-    except Exception as e:
+    except Exception:
+        logger.exception("Could not open PDF for ELA")
         return {**_ELA_BASE, "pages_analyzed": 0, "ela_score": 0,
                 "suspicious_pages": [], "page_results": [],
-                "warnings": [f"Could not open PDF for ELA: {e}"]}
+                "warnings": ["Could not open PDF for ELA."]}
 
     pages_to_analyze = min(doc.page_count, MAX_PAGES)
     for i in range(pages_to_analyze):
@@ -100,10 +106,11 @@ def run_ela(file_path: Path) -> dict:
             pix = doc[i].get_pixmap(matrix=mat, colorspace=fitz.csRGB)
             img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
             results.append(_classify(_ela_diff(img), i + 1))
-        except Exception as e:
-            warnings.append(f"Page {i + 1} ELA failed: {e}")
+        except Exception:
+            logger.exception("Page %d ELA failed", i + 1)
+            warnings.append(f"Page {i + 1} ELA failed.")
             results.append({"page_number": i + 1, "mean_difference": None, "max_difference": None,
                              "hotspot_ratio": None, "suspicious": False,
-                             "reason": f"ELA could not be completed: {e}"})
+                             "reason": "ELA could not be completed."})
     doc.close()
     return _build_response(results, warnings, pages_to_analyze)

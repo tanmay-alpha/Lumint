@@ -27,14 +27,9 @@ export const aiApi = {
     }
     const url = `${base}/api/ai/document`;
 
-    // Inject authentication header (if NEXT_PUBLIC_API_KEY is set)
-    const apiKey = process.env.NEXT_PUBLIC_API_KEY;
     const requestHeaders: Record<string, string> = {
       "Content-Type": "application/json",
     };
-    if (apiKey) {
-      requestHeaders["Authorization"] = `Bearer ${apiKey}`;
-    }
 
     try {
       const response = await fetch(url, {
@@ -81,14 +76,9 @@ export const aiApi = {
     }
     const url = `${base}/api/ai/phishing`;
 
-    // Inject authentication header (if NEXT_PUBLIC_API_KEY is set)
-    const apiKey = process.env.NEXT_PUBLIC_API_KEY;
     const requestHeaders: Record<string, string> = {
       "Content-Type": "application/json",
     };
-    if (apiKey) {
-      requestHeaders["Authorization"] = `Bearer ${apiKey}`;
-    }
 
     try {
       const response = await fetch(url, {
@@ -135,14 +125,9 @@ export const aiApi = {
     }
     const url = `${base}/api/ai/campaign`;
 
-    // Inject authentication header (if NEXT_PUBLIC_API_KEY is set)
-    const apiKey = process.env.NEXT_PUBLIC_API_KEY;
     const requestHeaders: Record<string, string> = {
       "Content-Type": "application/json",
     };
-    if (apiKey) {
-      requestHeaders["Authorization"] = `Bearer ${apiKey}`;
-    }
 
     try {
       const response = await fetch(url, {

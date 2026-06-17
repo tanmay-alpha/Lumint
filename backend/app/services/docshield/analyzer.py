@@ -1,3 +1,5 @@
+import logging
+
 from pathlib import Path
 from typing import List
 
@@ -6,6 +8,8 @@ from app.services.docshield.text_extractor import extract_text
 from app.services.docshield.layout_checker import check_layout
 from app.services.docshield.ela_forensics import run_ela
 from app.services.docshield.risk_scorer import calculate_risk
+logger = logging.getLogger("lumint.services.docshield.analyzer")
+
 
 _IMAGE_TEXT = {
     "extracted_text": "", "text_preview": "", "has_suspicious_keywords": False,
@@ -38,8 +42,9 @@ def _build_result(metadata, text_result, layout_result, ela_result, scoring, war
 def _run_safe(fn, *args, warnings: List[str], label: str):
     try:
         return fn(*args)
-    except Exception as e:
-        warnings.append(f"{label} failed: {e}")
+    except Exception:
+        logger.exception("%s failed during document analysis", label)
+        warnings.append(f"{label} failed.")
         return None
 
 

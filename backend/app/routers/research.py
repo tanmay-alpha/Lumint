@@ -1,3 +1,5 @@
+import logging
+
 import json
 import os
 from fastapi import APIRouter, HTTPException, status, Depends
@@ -5,6 +7,8 @@ from pydantic import BaseModel
 from typing import Dict, List, Any, Optional
 
 from app.dependencies.auth import get_current_user
+
+logger = logging.getLogger("lumint.routers.research")
 
 router = APIRouter(prefix="/api/research", tags=["research"], dependencies=[Depends(get_current_user)])
 
@@ -150,10 +154,11 @@ def get_metrics():
             "phish": phish_data,
             "upi": upi_data
         }
-    except Exception as e:
+    except Exception:
+        logger.exception("Error reading metrics reports")
         raise HTTPException(
             status_code=500,
-            detail=f"Error reading metrics reports: {str(e)}"
+            detail="Error reading metrics reports."
         )
 
 
@@ -210,10 +215,11 @@ def get_ablation():
             "smote_ablation": sections.get("smote_ablation", []),
             "cross_dataset": cross_dataset
         }
-    except Exception as e:
+    except Exception:
+        logger.exception("Error reading ablation reports")
         raise HTTPException(
             status_code=500,
-            detail=f"Error reading ablation reports: {str(e)}"
+            detail="Error reading ablation reports."
         )
 
 
@@ -252,10 +258,11 @@ def get_shap():
             "phish": map_features(phish_data.get("top_features", []), "phish"),
             "upi": map_features(upi_data.get("top_features", []), "upi")
         }
-    except Exception as e:
+    except Exception:
+        logger.exception("Error reading SHAP reports")
         raise HTTPException(
             status_code=500,
-            detail=f"Error reading SHAP reports: {str(e)}"
+            detail="Error reading SHAP reports."
         )
 
 
@@ -318,8 +325,9 @@ def get_adversarial():
     try:
         with open(report_path, "r", encoding="utf-8") as f:
             return json.load(f)
-    except Exception as e:
+    except Exception:
+        logger.exception("Error reading adversarial report")
         raise HTTPException(
             status_code=500,
-            detail=f"Error reading adversarial report: {str(e)}"
+            detail="Error reading adversarial report."
         )

@@ -135,9 +135,9 @@ def predict_with_ensemble(
 
         return risk_score, feature_contributions, model_info
 
-    except Exception as e:
-        logger.error("V2 prediction failed: %s", e)
-        return 50.0, {}, {"available": False, "error": str(e)}
+    except Exception:
+        logger.exception("V2 prediction failed")
+        return 50.0, {}, {"available": False, "error": "prediction_failed"}
 
 
 def extract_for_v2(image_path: Path) -> Dict[str, Any]:

@@ -8,9 +8,7 @@ import { DocumentAnalysisResult } from "@/lib/types";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { RiskScore } from "@/components/ui/RiskScore";
-import { DataPoint } from "@/components/ui/DataPoint";
 import { AIInsightCard } from "@/components/ui/AIInsightCard";
-import { SkeletonLoader } from "@/components/ui/SkeletonLoader";
 import { EmptyStateWithCTA } from "@/components/ui/EmptyStateWithCTA";
 import {
   FileText,
@@ -22,11 +20,8 @@ import {
   Terminal,
   Sparkles,
   Brain,
-  Cpu,
-  ShieldAlert,
   Shield,
   Scan,
-  Check,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import aiApi from "@/lib/api/ai";

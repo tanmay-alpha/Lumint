@@ -5,9 +5,9 @@ Security model (defense-in-depth, fail-closed):
 1. **Production environment** (``APP_ENV in {production, prod}``):
    * If ``LUMINT_API_KEY`` is unset → startup fails. We refuse to come up
      without a key. This is the only safe default.
-   * Every protected endpoint requires a valid ``Authorization: Bearer <key>``
-     header. Constant-time comparison (``hmac.compare_digest``) prevents
-     timing-side-channel key discovery.
+   * Every protected endpoint requires a valid ``X-Api-Key: <key>`` header
+     (preferred) or legacy ``Authorization: Bearer <key>``. Constant-time
+     comparison (``hmac.compare_digest``) prevents timing-side-channel key discovery.
    * Failed attempts are rate-limited and audited (logged with masked IP).
 
 2. **Development / test environment** (``APP_ENV in {development, test, dev}``):
@@ -152,8 +152,8 @@ def get_current_user(
       the key out of those logs.
     * CORS preflight responses only echo back a fixed allowlist of
       request headers — if a browser-based client needs to send the key,
-      ``X-Api-Key`` is the standard way to do it without enabling
-      ``Authorization`` in CORS.
+      ``X-Api-Key`` is the header new code should use. ``Authorization``
+      remains allowlisted only for legacy clients.
     * The ``Bearer`` parsing logic is a frequent source of subtle bugs
       (extra whitespace, case-sensitivity, embedded ``:`` etc). Skipping
       it entirely is one less place to make a mistake.

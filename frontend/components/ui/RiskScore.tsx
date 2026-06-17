@@ -27,12 +27,6 @@ function getVerdict(score: number): string {
   return "SAFE";
 }
 
-function getVerdictColor(score: number): string {
-  if (score >= 80) return "var(--critical)";
-  if (score >= 60) return "var(--high)";
-  if (score >= 30) return "var(--warn)";
-  return "var(--safe)";
-}
 
 /**
  * RiskScore — half-gauge arc SVG with animated fill and count-up number.
@@ -74,18 +68,6 @@ export const RiskScore = ({
 
   const trackPath = `M ${trackStart.x} ${trackStart.y} A ${r} ${r} 0 0 1 ${trackEnd.x} ${trackEnd.y}`;
 
-  // Segment the arc into colored sections
-  const safeEnd   = polar(startAngle - 0.30 * totalArc);
-  const warnEnd   = polar(startAngle - 0.60 * totalArc);
-  const highEnd   = polar(startAngle - 0.80 * totalArc);
-
-  const arcSegment = (from: number, to: number) => {
-    const p1 = polar(from);
-    const p2 = polar(to);
-    const sweep = Math.abs(from - to);
-    const large = sweep > Math.PI ? 1 : 0;
-    return `M ${p1.x} ${p1.y} A ${r} ${r} 0 ${large} 1 ${p2.x} ${p2.y}`;
-  };
 
   const fillPath = clamped === 0
     ? ""

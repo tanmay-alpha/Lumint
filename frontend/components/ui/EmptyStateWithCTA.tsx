@@ -1,5 +1,4 @@
 "use client";
-import { ReactNode } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { FileSearch, Smartphone, History, Network, AlertCircle } from "lucide-react";

@@ -1,10 +1,15 @@
+import logging
+
 from pathlib import Path
 from typing import List
+
 import fitz
 
 MAX_FONT_FAMILIES = 3
 MAX_FONT_SIZES = 5
 SPARSE_BLOCK_THRESHOLD = 3
+
+logger = logging.getLogger("lumint.services.docshield.layout_checker")
 
 
 def check_layout(file_path: Path) -> dict:
@@ -13,14 +18,15 @@ def check_layout(file_path: Path) -> dict:
 
     try:
         doc = fitz.open(str(file_path))
-    except Exception as e:
+    except Exception:
+        logger.exception("Layout extraction failed")
         return {
             "font_families": [],
             "font_count": 0,
             "font_sizes": [],
             "font_size_count": 0,
             "page_layouts": [],
-            "layout_warnings": [f"Layout extraction failed: {str(e)}"],
+            "layout_warnings": ["Layout extraction failed."],
             "layout_score": 0,
         }
 

@@ -89,8 +89,7 @@ def _run_all_checks() -> Tuple[bool, Dict[str, Any], List[str], List[str]]:
     checks: Dict[str, Any] = {
         "database": {"ok": db_ok, "detail": db_msg, "hard": True},
         "ml_registry": {"ok": reg_ok, "detail": reg_msg, "missing": reg_missing, "hard": True},
-        "tesseract": {"ok": tess_ok, "detail": tess_msg, "hard": False},
-        "app_env": settings.APP_ENV,
+        "tesseract": {"ok": tess_ok, "detail": "available" if tess_ok else "unavailable", "hard": False},
     }
 
     hard_missing: List[str] = []

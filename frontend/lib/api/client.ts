@@ -31,13 +31,7 @@ export async function fetchApi<T>(path: string, options?: RequestInit): Promise<
     return null;
   }
   const url = `${base}${path}`;
-
-  const apiKey = process.env.NEXT_PUBLIC_API_KEY;
   const headers = new Headers(options?.headers);
-  if (apiKey) {
-    headers.set("Authorization", `Bearer ${apiKey}`);
-  }
-
   // 10s for normal JSON, 30s for uploads.
   const isUpload = options?.body instanceof FormData;
   const timeoutMs = isUpload ? 30000 : 10000;
@@ -57,17 +51,15 @@ export async function fetchApi<T>(path: string, options?: RequestInit): Promise<
         if (errJson && errJson.detail) {
           if (typeof errJson.detail === "string") errorMessage = errJson.detail;
         }
-      } catch (_) {}
-      const errorObj: any = new Error(errorMessage);
+      } catch {}
+      const errorObj = new Error(errorMessage) as Error & { status?: number; path?: string };
       errorObj.status = response.status;
       errorObj.path = path;
       throw errorObj;
     }
     return (await response.json()) as T;
-  } catch (error: any) {
-    // Surface CORS and network errors prominently so the user can
-    // diagnose without digging into the Network tab.
-    const msg = error?.message || "network error";
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "network error";
     if (
       typeof console !== "undefined" &&
       (msg === "Failed to fetch" || msg.includes("CORS") || msg.includes("NetworkError"))
@@ -79,7 +71,7 @@ export async function fetchApi<T>(path: string, options?: RequestInit): Promise<
         `  Fix:      Ensure ALLOWED_ORIGINS in Render includes https://lumint-pi.vercel.app`
       );
     }
-    console.warn(`[Lumint API] ${options?.method || "GET"} ${path} unreachable; returning null:`, error?.message);
+    console.warn(`[Lumint API] ${options?.method || "GET"} ${path} unreachable; returning null:`, msg);
     return null;
   } finally {
     clearTimeout(timeoutId);

@@ -1,9 +1,14 @@
+import logging
+
 from pathlib import Path
 from typing import List, Optional
+
 import fitz
 
 LOW_TEXT_THRESHOLD_PER_PAGE = 50
 PREVIEW_CHAR_LIMIT = 2000
+
+logger = logging.getLogger("lumint.services.docshield.text_extractor")
 
 
 def extract_text(file_path: Path) -> dict:
@@ -11,7 +16,8 @@ def extract_text(file_path: Path) -> dict:
 
     try:
         doc = fitz.open(str(file_path))
-    except Exception as e:
+    except Exception:
+        logger.exception("PDF text extraction failed")
         return {
             "text_preview": None,
             "total_text_length": 0,
@@ -19,7 +25,7 @@ def extract_text(file_path: Path) -> dict:
             "pages": [],
             "is_scanned_or_image_based": True,
             "extraction_method": "pymupdf",
-            "warnings": [f"Failed to open PDF: {str(e)}"],
+            "warnings": ["Failed to open PDF."],
         }
 
     page_count = doc.page_count

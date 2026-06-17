@@ -36,7 +36,7 @@ def _make_app(allow_origins: list[str]) -> FastAPI:
         allow_origins=allow_origins,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
+        allow_headers=["Authorization", "Content-Type", "X-Api-Key", "X-Request-ID"],
     )
     return app
 
@@ -112,3 +112,57 @@ def test_module_level_app_uses_env_driven_origins():
     assert "allow_origin_regex" not in kwargs_dict
     assert args_dict.get("allow_methods") != ["*"]
     assert args_dict.get("allow_headers") != ["*"]
+
+
+def test_module_level_app_allows_preferred_api_key_header():
+    """Browser clients must be able to send the preferred X-Api-Key header."""
+    from app.main import app as real_app
+
+    cors_layers = [
+        m for m in real_app.user_middleware if m.cls.__name__ == "CORSMiddleware"
+    ]
+    assert cors_layers, "Expected CORSMiddleware on the real app"
+
+    mw = cors_layers[0]
+    args_dict = dict(mw.args) if mw.args else {}
+    kwargs_dict = dict(mw.kwargs) if mw.kwargs else {}
+
+    allow_headers = args_dict.get("allow_headers") or kwargs_dict.get("allow_headers")
+    assert "X-Api-Key" in allow_headers
+
+
+def test_wildcard_cors_rejects_unconfigured_vercel_origin():
+    """Vercel origins are allowed only when explicitly configured.
+
+    Accepting every *.vercel.app preview would let any Vercel project make
+    credentialed browser requests to the API.
+    """
+    from app.main import app as real_app
+
+    client = TestClient(real_app)
+
+    r = client.options(
+        "/healthz",
+        headers={
+            "Origin": "https://attacker-preview.vercel.app",
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "X-Api-Key",
+        },
+    )
+
+    assert r.status_code == 400
+    assert "access-control-allow-origin" not in {k.lower() for k in r.headers}
+
+
+def test_wildcard_cors_rejects_simple_unconfigured_vercel_origin():
+    """Simple CORS requests must not get reflected ACAO for unconfigured Vercel origins."""
+    from app.main import app as real_app
+
+    client = TestClient(real_app)
+
+    r = client.get(
+        "/healthz",
+        headers={"Origin": "https://attacker-preview.vercel.app"},
+    )
+
+    assert "access-control-allow-origin" not in {k.lower() for k in r.headers}

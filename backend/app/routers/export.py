@@ -1,3 +1,5 @@
+import logging
+
 import io
 import os
 import json
@@ -12,6 +14,8 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.pdfgen import canvas
+logger = logging.getLogger("lumint.routers.export")
+
 
 router = APIRouter(prefix="/api/export", tags=["export"], dependencies=[Depends(get_current_user)])
 
@@ -154,10 +158,11 @@ def export_research_report():
                     section_lines.append(line)
             if current_key and current_key not in ablation_sections:
                 ablation_sections[current_key] = parse_md_table(section_lines)
-    except Exception as e:
+    except Exception:
+        logger.exception("Failed to read raw report data")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to read raw report data: {str(e)}"
+            detail="Failed to read raw report data."
         )
         
     buffer = io.BytesIO()
@@ -477,10 +482,11 @@ def export_research_report():
     # Build Document
     try:
         doc.build(story, canvasmaker=NumberedCanvas)
-    except Exception as e:
+    except Exception:
+        logger.exception("Failed to compile PDF document")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to compile PDF document: {str(e)}"
+            detail="Failed to compile PDF document."
         )
         
     pdf_out = buffer.getvalue()

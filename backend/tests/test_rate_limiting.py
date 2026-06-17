@@ -21,7 +21,7 @@ def test_rate_limit_enforced():
             r = client.post(
                 "/api/upi/analyze",
                 files={"file": (f"test{i}.png", b"fake", "image/png")},
-                headers={"Authorization": "Bearer test-api-key"},
+                headers={"X-Api-Key": "test-api-key"},
             )
             statuses.append(r.status_code)
         except Exception as e:

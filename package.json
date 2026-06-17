@@ -11,9 +11,9 @@
   "scripts": {
     "build": "npm run build --workspace=frontend",
     "dev": "node start-dev.js",
-    "dev:frontend": "npm run dev --workspace=frontend"
-  },
-  "devDependencies": {
-    "next": "^16.2.7"
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "lint": "npm run lint --workspace=frontend",
+    "typecheck": "npm run typecheck --workspace=frontend",
+    "test": "npm run test --workspace=frontend"
   }
 }

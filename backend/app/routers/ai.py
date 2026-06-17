@@ -30,10 +30,10 @@ async def run_document_ai(body: DocumentAIRequest):
     try:
         result = await analyze_document_ai(body.model_dump())
         return result
-    except Exception as e:
-        logger.error("Document AI routing failed: %s", e)
+    except Exception:
+        logger.exception("Document AI routing failed")
         raise HTTPException(
-            status_code=500, detail=f"Failed to generate document AI report: {str(e)}"
+            status_code=500, detail="Failed to generate document AI report."
         )
 
 
@@ -45,10 +45,10 @@ async def run_phishing_ai(body: PhishingAIRequest):
     try:
         result = await analyze_phishing_ai(body.model_dump())
         return result
-    except Exception as e:
-        logger.error("Phishing AI routing failed: %s", e)
+    except Exception:
+        logger.exception("Phishing AI routing failed")
         raise HTTPException(
-            status_code=500, detail=f"Failed to generate phishing AI report: {str(e)}"
+            status_code=500, detail="Failed to generate phishing AI report."
         )
 
 
@@ -60,10 +60,10 @@ async def run_campaign_ai(body: CampaignAIRequest):
     try:
         result = await analyze_campaign_ai(body.model_dump())
         return result
-    except Exception as e:
-        logger.error("Campaign AI routing failed: %s", e)
+    except Exception:
+        logger.exception("Campaign AI routing failed")
         raise HTTPException(
-            status_code=500, detail=f"Failed to generate campaign AI report: {str(e)}"
+            status_code=500, detail="Failed to generate campaign AI report."
         )
 
 
@@ -82,10 +82,10 @@ async def run_agent_investigation(body: AgentInvestigationRequest):
         agent = FraudInvestigatorAgent()
         result = await agent.run(body.query)
         return result
-    except Exception as e:
-        logger.error("Autonomous agent investigation failed: %s", e)
+    except Exception:
+        logger.exception("Autonomous agent investigation failed")
         raise HTTPException(
-            status_code=500, detail=f"Agent investigation failed: {str(e)}"
+            status_code=500, detail="Agent investigation failed."
         )
 
 
@@ -109,10 +109,10 @@ async def run_upi_ai(body: UPIAIRequest):
             receiver=body.receiver or "",
             amount=body.amount or 0.0,
         )
-    except Exception as e:
-        logger.error("UPI AI routing failed: %s", e)
+    except Exception:
+        logger.exception("UPI AI routing failed")
         raise HTTPException(
-            status_code=500, detail=f"Failed to generate UPI AI report: {str(e)}"
+            status_code=500, detail="Failed to generate UPI AI report."
         )
 
     risk_score = int(raw.get("risk_score", 0) or 0)

@@ -10,42 +10,36 @@ Full-featured FastAPI backend for Lumint - advanced threat detection platform wi
 - **AI integration**: Groq for enhanced detection capabilities
 - **Research endpoints**: Ablation, SHAP values, dataset analysis
 - **Database**: PostgreSQL with SQLAlchemy ORM
-- **Redis**: Caching and session management
+- **Cache**: In-process TTL cache for duplicate analysis suppression
 - **Auth & rate limiting**: Production-grade security
 - **CORS ready**: Configured for frontend integration
 
-## Deploy to Render (Free Tier)
+## Deploy to Render
 
-1. Push to GitHub
-2. Go to render.com → New + → Web Service
-3. Connect your GitHub repo
-4. Root Directory: `backend` (not `/app`!)
-5. Runtime: Python
-6. Build Command: `pip install -r requirements.txt`
-7. Start Command: `gunicorn app.main:app --bind 0.0.0.0 --port $PORT`
-8. Plan: Free tier
-9. Environment variables:
-   ```
-   DATABASE_URL=[Render generated DB URL]
-   REDIS_URL=[Render generated Redis URL]
-   ALLOWED_ORIGINS=https://lumint-pi.vercel.app,http://localhost:3000
-   CORS_ORIGINS=https://lumint-pi.vercel.app,http://localhost:3000
-   ```
-10. Deploy
+Use the canonical blueprint at the repository root: `../render.yaml`.
 
-Render will automatically detect the `render.yaml` and configure:
+It configures:
 
-- PostgreSQL database (`free` tier)
-- Redis cache (`free` tier)
-- Web service (free tier)
-- Health checks at `/health`
+- Docker runtime with `backend/Dockerfile.prod`
+- Gunicorn with Uvicorn workers
+- PostgreSQL database
+- Health checks at `/healthz`
+- Required production env vars: `APP_ENV=production`, `DATABASE_URL`, `CORS_ALLOW_ORIGINS`, `LUMINT_API_KEY`
+- Optional AI env var: `GROQ_API_KEY`
+
+Do not use the Python buildpack start command for production. FastAPI is ASGI;
+the production command must use `uvicorn.workers.UvicornWorker` as defined in
+`Dockerfile.prod`.
 
 ## Local Development
 
 ```bash
 cd backend
+python -m venv venv
+.\venv\Scripts\Activate.ps1  # Windows PowerShell
 pip install -r requirements.txt
-uvicorn app.main:app --reload
+cp .env.example .env
+python main.py
 ```
 
 API docs: http://localhost:8000/docs
@@ -71,7 +65,7 @@ backend/
 
 The backend exposes all endpoints expected by the frontend:
 
-- **Health checks**: `/health`, `/readyz` (Kubernetes-style)
+- **Health checks**: `/healthz`, `/readyz`, `/health` (legacy alias)
 - **UPI Shield**: `/api/upi/report`, `/api/upi/stats`
 - **DocShield**: `/api/documents/analyze` (PDF + image)
 - **PhishShield**: `/api/phishing/check`
