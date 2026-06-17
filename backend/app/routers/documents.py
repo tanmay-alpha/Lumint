@@ -1,7 +1,7 @@
 import logging
 import uuid
 from pathlib import Path
-from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Depends, Request
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, BackgroundTasks, Depends, Request
 from typing import Optional
 from app.rate_limit import limiter
 from app.dependencies.auth import get_current_user
@@ -31,6 +31,7 @@ async def analyze_document(
     request: Request,
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
+    text: Optional[str] = Form(None),
     ground_truth: Optional[int] = None
 ):
     if not file or not file.filename:
@@ -76,7 +77,7 @@ async def analyze_document(
     from fastapi.concurrency import run_in_threadpool
     if suffix != ".pdf":
         try:
-            result = await run_in_threadpool(analyze_image_document, save_path, len(contents))
+            result = await run_in_threadpool(analyze_image_document, save_path, len(contents), text)
         except Exception:
             logger.exception("Image analysis failed for document upload %s", doc_id)
             raise HTTPException(status_code=500, detail="Image analysis failed.")
