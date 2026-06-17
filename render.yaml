@@ -13,7 +13,7 @@ services:
     dockerfilePath: ./Dockerfile.prod
     dockerContext: .
     plan: free
-    healthCheckPath: /healthz
+    healthCheckPath: /readyz
     autoDeploy: true
     envVars:
       - key: APP_ENV

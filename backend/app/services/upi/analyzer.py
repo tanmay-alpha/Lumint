@@ -218,9 +218,15 @@ def _gate_check(ocr_text: str, ocr_result: Dict[str, Any]) -> Optional[Dict[str,
     """
     if _is_upi_screenshot(ocr_text):
         return None
+    # Log only the *length* of the OCR text, not the text itself. OCR
+    # text routinely contains UPI IDs, UTR numbers, payee VPAs, and
+    # transaction amounts — all of which are PII. If a log aggregator
+    # ever ingests this, every screenshot a user uploads ends up in
+    # plaintext. Operators who need to debug a non-UPI classification
+    # can ask the user to re-upload with verbose-mode enabled; we do
+    # not pay that risk in the default path.
     logger.warning(
-        "Non-UPI image detected. OCR text preview: %r",
-        ocr_text[:200],
+        "Non-UPI image detected. OCR text length=%d chars", len(ocr_text),
     )
     result = dict(_NOT_UPI_RESULT_TEMPLATE)
     result["ocr"] = ocr_result

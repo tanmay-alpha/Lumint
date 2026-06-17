@@ -1,10 +1,11 @@
 import asyncio
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
 from typing import List, Set, Optional
 from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.models.models import ThreatFeedAlert
+from app.rate_limit import limiter
 from app.schemas.threats import ThreatFeedCreate, ThreatFeedResponse
 
 router = APIRouter(prefix="/api/threats", tags=["threat-feed"], dependencies=[Depends(get_current_user)])
@@ -34,7 +35,15 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 @router.post("", response_model=ThreatFeedResponse)
-async def create_threat_alert(body: ThreatFeedCreate, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def create_threat_alert(request: Request, body: ThreatFeedCreate, db: Session = Depends(get_db)):
+    """Create a new threat-feed alert and broadcast it to connected WebSockets.
+
+    Rate-limited to 30/minute per client. Without this, a compromised or
+    buggy client could flood the DB and the WebSocket fan-out — the
+    broadcast call iterates every active connection, so it is O(N) on
+    the number of connected analysts.
+    """
     db_alert = ThreatFeedAlert(
         indicator_type=body.indicator_type,
         value=body.value,
@@ -46,7 +55,7 @@ async def create_threat_alert(body: ThreatFeedCreate, db: Session = Depends(get_
     db.add(db_alert)
     db.commit()
     db.refresh(db_alert)
-    
+
     # Broadcast new alert details to connected websockets
     alert_dict = {
         "event": "new_alert",
@@ -59,7 +68,7 @@ async def create_threat_alert(body: ThreatFeedCreate, db: Session = Depends(get_
         "description": db_alert.description
     }
     await manager.broadcast(alert_dict)
-    
+
     return db_alert
 
 @router.get("", response_model=List[ThreatFeedResponse])

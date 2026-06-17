@@ -25,6 +25,29 @@ ALLOWED_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg"}
 MAX_UPLOAD_BYTES = 15 * 1024 * 1024  # 15 MB
 
 
+def _sanitize_filename_for_response(raw: str) -> str:
+    """Strip control characters and NUL bytes from a user-supplied filename
+    before echoing it back in a JSON response.
+
+    ``UploadFile.filename`` is browser-controlled. Even after the
+    path-traversal guard, the name may still contain CR/LF (response
+    splitting in downstream log lines), NUL bytes (which truncate
+    filenames in some log aggregators), or other ASCII control chars.
+    Replacing with ``_`` keeps the name readable but neutralises the
+    smuggling vectors.
+    """
+    if not raw:
+        return ""
+    out = []
+    for ch in raw:
+        cp = ord(ch)
+        if cp == 0 or cp < 0x20 or cp == 0x7f:
+            out.append("_")
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
 @router.post("/analyze", response_model=DocumentAnalysisResponse)
 @limiter.limit("10/minute")
 async def analyze_document(
@@ -43,13 +66,32 @@ async def analyze_document(
     if safe_name != file.filename or ".." in file.filename or "/" in file.filename or "\\" in file.filename:
         raise HTTPException(status_code=400, detail="Invalid filename.")
 
-    contents = await file.read()
+    # Stream-read the upload in fixed-size chunks and abort as soon as the
+    # running total exceeds the cap. The old code did a single
+    # ``await file.read()`` which would happily buffer a 100GB body
+    # before the size check ran — a trivial memory-exhaustion DoS. The
+    # outer BodySizeLimitMiddleware (20MB) provides a defense-in-depth
+    # net, but checking per-chunk stops us from buffering more than
+    # CHUNK_SIZE + a single chunk of overflow.
+    CHUNK_SIZE = 64 * 1024
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await file.read(CHUNK_SIZE)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > MAX_UPLOAD_BYTES:
+            max_mb = MAX_UPLOAD_BYTES // (1024 * 1024)
+            raise HTTPException(
+                status_code=413,
+                detail="File exceeds maximum allowed size of " + str(max_mb) + " MB.",
+            )
+        chunks.append(chunk)
+    contents = b"".join(chunks)
 
     if len(contents) == 0:
         raise HTTPException(status_code=400, detail="Uploaded file is empty.")
-
-    if len(contents) > MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=413, detail="File exceeds maximum allowed size of 15 MB.")
 
     # Multi-layer content validation (magic + structural + bomb guard).
     try:
@@ -67,7 +109,11 @@ async def analyze_document(
 
     base = {
         "doc_id": doc_id,
-        "original_filename": file.filename,
+        # Sanitize control characters (NUL, CR, LF, etc.) before echoing
+        # the filename back. The browser-controlled name could otherwise
+        # smuggle newlines into downstream logs (response splitting) or
+        # truncate the name in tools that treat NUL as a terminator.
+        "original_filename": _sanitize_filename_for_response(file.filename),
         "saved_filename": saved_filename,
         "file_path": f"uploads/{saved_filename}",
         "file_size": len(contents),

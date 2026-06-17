@@ -156,8 +156,15 @@ async def check_url(request: Request, body: PhishingCheckRequest, background_tas
 
 
 @router.post("/check/batch")
-def check_url_batch(body: BatchCheckRequest):
-    """AI feature: analyze up to 100 URLs in a single request for bulk threat screening."""
+@limiter.limit("5/minute")
+def check_url_batch(request: Request, body: BatchCheckRequest):
+    """AI feature: analyze up to 100 URLs in a single request for bulk threat screening.
+
+    Rate-limited to 5/minute: each URL triggers a full SHAP explainability
+    pass, so 100 URLs is ~100 model inferences + 100 SHAP runs. A naive
+    30/minute global limit would still let a single attacker consume
+    ~5000 inferences/minute.
+    """
     if not body.urls:
         raise HTTPException(status_code=400, detail="urls list must not be empty.")
     if len(body.urls) > 100:

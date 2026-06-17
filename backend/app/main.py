@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
 import uuid
 
@@ -167,8 +168,11 @@ class SecurityHeadersMiddleware:
                     hdrs.append((b"strict-transport-security",
                                b"max-age=63072000; includeSubDomains; preload"))
 
-                # Make the dev-mode state visible to the operator.
-                if is_dev_mode():
+                # Make the dev-mode state visible to the operator — but
+                # NEVER leak it in production. An attacker scanning
+                # ``X-Lumint-Dev-Mode: true`` would instantly know the
+                # auth bypass is active and start hammering the API.
+                if is_dev_mode() and os.environ.get("APP_ENV", "development").strip().lower() in {"development", "dev", "test"}:
                     hdrs.append((DEV_MODE_HEADER.encode("latin-1"), b"true"))
 
                 message["headers"] = hdrs
