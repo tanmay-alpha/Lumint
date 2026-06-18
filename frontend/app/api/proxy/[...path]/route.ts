@@ -113,13 +113,20 @@ async function forward(
   // malicious caller can't use the proxy to reach other backends.
   const { path } = await context.params;
   const subPath = (path || []).join("/");
-  const allowedPrefixes = [
+  // Whitelist of exact subPath matches and prefix roots. The previous
+  // version had ``"health"`` here, which never matched the actual
+  // segment ``"healthz"`` — so the Vercel proxy returned 404 for any
+  // health probe even though the backend worked fine. Add each probe
+  // as its own root entry. Same for ``readyz``.
+  const allowedRoots = [
     "api",
-    "health",
+    "healthz",
+    "readyz",
     "docs",
     "openapi.json",
     "redoc",
   ];
+  const allowedPrefixes = allowedRoots;
   const hasUnsafeSegment = (path || []).some(
     (segment) => segment === "." || segment === ".." || segment.includes("/") || segment.includes("\\") || segment.includes("\0"),
   );
