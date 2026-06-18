@@ -177,7 +177,7 @@ async def simulate_threat_stream(
 
             event = {
                 "event_id": str(uuid.uuid4()),
-                "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
+                "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
                 "module": module,
                 "threat_level": threat_level,
                 "summary": summary,

@@ -15,6 +15,7 @@ SCORE_MAP = {
     "suspicious_spacing":      5,
     "ela_tampering":          25,
     "ela_minor_inconsistency": 5,
+    "suspicious_keywords":     22,
 }
 
 EXPLANATION_MAP = {
@@ -30,19 +31,36 @@ EXPLANATION_MAP = {
     "suspicious_spacing":      "Large empty areas detected on some pages — weak signal, review recommended.",
     "ela_tampering":           "Visual inconsistency detected via ELA — possible edited image regions (not conclusive).",
     "ela_minor_inconsistency": "Minor visual inconsistency via ELA — low-confidence signal only.",
+    "suspicious_keywords":     "Document text contains phrases common in scam or phishing payment requests (KYC, urgent verify, etc.).",
 }
 
 
 def _text_indicators(ta: Optional[dict]) -> List[dict]:
     if not ta:
         return []
+    out: List[dict] = []
     if ta.get("is_scanned_or_image_based"):
-        return [{"rule": "scanned_or_image_based", "score": SCORE_MAP["scanned_or_image_based"],
-                 "detail": "Document has no extractable text — likely scanned or image-based."}]
+        out.append({"rule": "scanned_or_image_based", "score": SCORE_MAP["scanned_or_image_based"],
+                    "detail": "Document has no extractable text — likely scanned or image-based."})
     if any("unusually low" in w.lower() for w in ta.get("warnings", [])):
-        return [{"rule": "low_text_content", "score": SCORE_MAP["low_text_content"],
-                 "detail": "Document has low text content relative to its page count."}]
-    return []
+        out.append({"rule": "low_text_content", "score": SCORE_MAP["low_text_content"],
+                    "detail": "Document has low text content relative to its page count."})
+    matches = ta.get("suspicious_keywords_found") or []
+    if matches:
+        # Use the keyword_score the analyzer computed (0..35) so the rule
+        # stays consistent with what the UI surfaces. Fall back to the
+        # default SCORE_MAP if the analyzer didn't compute one (e.g. legacy
+        # response that didn't run keyword extraction).
+        score = ta.get("keyword_score") or SCORE_MAP["suspicious_keywords"]
+        words = ", ".join(matches[:6])
+        if len(matches) > 6:
+            words += f" (+{len(matches) - 6} more)"
+        out.append({
+            "rule": "suspicious_keywords",
+            "score": score,
+            "detail": f"Suspicious phrases detected: {words}.",
+        })
+    return out
 
 
 def _layout_indicators(la: Optional[dict]) -> List[dict]:
@@ -94,8 +112,11 @@ def calculate_risk(
         rule = ind.get("rule")
         if rule not in seen:
             seen.add(rule)
-            # Normalize score against central SCORE_MAP
-            if rule in SCORE_MAP:
+            # Normalize score against central SCORE_MAP. Skip the override
+            # for `suspicious_keywords` — the analyzer already scales the
+            # score by how many phrases fired (1 match -> 25, 4+ -> 80),
+            # and overriding would lose that signal.
+            if rule in SCORE_MAP and rule != "suspicious_keywords":
                 ind["score"] = SCORE_MAP[rule]
             all_indicators.append(ind)
 

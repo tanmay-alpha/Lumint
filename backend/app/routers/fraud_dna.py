@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from app.dependencies.auth import get_current_user
+from app.rate_limit import limiter
 from app.services.fraud_dna.store import load_all
 from app.services.fraud_dna.clusterer import run_clustering, build_graph
 from app.schemas.fraud_dna import CampaignsResponse, GraphResponse
@@ -8,23 +9,34 @@ router = APIRouter(prefix="/api/fraud-dna", tags=["fraud-dna"], dependencies=[De
 
 
 @router.get("/fingerprints")
-def get_fingerprints():
+@limiter.limit("60/minute")
+def get_fingerprints(request: Request):
     events = load_all()
     return {"total": len(events), "fingerprints": events}
 
 
 @router.get("/campaigns", response_model=CampaignsResponse)
-def get_campaigns():
+@limiter.limit("10/minute")
+def get_campaigns(request: Request):
     return run_clustering()
 
 
 @router.get("/graph", response_model=GraphResponse)
-def get_graph():
+@limiter.limit("20/minute")
+def get_graph(request: Request):
     return build_graph()
 
 
 @router.post("/recluster", response_model=CampaignsResponse)
-def recluster():
+@limiter.limit("2/minute")
+def recluster(request: Request):
+    """Force a re-clustering of all stored fingerprints.
+
+    This is CPU-bound and O(n²) on the number of events. We rate-limit
+    to 2/minute so a single compromised client cannot exhaust the
+    worker's CPU by spamming the endpoint. Clients should cache the
+    result and call this only when the dataset has grown significantly.
+    """
     return run_clustering()
 
 

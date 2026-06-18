@@ -104,17 +104,10 @@ async function forward(
     );
   }
 
-  if (!API_KEY) {
-    // No LUMINT_API_KEY set in the Vercel project. The backend may still
-    // accept requests in dev mode (it logs a warning and returns
-    // `X-Lumint-Dev-Mode: true`), so we forward without the header rather
-    // than 503'ing the entire app. The backend's auth dependency will
-    // reject with 401/403 if the operator has set APP_ENV=production
-    // without provisioning a key.
-    console.warn(
-      "[proxy] LUMINT_API_KEY is not set on Vercel. Forwarding without auth header — backend dev mode required.",
-    );
-  }
+  // Note: the backend now uses Bearer-token auth from the browser
+  // (NEXT_PUBLIC_API_KEY) so the proxy no longer needs to attach an
+  // X-Api-Key header. We keep reading LUMINT_API_KEY (server-only) in
+  // case the operator wants to inject one for backend ↔ Render auth.
 
   // Whitelist the prefixes we proxy. This is a closed allowlist so a
   // malicious caller can't use the proxy to reach other backends.

@@ -100,16 +100,26 @@ async def analyze_screenshot(
     Upload GPAY/PhonePe payment screenshot to run layout verification,
     UTR mapping, ELA forensics, brand color checks, and optional AI threat briefs.
     """
-    # 1. Read file bytes for VLM analysis
-    file_bytes = await file.read()
-    await file.seek(0)
-
-    # 1a. Size limit check
-    if len(file_bytes) > MAX_UPLOAD_SIZE:
-        raise HTTPException(
-            status_code=413,
-            detail=f"File too large. Max upload size is {MAX_UPLOAD_SIZE // (1024*1024)}MB."
-        )
+    # 1. Stream-read the upload in fixed-size chunks and abort as soon as
+    # the running total exceeds the cap. The old code did a single
+    # ``await file.read()`` which would happily buffer a 100GB body
+    # before the size check ran — a trivial memory-exhaustion DoS.
+    CHUNK_SIZE = 64 * 1024
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await file.read(CHUNK_SIZE)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > MAX_UPLOAD_SIZE:
+            max_mb = MAX_UPLOAD_SIZE // (1024 * 1024)
+            raise HTTPException(
+                status_code=413,
+                detail="File too large. Max upload size is " + str(max_mb) + "MB.",
+            )
+        chunks.append(chunk)
+    file_bytes = b"".join(chunks)
 
     if not file_bytes:
         raise HTTPException(status_code=400, detail="Uploaded file is empty.")

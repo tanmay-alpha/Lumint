@@ -1,8 +1,9 @@
 import logging
 import time
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 
 from app.dependencies.auth import get_current_user
+from app.rate_limit import limiter
 from app.schemas.ai import (
     DocumentAIRequest,
     DocumentAIResponse,
@@ -23,7 +24,8 @@ router = APIRouter(prefix="/api/ai", tags=["ai"], dependencies=[Depends(get_curr
 
 
 @router.post("/document", response_model=DocumentAIResponse)
-async def run_document_ai(body: DocumentAIRequest):
+@limiter.limit("10/minute")
+async def run_document_ai(request: Request, body: DocumentAIRequest):
     """
     Generate an expert AI forensic analyst report for a scanned document.
     """
