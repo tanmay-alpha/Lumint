@@ -51,3 +51,27 @@ def test_ground_truth_must_be_binary():
         json={"url": "https://hdfcbank.com", "ground_truth": 5},
     )
     assert r.status_code == 422
+
+
+def test_response_includes_score_source():
+    """Regression: PhishingCheckResponse must include score_source.
+
+    The field tells clients whether the risk_score came from the
+    trained ML model ("ml") or the rule-based heuristic fallback
+    ("heuristic"). It's populated by the router based on
+    ``registry.is_available("phish")``.
+    """
+    r = client.post("/api/phishing/check", json={"url": "https://hdfcbank.com"})
+    assert r.status_code == 200
+    data = r.json()
+
+    # Field must be present in the response payload.
+    assert "score_source" in data, (
+        "PhishingCheckResponse is missing 'score_source' field. "
+        "Clients rely on this to know whether the ML model or the "
+        "heuristic produced the score."
+    )
+    # And it must be one of the documented literal values.
+    assert data["score_source"] in ("ml", "heuristic"), (
+        f"Unexpected score_source value: {data['score_source']!r}"
+    )

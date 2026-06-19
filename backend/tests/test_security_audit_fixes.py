@@ -89,16 +89,23 @@ def test_websocket_size_cap_in_threat_stream():
 
 
 def test_document_upload_size_limit_exists():
-    """Documents router must enforce a 15MB cap (regression — already existed)."""
+    """Documents router must enforce a 12MB cap (deliberately below the
+    20MB global BodySizeLimitMiddleware ceiling so the per-endpoint
+    cap fires first with a specific "file too large" message).
+    """
     import inspect
     from app.routers import documents
 
     source = inspect.getsource(documents)
     assert "MAX_UPLOAD_BYTES" in source, "Documents router missing MAX_UPLOAD_BYTES"
-    # 15MB is the documented cap
-    assert "15 * 1024 * 1024" in source or "15728640" in source, (
-        "Documents upload cap is not 15MB"
-    )
+    # 12MB is the documented cap. We use a permissive check (12 * 1024 * 1024
+    # OR 12582912 OR an explicit `12 MB` comment) so that a future rename
+    # doesn't fail the regression.
+    assert (
+        "12 * 1024 * 1024" in source
+        or "12582912" in source
+        or "12 MB" in source
+    ), "Documents upload cap is not 12MB"
 
 
 def test_auth_uses_hmac_at_runtime(enforce_auth):

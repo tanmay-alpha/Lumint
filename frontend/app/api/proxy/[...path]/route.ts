@@ -65,6 +65,11 @@ const HOP_BY_HOP = new Set([
   "sec-fetch-mode",
   "sec-fetch-site",
   "sec-fetch-dest",
+  // We pin X-Forwarded-Proto below — never let the browser set it.
+  "x-forwarded-proto",
+  "x-forwarded-for",
+  "x-real-ip",
+  "forwarded",
 ]);
 
 function buildHeaders(incoming: Headers): Headers {
@@ -80,7 +85,14 @@ function buildHeaders(incoming: Headers): Headers {
   // already stripped it, and the browser sees a mismatch and throws
   // ERR_CONTENT_DECODING_FAILED.
   out.set("accept-encoding", "identity");
-  // Always tell the backend who the original request was for.
+  // Always tell the backend who the original request was for, and
+  // pin the scheme to https — Vercel already terminated TLS, so the
+  // backend sees this hop as HTTPS regardless of the original
+  // browser protocol. This is what makes
+  // `uvicorn.middleware.proxy_headers.ProxyHeadersMiddleware` on
+  // Render rewrite `scope["scheme"]` to "https" and lets the
+  // `SecurityHeadersMiddleware` attach HSTS in production.
+  out.set("x-forwarded-proto", "https");
   const xfwdHost = incoming.get("host");
   if (xfwdHost) out.set("x-forwarded-host", xfwdHost);
   if (API_KEY) out.set("x-api-key", API_KEY);

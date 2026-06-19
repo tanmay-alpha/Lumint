@@ -245,7 +245,7 @@ def _extract_metadata(ocr_text: str) -> Dict[str, Any]:
         "primary_utr": primary_utr,
         "amount": parse_amount(ocr_text),
         "payee_vpa": select_payee_vpa(ocr_text, vpas),
-        "sender_vpa": vpas[0] if vpas else "unknown@upi",
+        "sender_vpa": vpas[0] if vpas else None,
     }
 
 
@@ -274,7 +274,11 @@ def _run_forensics(
     """
     return {
         "ela": run_image_ela(image_path),
-        "font": check_font_consistency(image_path, ocr_text=ocr_text),
+        "font": check_font_consistency(
+            image_path,
+            ocr_text=ocr_text,
+            app_hint=app_detected,
+        ),
         "color": check_color_authenticity(image_path, app_detected=app_detected),
     }
 
@@ -520,7 +524,7 @@ def analyze_upi_screenshot(image_path: Path, custom_ocr_text: Optional[str] = No
         "amount_extracted": metadata["amount"],
         "payee_vpa": payee_vpa,
         "sender_upi_id": metadata["sender_vpa"],
-        "receiver_upi_id": payee_vpa if payee_vpa else (vpas[1] if len(vpas) > 1 else "unknown@merchant"),
+        "receiver_upi_id": payee_vpa if payee_vpa else (vpas[1] if len(vpas) > 1 else None),
         "score_source": score_source,
         "confidence": _compute_confidence(final_score, indicators),
         "ocr": ocr_result,

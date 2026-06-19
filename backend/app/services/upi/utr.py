@@ -1,6 +1,15 @@
 import re
 from typing import List, Dict, Optional, Any
 
+# Module-level compiled patterns (reused on every call).
+_NON_ALNUM = re.compile(r'[^a-zA-Z0-9]')
+_UTR_LABEL_PATTERN = re.compile(
+    r'(?i)(?:utr|upi\s+ref|transaction\s+id|txn\s+id|ref\s+no|upi\s+transaction\s+id|bank\s+reference\s+id)'
+    r'\s*[:#-]?\s*([a-zA-Z0-9]{10,18})'
+)
+_UTR_DIGIT_12 = re.compile(r'\b(\d{12})\b')
+_UTR_PAYTM_T = re.compile(r'\b(T\d{10,17})\b')
+
 def normalize_utr(value: str) -> str:
     """
     Remove whitespace, dashes, and other non-alphanumeric chars.
@@ -8,7 +17,7 @@ def normalize_utr(value: str) -> str:
     if not value:
         return ""
     # Strip common symbols
-    return re.sub(r'[^a-zA-Z0-9]', '', value).strip()
+    return _NON_ALNUM.sub('', value).strip()
 
 def classify_utr(value: str) -> Dict[str, Any]:
     """
@@ -120,17 +129,15 @@ def extract_utr_candidates(text: str) -> List[Dict[str, Any]]:
     
     # 1. Regex looking for label prefixes
     # UTR, UPI Ref, Transaction ID, Ref No, UPI Transaction ID, Bank Reference ID, Txn ID
-    pattern = r'(?i)(?:utr|upi\s+ref|transaction\s+id|txn\s+id|ref\s+no|upi\s+transaction\s+id|bank\s+reference\s+id)\s*[:#-]?\s*([a-zA-Z0-9]{10,18})'
-    for match in re.finditer(pattern, text_clean):
+    for match in _UTR_LABEL_PATTERN.finditer(text_clean):
         val = match.group(1)
         val_norm = normalize_utr(val)
         if val_norm and val_norm not in [c["normalized"] for c in candidates]:
             val_details = validate_utr(val)
             candidates.append(val_details)
-            
+
     # 2. Look for standalone 12-digit numeric codes that might be UTRs (if not already matched)
-    digit_pattern = r'\b(\d{12})\b'
-    for match in re.finditer(digit_pattern, text_clean):
+    for match in _UTR_DIGIT_12.finditer(text_clean):
         val = match.group(1)
         val_norm = normalize_utr(val)
         if val_norm and val_norm not in [c["normalized"] for c in candidates]:
@@ -138,8 +145,7 @@ def extract_utr_candidates(text: str) -> List[Dict[str, Any]]:
             candidates.append(val_details)
 
     # 3. Look for standalone Paytm 'T' transaction references
-    paytm_pattern = r'\b(T\d{10,17})\b'
-    for match in re.finditer(paytm_pattern, text_clean):
+    for match in _UTR_PAYTM_T.finditer(text_clean):
         val = match.group(1)
         val_norm = normalize_utr(val)
         if val_norm and val_norm not in [c["normalized"] for c in candidates]:

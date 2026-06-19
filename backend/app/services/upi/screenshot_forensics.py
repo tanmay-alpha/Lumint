@@ -198,6 +198,15 @@ def run_image_ela(image_path: Path) -> Dict[str, Any]:
         # (e.g. amount colour tweaked but not redrawn) still lights up.
         diff_gray = np.mean(diff, axis=2)
 
+        # Free the per-channel float arrays before contour extraction —
+        # the contour step allocates its own working buffers and we
+        # don't need the originals anymore. On a 4096×4096 image the
+        # three float32 arrays are ~200 MB combined; dropping them
+        # before the heavy cv2 calls keeps peak memory bounded.
+        del arr_img
+        del arr_recomp
+        del diff
+
         # Adaptive threshold: 95th percentile of the actual diff image.
         # Natural recompression noise stays below this; real edits push the
         # tail up sharply. Using np.ptp on the percentile keeps us robust to

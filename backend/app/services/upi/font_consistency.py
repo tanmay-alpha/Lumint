@@ -4,10 +4,52 @@ from typing import Optional, Dict, Any
 
 logger = logging.getLogger("lumint.services.upi.font_consistency")
 
-def check_font_consistency(image_path: Path, ocr_text: Optional[str] = None) -> Dict[str, Any]:
+# Apps (PhonePe, Google Pay) that intentionally use a much larger amount
+# text alongside smaller label text, producing a larger "natural" height
+# variance than single-tier UPI apps. A single global threshold misclassifies
+# them as forged. We bump the cutoff for those apps.
+_HIGH_VARIANCE_APPS = {"phonepe", "gpay"}
+
+# Default (Paytm / BHIM / unknown) — single global threshold that worked
+# reasonably for uniformly sized receipt text.
+DEFAULT_HEIGHT_VARIANCE_THRESHOLD = 110.0
+
+# Relaxed threshold for apps that legitimately mix a large amount line with
+# smaller body labels (PhonePe, Google Pay).
+HIGH_VARIANCE_HEIGHT_VARIANCE_THRESHOLD = 160.0
+
+
+def _resolve_threshold(app_hint: Optional[str]) -> float:
+    """Return the height-variance cutoff for the given UPI app.
+
+    PhonePe and Google Pay display the amount in a much larger font than
+    surrounding labels, so the height variance of legitimate receipts from
+    those apps can exceed the default 110.0 cutoff. We use a relaxed
+    threshold (160.0) for those apps. For Paytm / BHIM / None we keep the
+    original conservative threshold.
+    """
+    if app_hint is None:
+        return DEFAULT_HEIGHT_VARIANCE_THRESHOLD
+    return (
+        HIGH_VARIANCE_HEIGHT_VARIANCE_THRESHOLD
+        if app_hint.lower() in _HIGH_VARIANCE_APPS
+        else DEFAULT_HEIGHT_VARIANCE_THRESHOLD
+    )
+
+
+def check_font_consistency(
+    image_path: Path,
+    ocr_text: Optional[str] = None,
+    app_hint: Optional[str] = None,
+) -> Dict[str, Any]:
     """
     Check font consistency by estimating text component height variance using OpenCV.
     Falls back gracefully if OpenCV (cv2) is not installed.
+
+    The variance cutoff is app-dependent. PhonePe and Google Pay legitimately
+    mix a large amount line with smaller body labels, so they get a relaxed
+    threshold (160.0). Paytm, BHIM, and unknown apps use the conservative
+    110.0 cutoff. Pass ``app_hint=None`` to keep the historical default.
     """
     warnings = []
     
@@ -87,11 +129,16 @@ def check_font_consistency(image_path: Path, ocr_text: Optional[str] = None) -> 
         # Forged receipts generated from tools often mix different font sizes or scales, leading to high variance
         font_consistent = True
         confidence = 0.85
-        
-        if variance > 110.0:
+
+        threshold = _resolve_threshold(app_hint)
+        if variance > threshold:
             font_consistent = False
             confidence = min(0.95, 0.50 + (variance / 400.0) * 0.35)
-            warnings.append(f"High variance in text component heights ({round(variance, 2)}) suggests potential font forgery.")
+            warnings.append(
+                f"High variance in text component heights ({round(variance, 2)}) "
+                f"exceeds app threshold ({round(threshold, 2)} for app={app_hint!r}) "
+                f"and suggests potential font forgery."
+            )
         else:
             confidence = min(0.95, 0.90 - (variance / 200.0) * 0.15)
             

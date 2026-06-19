@@ -6,13 +6,14 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, Request
 from pydantic import BaseModel, Field, field_validator
 
-from app.rate_limit import limiter
+from app.rate_limit import limiter, api_key_or_ip_key
 from app.dependencies.auth import get_current_user
 from app.services.phishshield.url_analyzer import analyze_url
 from app.services.phishshield.risk_scorer import score_url
 from app.services.fraud_dna.store import save_fingerprint
 from app.schemas.phishing import PhishingCheckResponse
 from app.core.event_publisher import publish_threat_event
+from ml.drift.registry import DriftRegistry
 
 logger = logging.getLogger("lumint.routers.phishing")
 router = APIRouter(prefix="/api/phishing", tags=["phishing"], dependencies=[Depends(get_current_user)])
@@ -41,7 +42,10 @@ def _analyze_single(raw: str) -> PhishingCheckResponse:
         raise HTTPException(status_code=400, detail="URL must not be empty.")
     analysis = analyze_url(raw)
 
-    # Try using trained ML model if available
+    # Try using trained ML model if available. score_source tells the
+    # client which scoring path produced the final risk_score so they
+    # can reason about confidence and model availability.
+    score_source: Optional[str] = None
     try:
         from ml.registry import get_registry
         from ml.features.url_features import extract_full_features, get_feature_names
@@ -59,6 +63,7 @@ def _analyze_single(raw: str) -> PhishingCheckResponse:
             elif risk_score >= 61:
                 risk_level = "HIGH"
             scoring = {"risk_score": risk_score, "risk_level": risk_level}
+            score_source = "ml"
 
             # Use SHAP explanation for XAI contributions
             from app.core.xai import get_feature_contributions
@@ -71,10 +76,12 @@ def _analyze_single(raw: str) -> PhishingCheckResponse:
             )
         else:
             scoring = score_url(analysis["triggered_rules"])
+            score_source = "heuristic"
             from app.core.xai import get_feature_contributions
             feature_contributions = get_feature_contributions(indicators=analysis["triggered_rules"])
     except Exception as e:
         scoring = score_url(analysis["triggered_rules"])
+        score_source = "heuristic"
         try:
             from app.core.xai import get_feature_contributions
             feature_contributions = get_feature_contributions(indicators=analysis["triggered_rules"])
@@ -124,23 +131,43 @@ def _analyze_single(raw: str) -> PhishingCheckResponse:
         domain_similarity_matches=analysis["domain_similarity_matches"],
         phishing_fingerprint=fingerprint,
         feature_contributions=feature_contributions,
+        score_source=score_source,
         message="URL analyzed successfully",
     )
 
 
 
+# Rate-limit partition: we explicitly pass key_func=api_key_or_ip_key
+# on every @limiter.limit decorator below so two distinct X-Api-Key
+# values (or bearer tokens) behind the same NAT don't share a single
+# 30/minute budget. Without this, slowapi's default key_func partitions
+# by remote address, which collapses all API keys behind one egress
+# point into one bucket. The key_func falls back to IP only when no
+# credential header is present (e.g. unauthenticated dev probes).
+
+
 @router.post("/check", response_model=PhishingCheckResponse)
-@limiter.limit("30/minute")
+@limiter.limit("30/minute", key_func=api_key_or_ip_key)
 async def check_url(request: Request, body: PhishingCheckRequest, background_tasks: BackgroundTasks):
+    # Body-size sanity check. The BodySizeLimitMiddleware caps the raw
+    # HTTP body at 20 MB, but for a single-URL request that's an
+    # absurd ceiling — anything over ~4 KB is either a malformed
+    # client or an attacker trying to spam the analyzer. We check the
+    # URL length here so the response is a clean 400 with a useful
+    # message instead of a generic "body too large" from middleware.
+    if len(body.url) > 2048:
+        raise HTTPException(
+            status_code=413,
+            detail=f"URL is {len(body.url)} chars; max is 2048.",
+        )
+
     res = _analyze_single(body.url)
     if body.ground_truth is not None:
-        from ml.drift.registry import DriftRegistry
         y_pred = 1 if res.risk_score >= 50 else 0
         DriftRegistry.update_all("phish", body.ground_truth, y_pred)
 
     # Single DriftRegistry lookup, reused below.
     try:
-        from ml.drift.registry import DriftRegistry
         drift_signal = DriftRegistry.get("phish").get_current_signal()
     except Exception:
         drift_signal = {"status": "stable"}
@@ -155,8 +182,15 @@ async def check_url(request: Request, body: PhishingCheckRequest, background_tas
     return res
 
 
+# Cap the *aggregate* size of a /check/batch body. With the per-URL
+# 2048-char cap, 100 URLs could legally total 200 KB; we leave a small
+# margin for JSON framing and reject anything past that as a fast 413
+# (the per-endpoint validator below this still caps at 100 entries).
+MAX_BATCH_BODY_CHARS = 100 * 2048 + 4096  # ~205 KB ceiling
+
+
 @router.post("/check/batch")
-@limiter.limit("5/minute")
+@limiter.limit("5/minute", key_func=api_key_or_ip_key)
 def check_url_batch(request: Request, body: BatchCheckRequest):
     """AI feature: analyze up to 100 URLs in a single request for bulk threat screening.
 
@@ -169,6 +203,18 @@ def check_url_batch(request: Request, body: BatchCheckRequest):
         raise HTTPException(status_code=400, detail="urls list must not be empty.")
     if len(body.urls) > 100:
         raise HTTPException(status_code=400, detail="Maximum 100 URLs per batch request.")
+    # Aggregate body cap. The per-URL 2048-char limit inside the
+    # BatchCheckRequest validator already prevents the worst cases,
+    # but a request with 100 max-length URLs plus the JSON framing
+    # could still approach 200 KB. We refuse earlier so the request
+    # doesn't tie up a rate-limit slot just to be rejected during
+    # per-URL validation.
+    total_chars = sum(len(u) for u in body.urls)
+    if total_chars > MAX_BATCH_BODY_CHARS:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Batch payload is {total_chars} chars; max is {MAX_BATCH_BODY_CHARS}.",
+        )
     results = []
     for url in body.urls:
         try:

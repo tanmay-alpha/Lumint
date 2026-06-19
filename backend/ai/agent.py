@@ -10,14 +10,72 @@ import json
 import logging
 import re
 import time
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Literal
 from sqlalchemy import text
+from pydantic import BaseModel, ValidationError
 from app.database import SessionLocal
 from ai.client import ask_groq, MODEL_ID
 from app.services.phishshield.url_analyzer import analyze_url
 from app.services.phishshield.risk_scorer import score_url
 
 logger = logging.getLogger("lumint.ai.agent")
+
+
+class AgentAction(BaseModel):
+    """Structured ReAct action parsed from LLM output.
+
+    LLM outputs are not guaranteed to follow the exact
+    'Action: tool_name(arg)' string format, so we use a Pydantic model
+    with permissive JSON validation. The agent prompt asks for JSON
+    (with a Thought/Action/Argument shape), and we fall back to a
+    JSON code-fence extraction on the first parse failure.
+    """
+    thought: str
+    tool: Literal[
+        "check_url",
+        "check_upi_receipt",
+        "search_database_cases",
+        "check_kyc_document",
+    ]
+    argument: str
+
+
+# Regex used to recover JSON from a ```json ... ``` code-fence.
+_JSON_FENCE_RE = re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", re.DOTALL)
+
+
+def _parse_agent_action(response_content: str) -> Optional[AgentAction]:
+    """Parse an LLM response into an AgentAction.
+
+    Strategy:
+      1. Try ``AgentAction.model_validate_json`` on the raw response.
+      2. On failure, extract the first ```json ... ``` fenced JSON object
+         and retry once.
+      3. On any failure, return ``None`` — the caller surfaces a structured
+         warning instead of raising (which would surface as a 500).
+    """
+    if not response_content:
+        return None
+
+    # Attempt 1: direct JSON parse of the whole response.
+    try:
+        return AgentAction.model_validate_json(response_content)
+    except ValidationError:
+        pass
+    except Exception as e:  # malformed JSON, etc.
+        logger.debug("AgentAction direct parse failed: %s", e)
+
+    # Attempt 2: pull a JSON object out of a markdown code fence.
+    fence_match = _JSON_FENCE_RE.search(response_content)
+    if fence_match:
+        try:
+            return AgentAction.model_validate_json(fence_match.group(1))
+        except ValidationError as e:
+            logger.debug("AgentAction fence parse validation failed: %s", e)
+        except Exception as e:  # malformed JSON, etc.
+            logger.debug("AgentAction fence parse failed: %s", e)
+
+    return None
 
 # System prompt for the ReAct Agent
 AGENT_SYSTEM_PROMPT = """You are the Lumint Autonomous Fraud Investigator Agent.
@@ -199,11 +257,12 @@ class FraudInvestigatorAgent:
                     "model_used": raw_response.get("_model", MODEL_ID)
                 }
 
-            # Parse Action
-            action_match = re.search(r"Action:\s*(\w+)\((.+?)\)", response_content)
-            if action_match:
-                tool_name = action_match.group(1).strip()
-                tool_arg = action_match.group(2).strip().strip('"').strip("'")
+            # Parse Action via Pydantic (with a single code-fence recovery retry)
+            action = _parse_agent_action(response_content)
+
+            if action is not None:
+                tool_name = action.tool
+                tool_arg = action.argument.strip().strip('"').strip("'")
 
                 if tool_name in TOOLS:
                     logger.info(f"Executing tool {tool_name} with arg: {tool_arg}")
@@ -215,8 +274,22 @@ class FraudInvestigatorAgent:
                 logger.info(f"Observation: {observation_str}")
                 current_prompt += f"\n{response_content}\nObservation: {observation_str}\n"
             else:
-                # If the agent output doesn't match ReAct format, try to coerce or return final response
-                current_prompt += f"\n{response_content}\nSystem Warning: You must output either 'Action: tool_name(argument)' or 'Final Answer: <your report>'. Please check formats."
+                # Structured, non-500 fallback: tell the model exactly what we
+                # need without leaking parser internals. Never raise here —
+                # that would silently turn into a 500 upstream.
+                logger.warning(
+                    "Agent step %d: failed to parse AgentAction from LLM output",
+                    step + 1,
+                )
+                current_prompt += (
+                    f"\n{response_content}\n"
+                    f"System Warning: Your previous response could not be parsed as a "
+                    f"tool call. You MUST respond with a single JSON object of the form "
+                    f'{{"thought": str, "tool": "check_url"|"check_upi_receipt"|'
+                    f'"search_database_cases"|"check_kyc_document", "argument": str}} '
+                    f"to invoke a tool, or include the literal token 'Final Answer:' "
+                    f"followed by your report to end the investigation. Please check formats.\n"
+                )
         
         # Max steps exceeded fallback
         return {
