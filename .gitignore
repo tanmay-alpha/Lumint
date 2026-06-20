@@ -98,3 +98,9 @@ lumint-pi-dashboard.png
 lumint-pi-homepage.png
 lumint-register-page.png
 lumint-live-after-redeploy.png
+
+# Claude Code local session artifacts (machine-specific, not for the repo)
+.claude/settings.local.json
+.claude/commit_*.msg
+.claude/review_diff.txt
+review_diff.txt
