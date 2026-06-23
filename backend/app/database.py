@@ -22,6 +22,9 @@ def _engine_options(database_url: str) -> dict[str, Any]:
         }
         if url.database in (None, "", ":memory:"):
             options["poolclass"] = StaticPool
+    else:
+        # Recycle connections every 5 minutes to avoid stale connections behind proxies/firewalls
+        options["pool_recycle"] = 300
 
     return options
 

@@ -1,4 +1,5 @@
 import logging
+import os
 import uuid
 from pathlib import Path
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, BackgroundTasks, Depends, Request
@@ -8,9 +9,10 @@ from app.dependencies.auth import get_current_user
 from app.schemas.document import DocumentAnalysisResponse
 from app.services.docshield.analyzer import analyze_pdf_document, analyze_image_document
 from app.services.fraud_dna.fingerprinter import generate_fingerprint
-from app.services.fraud_dna.store import save_fingerprint, STORE_PATH
+from app.services.fraud_dna.store import save_fingerprint
 from app.core.event_publisher import publish_threat_event
 from app.core.file_validation import InvalidFileError, validate_upload
+from ml.drift.registry import DriftRegistry
 
 logger = logging.getLogger("lumint.routers.documents")
 
@@ -22,7 +24,30 @@ UPLOADS_DIR = _BACKEND_DIR / "uploads"
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
 ALLOWED_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg"}
-MAX_UPLOAD_BYTES = 15 * 1024 * 1024  # 15 MB
+# Per-endpoint cap is 12 MB; the global BodySizeLimitMiddleware is set to
+# 20 MB. Keeping a deliberate ~8 MB buffer between the two means oversized
+# uploads are rejected with our specific "File exceeds maximum allowed size
+# of 12 MB" 413 instead of the middleware's generic body-too-large error,
+# so the client can show a meaningful message ("file too large, try a
+# smaller PDF") rather than a vague transport-level failure.
+MAX_UPLOAD_BYTES = 12 * 1024 * 1024  # 12 MB
+
+
+def _safe_unlink(path: Path) -> None:
+    """Remove a file if it exists. Errors are logged and swallowed —
+    upload cleanup must never crash the request that triggered it.
+
+    The upload is already persisted to the Fraud DNA store before this
+    runs, so deleting the on-disk blob doesn't lose evidence.
+    """
+    try:
+        if path.exists():
+            os.remove(path)
+    except Exception:
+        # Don't escalate — the file may already be gone, or the disk
+        # may be read-only in some test environments. Either way, the
+        # user-visible response is unaffected.
+        logger.debug("Could not remove upload %s", path, exc_info=True)
 
 
 def _sanitize_filename_for_response(raw: str) -> str:
@@ -206,15 +231,21 @@ async def analyze_document(
 
     response_obj = DocumentAnalysisResponse(**base, **result)
     if ground_truth is not None:
-        from ml.drift.registry import DriftRegistry
         y_pred = 1 if response_obj.risk_score >= 50 else 0
         DriftRegistry.update_all("doc", ground_truth, y_pred)
 
-    from ml.drift.registry import DriftRegistry
     try:
         drift_signal = DriftRegistry.get("doc").get_current_signal()
     except Exception:
         drift_signal = {"status": "stable"}
+
+    # Best-effort cleanup of the saved upload *after* the response has been
+    # built. The file is no longer needed: we've already extracted features,
+    # generated a fingerprint, and the response only references metadata.
+    # We schedule this as a background task so a slow filesystem doesn't
+    # add latency to the user-facing request. The handler is a no-op if
+    # the file has already been removed (e.g. by a periodic janitor).
+    background_tasks.add_task(_safe_unlink, save_path)
 
     background_tasks.add_task(
         publish_threat_event,

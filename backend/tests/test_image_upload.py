@@ -2,6 +2,7 @@ import pytest
 from pathlib import Path
 from fastapi.testclient import TestClient
 from app.main import app
+from app.routers.documents import MAX_UPLOAD_BYTES
 
 client = TestClient(app)
 
@@ -87,3 +88,44 @@ def test_document_fingerprint_warning_hides_internal_exception(tmp_path, monkeyp
 
     assert response.status_code == 200
     assert response.json()["analysis_warnings"] == ["Fraud DNA fingerprint storage failed."]
+
+
+def test_oversized_upload_returns_413_with_specific_message():
+    """POST a 13 MB body (over the 12 MB per-endpoint cap, under the 20 MB
+    global BodySizeLimitMiddleware cap) and assert the request is rejected
+    with 413 carrying our specific "File exceeds maximum allowed size of 12 MB"
+    message — NOT the middleware's generic body-too-large error.
+
+    Why this matters: if MAX_UPLOAD_BYTES ever drifts back to 15 MB (or the
+    per-endpoint cap silently drops below the global one), the user-visible
+    413 detail changes or the global middleware fires instead. The test pins
+    both the threshold and the friendly error.
+    """
+    # Sanity-check the cap actually is what we think it is — guards against
+    # silent edits to the constant turning this test into a tautology.
+    assert MAX_UPLOAD_BYTES == 12 * 1024 * 1024, (
+        f"MAX_UPLOAD_BYTES should be 12 MB, got {MAX_UPLOAD_BYTES} bytes"
+    )
+
+    # 13 MB of arbitrary bytes. We do NOT need a valid PNG here — the size
+    # check runs before content validation, so a junk body still exercises
+    # the same code path that protects against DoS.
+    payload_size = 13 * 1024 * 1024
+    junk_body = b"\x00" * payload_size
+
+    response = client.post(
+        "/api/documents/analyze",
+        files={"file": ("oversized.bin", junk_body, "application/octet-stream")},
+    )
+
+    assert response.status_code == 413, (
+        f"Expected 413 for {payload_size} byte upload, got {response.status_code}: "
+        f"{response.text[:200]}"
+    )
+    detail = response.json().get("detail", "")
+    assert "12 MB" in detail, (
+        f"Expected the per-endpoint '12 MB' message, got: {detail!r}. "
+        "If this is the global middleware's generic 413, MAX_UPLOAD_BYTES may "
+        "have drifted above the 20 MB global cap, or the per-endpoint check "
+        "is no longer reachable."
+    )

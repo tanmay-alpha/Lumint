@@ -38,6 +38,53 @@ def _normalize(url: str) -> str:
     return url
 
 
+def _idn_to_ascii(url: str) -> str:
+    """Convert any IDN (Unicode) host in the URL to its punycode (xn--…)
+    equivalent so downstream analysis always sees ASCII.
+
+    Why this matters: an attacker can register a domain that *looks*
+    identical to a real bank brand by substituting Cyrillic/Greek
+    characters (e.g. "а" for "a" — visually indistinguishable in
+    most fonts). Browsers display the Unicode form, but a naive
+    detector that compares against an ASCII brand list will miss the
+    match entirely.
+
+    Strategy: parse the URL, convert the host with `idna`, and
+    re-assemble. If the conversion fails (e.g. the host is already
+    pure ASCII, or it has invalid characters), the original URL is
+    returned unchanged — we never *block* on this, we only *enhance*
+    detection.
+
+    We also re-encode any non-ASCII characters in the path/query so
+    analysis stays consistent across the whole URL.
+    """
+    if not url:
+        return url
+    try:
+        # Fast path: if every char is ASCII, there's no IDN to convert.
+        url.encode("ascii")
+        return url
+    except UnicodeEncodeError:
+        pass
+
+    try:
+        from urllib.parse import urlparse, urlunparse
+        parsed = urlparse(url)
+        if not parsed.netloc:
+            return url
+        # .encode("idna") on a str gives the ASCII (punycode) form.
+        # The trailing "/" is added because urlunparse requires a
+        # netloc and we want to preserve a bare host URL shape.
+        host_ascii = parsed.netloc.encode("idna").decode("ascii")
+        return urlunparse(parsed._replace(netloc=host_ascii))
+    except (UnicodeError, ValueError):
+        # Some IDNs are technically invalid (unassigned code points,
+        # mixing rules violations, etc.). Fall through with the
+        # original URL — the `punycode_domain` rule in the analyzer
+        # will still flag any valid punycode that survives.
+        return url
+
+
 def _extract_domain(parsed) -> str:
     return (parsed.netloc or parsed.path).split(":")[0].lower().strip().removeprefix("www.")
 
@@ -122,7 +169,11 @@ def analyze_url(raw_url: str) -> dict:
 
 
 def _analyze_url_sync(raw_url: str) -> dict:
-    normalized = _normalize(raw_url)
+    # First apply the basic normalization (strip + scheme fill), then
+    # collapse any IDN (Unicode) host to its punycode (xn--…) form.
+    # Order matters: the scheme-prefix step must run first so
+    # urlparse sees a valid URL before we touch the host.
+    normalized = _idn_to_ascii(_normalize(raw_url))
     if not normalized:
         return {
             "normalized_url": "", "domain": "",

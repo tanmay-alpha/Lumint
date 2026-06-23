@@ -31,6 +31,10 @@ class DocumentAnalysisResponse(BaseModel):
     analysis_status: str
     risk_score: Optional[int] = None
     risk_level: Optional[str] = None
+    # Component scores (added in audit-batch4). Optional so old callers
+    # that only know the fused risk_score keep working.
+    ml_score: Optional[int] = None
+    rule_score: Optional[int] = None
     metadata: Optional[DocumentMetadata] = None
     text_analysis: Optional[Any] = None
     layout_analysis: Optional[Any] = None

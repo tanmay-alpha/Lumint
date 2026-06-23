@@ -234,12 +234,6 @@ def get_current_user(
     return AuthResult(authenticated=True, mode="production", key_prefix=prefix)
 
 
-def require_auth(current: AuthResult = ...) -> AuthResult:  # type: ignore[assignment]
-    """Stand-in for stricter endpoints. Provided for backward compat with
-    existing route signatures that use ``Depends(require_auth)``."""
-    raise NotImplementedError  # placeholder; routers should use get_current_user directly
-
-
 # ─────────────────────────────────────────────────────────────────────
 # Backwards-compat shim: the old conftest and a few routers imported
 # ``get_api_key`` to monkeypatch. Keep it working but make it obvious

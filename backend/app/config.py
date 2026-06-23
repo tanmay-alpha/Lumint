@@ -6,6 +6,12 @@ from sqlalchemy.exc import ArgumentError
 DEFAULT_DEV_DATABASE_URL = "sqlite+pysqlite:///./backend/data/lumint_dev.db"
 TEST_DATABASE_URL = "sqlite+pysqlite:///:memory:"
 
+# Reject absurdly long DATABASE_URL values. A real production URL
+# (Postgres + credentials + host + path + query) is well under 1 KB;
+# anything over 2 KB is almost certainly an attack or a misconfigured
+# secret that bloats every log line. 2048 is a generous ceiling.
+MAX_DATABASE_URL_LEN = 2048
+
 _INVALID_PLACEHOLDERS = {"", "your_database_url_here", "database_url_here", "<database_url>"}
 _PRODUCTION_ENVS = {"prod", "production"}
 
@@ -52,13 +58,23 @@ class Settings(BaseSettings):
         v = v.strip()
         if v.lower() in _INVALID_PLACEHOLDERS:
             raise ValueError("DATABASE_URL must be a valid SQLAlchemy URL.")
-        
+
+        # Cap raw length. A legit production URL is well under 1 KB; we
+        # cut off at 2 KB so an attacker can't smuggle a megabyte of
+        # junk into every connection string and log line. The check
+        # runs *before* SQLAlchemy parsing so we never even attempt to
+        # build a URL object from attacker-controlled garbage.
+        if len(v) > MAX_DATABASE_URL_LEN:
+            raise ValueError(
+                f"DATABASE_URL is {len(v)} chars; max allowed is {MAX_DATABASE_URL_LEN}."
+            )
+
         # If it points to ./backend/data/ but we are in the backend dir, adapt to ./data/
         import os
         if "sqlite" in v and "./backend/data/" in v:
             if not os.path.exists("./backend") and os.path.exists("./data"):
                 v = v.replace("./backend/data/", "./data/")
-                
+
         try:
             make_url(v)
         except ArgumentError as exc:

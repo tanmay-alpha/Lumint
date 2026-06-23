@@ -12,7 +12,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "npm run lint && npm run typecheck"
+    "test": "npm run lint && npm run typecheck",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@types/d3": "^7.4.3",
@@ -35,6 +36,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "^16.3.0-canary.52",
+    "@playwright/test": "^1.60.0",
     "playwright": "^1.60.0",
     "tailwindcss": "^4",
     "typescript": "^5"

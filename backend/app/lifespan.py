@@ -46,6 +46,36 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             "(e.g. Render env vars) before deploying."
         )
 
+    # Groq AI key check. The AI router is mounted unconditionally, but
+    # calls to it would fail with an opaque 500 if the key is missing.
+    # We *warn* in development (so the rest of the API still works)
+    # and *fail* in production when AI features are explicitly enabled
+    # via ENABLE_AI=1. This is a softer guard than LUMINT_API_KEY
+    # because many deployments run the detection side without the LLM
+    # explanation layer; we only want to fail when the operator has
+    # asked for the LLM.
+    groq_key = os.environ.get("GROQ_API_KEY", "").strip()
+    enable_ai = os.environ.get("ENABLE_AI", "0").strip().lower() in {"1", "true", "yes", "on"}
+    if enable_ai and not groq_key:
+        if app_env in {"prod", "production"}:
+            raise RuntimeError(
+                "FATAL: ENABLE_AI=1 requires GROQ_API_KEY in production. "
+                "Either set GROQ_API_KEY or unset ENABLE_AI."
+            )
+        logger.warning(
+            "ENABLE_AI=1 but GROQ_API_KEY is empty. AI endpoints will return "
+            "errors at request time. Set GROQ_API_KEY in your environment to "
+            "silence this warning."
+        )
+    elif not groq_key and app_env in {"prod", "production"}:
+        # Even when AI isn't explicitly enabled, surface that the
+        # explanation layer is offline. We don't fail — most prod
+        # deployments work fine without LLM explanations.
+        logger.info(
+            "GROQ_API_KEY is empty; AI explanation endpoints will return "
+            "fallback responses. This is informational only."
+        )
+
     # Startup: Create tables
     logger.info("Creating database tables...")
     Base.metadata.create_all(bind=engine)

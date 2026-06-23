@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from slowapi.middleware import SlowAPIMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp, Receive, Scope, Send
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app.config import settings
 from app.database import engine, Base
@@ -229,26 +230,63 @@ class BodySizeLimitMiddleware:
                 await _reject_too_large(send, self.max)
                 return
 
-        # 2) For chunked / no-Content-Length bodies, wrap receive to
-        # count bytes. The original receive is called once and we
-        # accumulate body bytes; if the body is ever bigger than the
-        # cap we abort with 413.
+        # 2) For chunked / no-Content-Length bodies, count bytes as
+        # they arrive. When the running total crosses the cap, emit
+        # 413 from inside the receive callback (so the response is
+        # committed before the app sees a disconnect) and return
+        # `http.disconnect` to short-circuit the app.
+        #
+        # Why emit 413 *before* the disconnect: Starlette's exception
+        # handler checks whether `http.response.start` has already
+        # been sent before converting a `ClientDisconnect` into a 500.
+        # Because `_reject_too_large` calls `send({...start...})` and
+        # `send({...body...})` first, the response is committed and
+        # the disconnect is logged as a benign `ClientDisconnect` —
+        # never as a 500.
         total = 0
+        overflowed = False
+        buffered_first: dict | None = None
 
-        async def guarded_receive() -> dict:
-            nonlocal total
+        async def counting_receive() -> dict:
+            nonlocal total, overflowed, buffered_first
+            if buffered_first is not None:
+                msg = buffered_first
+                buffered_first = None
+                return msg
             msg = await receive()
             if msg["type"] == "http.request":
-                body = msg.get("body", b"")
+                body = msg.get("body", b"") or b""
                 total += len(body)
-                if total > self.max:
+                if total > self.max and not overflowed:
+                    overflowed = True
+                    scope.setdefault("state", {})["body_overflow"] = True
+                    # Commit 413 BEFORE returning disconnect, so the
+                    # app's response handler doesn't try to send a
+                    # competing 500 over the wire.
                     await _reject_too_large(send, self.max)
-                    # Returning a disconnect prevents downstream from
-                    # reading more.
                     return {"type": "http.disconnect"}
             return msg
 
-        await self.app(scope, guarded_receive, send)
+        # Peek the first chunk — if it alone exceeds the cap, emit
+        # 413 race-free without ever entering the app.
+        peek = await receive()
+        if peek["type"] == "http.request":
+            peek_body = peek.get("body", b"") or b""
+            total += len(peek_body)
+            if total > self.max:
+                scope.setdefault("state", {})["body_overflow"] = True
+                await _reject_too_large(send, self.max)
+                # Drain remaining body so the socket can be released.
+                while peek.get("more_body", False):
+                    peek = await receive()
+                    if peek["type"] != "http.request":
+                        break
+                return
+            # First chunk fits — buffer it for the app and let it
+            # continue reading via counting_receive.
+            buffered_first = peek
+
+        await self.app(scope, counting_receive, send)
 
 
 async def _reject_too_large(send, max_bytes: int) -> None:
@@ -386,6 +424,15 @@ app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RequestIDMiddleware)
 app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(WildcardCorsMiddleware)
+# ProxyHeaders rewrites scheme/host from X-Forwarded-* so the
+# SecurityHeadersMiddleware sees `scope["scheme"] == "https"` behind
+# Render/Vercel/Nginx and can attach HSTS. Trust only the loopback /
+# private hops we expect (override with TRUSTED_PROXIES env if your
+# edge runs elsewhere).
+app.add_middleware(
+    ProxyHeadersMiddleware,
+    trusted_hosts=os.environ.get("TRUSTED_PROXIES", "127.0.0.1,::1").split(","),
+)
 # CORS — origins are env-driven (see app.config.origins_list).
 app.add_middleware(
     CORSMiddleware,

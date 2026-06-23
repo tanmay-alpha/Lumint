@@ -1,5 +1,7 @@
 import asyncio
+import hashlib
 import random
+import time
 import uuid
 import datetime
 from fastapi import WebSocket, WebSocketDisconnect, APIRouter, Depends
@@ -13,6 +15,19 @@ from app.models.models import ThreatFeedAlert, UPIShieldEvent
 # Limiting it here prevents a malicious client from sending arbitrarily
 # large payloads to exhaust server memory or CPU.
 MAX_WS_MESSAGE_BYTES = 1024
+
+# Per-connection message rate limit (seconds between messages).
+# Combined with the size cap, this prevents a single connection from
+# sending 1,000 small messages per second to exhaust server CPU.
+MIN_MSG_INTERVAL_S = 0.1
+
+# Counter for periodic pruning of the rate-limit dict so it cannot grow
+# without bound across long-lived processes.
+_msg_counter = 0
+
+# Per-key (api key hash prefix, or "anon") timestamp of the last received
+# message. Used to enforce a minimum gap between inbound messages.
+_last_msg_at: dict = {}
 
 router = APIRouter(prefix="/ws", tags=["Streaming"], dependencies=[Depends(get_current_user)])
 
@@ -98,13 +113,62 @@ async def threat_stream(websocket: WebSocket):
         for event in events:
             await websocket.send_json(event)
 
+        # Identify the connection for rate limiting. The auth dependency
+        # has already validated the user; if no api key is present, fall
+        # back to "anon" so the limit still applies.
+        try:
+            api_key = websocket.headers.get("x-api-key") or ""
+            key = hashlib.sha256(api_key.encode("utf-8")).hexdigest()[:8] if api_key else "anon"
+        except Exception:
+            key = "anon"
+
         # Loop to keep connection open. Inbound messages are keep-alive
         # pings only; we cap their size to prevent a malicious client from
         # exhausting server memory.
+        global _msg_counter
         while True:
-            msg = await websocket.receive_text()
-            if len(msg.encode("utf-8")) > MAX_WS_MESSAGE_BYTES:
-                await websocket.close(code=1009, reason="Message too large")
+            # Read the raw event BEFORE decoding text — `receive_text()`
+            # would buffer the full frame in memory first, then run the
+            # size check, which defeats the cap. `receive()` returns the
+            # raw bytes/text dict and lets us reject oversized frames
+            # without ever decoding them.
+            event = await websocket.receive()
+            if event["type"] == "websocket.disconnect":
+                break
+            msg = event.get("text")
+            if msg is None and event.get("bytes") is not None:
+                # Binary frames are never expected on this channel.
+                # 1003 = Unsupported Data (RFC 6455 §7.4.1).
+                await websocket.close(code=1003, reason="binary not supported")
+                break
+            if msg is None:
+                # Ping/pong or other keep-alive frame — loop again.
+                continue
+
+            # Per-connection rate limit. A single client must wait at
+            # least MIN_MSG_INTERVAL_S between inbound messages;
+            # otherwise we drop the connection with 1008 (Policy
+            # Violation, RFC 6455 §7.4.1).
+            now = time.time()
+            last = _last_msg_at.get(key, 0)
+            if now - last < MIN_MSG_INTERVAL_S:
+                await websocket.close(code=1008, reason="message rate too high")
+                break
+            _last_msg_at[key] = now
+
+            # Periodic pruning to keep the dict bounded. Every 1000
+            # messages, drop entries older than 60s — these are
+            # connections that have gone idle and will not return.
+            _msg_counter += 1
+            if _msg_counter % 1000 == 0:
+                cutoff = now - 60.0
+                stale = [k for k, t in _last_msg_at.items() if t < cutoff]
+                for k in stale:
+                    _last_msg_at.pop(k, None)
+
+            if len(msg.encode("utf-8", errors="replace")) > MAX_WS_MESSAGE_BYTES:
+                # 1009 = Message Too Big (RFC 6455 §7.4.1)
+                await websocket.close(code=1009, reason="message too big")
                 break
 
     except WebSocketDisconnect:
