@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef, useMemo } from "react";
+import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import fraudDnaApi from "@/lib/api/fraud-dna";
 import {
   CampaignsResponse,
@@ -27,9 +27,11 @@ import {
   Clock,
   CheckSquare,
   Maximize2,
+  Database,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import * as d3 from "d3";
+import { wsOrigin } from "@/lib/config";
 
 export default function FraudDnaPage() {
   const [campaigns, setCampaigns] = useState<CampaignsResponse | null>(null);
@@ -41,6 +43,8 @@ export default function FraudDnaPage() {
   const [expandedCampaignId, setExpandedCampaignId] = useState<string | null>(null);
   const [selectedNode, setSelectedNode] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState<"fingerprints" | "campaigns" | "graph">("fingerprints");
+  const [isSeeding, setIsSeeding] = useState(false);
+  const [liveEventCount, setLiveEventCount] = useState(0);
 
   // D3 force graph zoom & simulation state helpers
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -107,6 +111,98 @@ export default function FraudDnaPage() {
   const handleRecluster = () => {
     fetchDnaData(true);
   };
+
+  // Replace the on-disk store with the curated sample set so the page
+  // has a populated graph even before any real scans have been run.
+  const handleSeed = async () => {
+    setIsSeeding(true);
+    try {
+      await fraudDnaApi.seedSampleEvents();
+      // Re-fetch all derived views (campaigns + graph + summary) so the
+      // UI reflects the freshly seeded store without a manual reload.
+      await fetchDnaData(true);
+    } catch (err: any) {
+      console.error("Seed failed:", err);
+      setLoadError(err?.message || "Failed to load sample data.");
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
+  // Subscribe to the live threat stream. The /ws/threats WebSocket
+  // re-emits past events on connect, so a fresh client sees the existing
+  // store immediately. We only count new events to keep the page quiet.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const origin = wsOrigin();
+    if (!origin) return;
+
+    // The backend expects the same auth header the proxy uses in
+    // production. The browser cannot set a custom header on a
+    // WebSocket, so we only connect when the backend is in dev mode
+    // (no LUMINT_API_KEY configured) — otherwise the handshake would
+    // be rejected. The HTTP polling via /api/fraud-dna/* still works
+    // in production because it goes through the same-origin proxy.
+    let ws: WebSocket | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let closed = false;
+
+    const connect = () => {
+      try {
+        ws = new WebSocket(`${origin}/ws/threats`);
+      } catch (e) {
+        return;
+      }
+      ws.onopen = () => {
+        // No-op: server replays past events; we just count new arrivals.
+      };
+      ws.onmessage = () => {
+        setLiveEventCount((c) => c + 1);
+      };
+      ws.onerror = () => {
+        // Silent: the page already works via HTTP polling.
+      };
+      ws.onclose = () => {
+        if (closed) return;
+        // Auto-reconnect after 5s if the component is still mounted.
+        reconnectTimer = setTimeout(connect, 5000);
+      };
+    };
+
+    connect();
+    return () => {
+      closed = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (ws && ws.readyState <= 1) ws.close();
+    };
+  }, []);
+
+  // After a burst of live events, refresh the derived views so the
+  // graph + campaign cards pick up the new fingerprints. We debounce
+  // to avoid hammering the API when several events arrive in quick
+  // succession.
+  useEffect(() => {
+    if (liveEventCount === 0) return;
+    const id = setTimeout(() => {
+      // Re-pull campaigns+graph+summary in the background (no
+      // loading spinner — the existing data stays visible while we
+      // swap in the updated values).
+      Promise.all([
+        fraudDnaApi.getCampaigns(),
+        fraudDnaApi.getGraph(),
+        fraudDnaApi.getThreatSummary(),
+      ])
+        .then(([c, g, s]) => {
+          if (c) setCampaigns(c);
+          if (g) setGraphData(g);
+          if (s) setSummary(s);
+        })
+        .catch(() => {
+          /* ignore — page keeps the previous data */
+        });
+    }, 1500);
+    return () => clearTimeout(id);
+  }, [liveEventCount]);
 
   const getThreatVariant = (level: string): any => {
     switch (level?.toUpperCase()) {
@@ -399,19 +495,34 @@ export default function FraudDnaPage() {
           </p>
         </div>
 
-        <button
-          onClick={handleRecluster}
-          disabled={isReclustering || isLoading || !campaigns}
-          className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-2)] text-xs font-bold text-[var(--text-1)] px-4 py-2.5 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none shrink-0 cursor-pointer"
-          title={!campaigns ? "Backend not connected" : "Re-run clustering"}
-        >
-          <RefreshCw
-            className={`h-3.5 w-3.5 ${
-              isReclustering ? "animate-spin text-[var(--brand)]" : "text-[var(--text-3)]"
-            }`}
-          />
-          {isReclustering ? "Re-clustering..." : "Re-cluster Sandbox"}
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={handleSeed}
+            disabled={isSeeding}
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-2)] text-xs font-bold text-[var(--text-1)] px-4 py-2.5 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+            title="Replace the store with 8 sample events so the graph is populated"
+          >
+            <Database
+              className={`h-3.5 w-3.5 ${
+                isSeeding ? "animate-pulse text-[var(--brand)]" : "text-[var(--text-3)]"
+              }`}
+            />
+            {isSeeding ? "Seeding..." : "Load sample data"}
+          </button>
+          <button
+            onClick={handleRecluster}
+            disabled={isReclustering || isLoading || !campaigns}
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-2)] text-xs font-bold text-[var(--text-1)] px-4 py-2.5 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+            title={!campaigns ? "Backend not connected" : "Re-run clustering"}
+          >
+            <RefreshCw
+              className={`h-3.5 w-3.5 ${
+                isReclustering ? "animate-spin text-[var(--brand)]" : "text-[var(--text-3)]"
+              }`}
+            />
+            {isReclustering ? "Re-clustering..." : "Re-cluster Sandbox"}
+          </button>
+        </div>
       </div>
 
       {isLoading ? (

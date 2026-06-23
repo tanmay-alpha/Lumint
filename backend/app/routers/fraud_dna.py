@@ -8,6 +8,21 @@ from app.schemas.fraud_dna import CampaignsResponse, GraphResponse
 router = APIRouter(prefix="/api/fraud-dna", tags=["fraud-dna"], dependencies=[Depends(get_current_user)])
 
 
+@router.post("/seed")
+@limiter.limit("5/minute")
+def seed_sample_events(request: Request):
+    """Replace the store with the curated sample event set.
+
+    Useful for the "Load sample data" button on the Fraud DNA page —
+    clicking it gives the user a fully-populated graph without needing
+    to perform real scans first. Idempotent in the sense that the
+    resulting state is the same regardless of prior contents.
+    """
+    from app.services.fraud_dna.seed_data import seed_now
+    n = seed_now()
+    return {"seeded": n, "total_events": len(load_all())}
+
+
 @router.get("/fingerprints")
 @limiter.limit("60/minute")
 def get_fingerprints(request: Request):

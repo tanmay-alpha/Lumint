@@ -46,6 +46,13 @@ export const fraudDnaApi = {
   recluster: async (): Promise<CampaignsResponse | null> => {
     return realFetch<CampaignsResponse>("/api/fraud-dna/recluster", { method: "POST" });
   },
+
+  seedSampleEvents: async (): Promise<{ seeded: number; total_events: number } | null> => {
+    return realFetch<{ seeded: number; total_events: number }>(
+      "/api/fraud-dna/seed",
+      { method: "POST" }
+    );
+  },
 };
 
 export default fraudDnaApi;
