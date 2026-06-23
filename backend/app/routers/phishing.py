@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.rate_limit import limiter
 from app.dependencies.auth import get_current_user
-from app.services.phishshield.url_analyzer import analyze_url
+from app.services.phishshield.url_analyzer import analyze_url, analyze_url_async
 from app.services.phishshield.risk_scorer import score_url
 from app.services.fraud_dna.store import save_fingerprint
 from app.schemas.phishing import PhishingCheckResponse
@@ -35,12 +35,8 @@ class BatchCheckRequest(BaseModel):
         return v
 
 
-def _analyze_single(raw: str) -> PhishingCheckResponse:
-    raw = (raw or "").strip()
-    if not raw:
-        raise HTTPException(status_code=400, detail="URL must not be empty.")
-    analysis = analyze_url(raw)
-
+def _build_response(raw: str, analysis: dict) -> PhishingCheckResponse:
+    """Build PhishingCheckResponse + save fingerprint. Shared by sync+async paths."""
     # Try using trained ML model if available
     try:
         from ml.registry import get_registry
@@ -70,11 +66,19 @@ def _analyze_single(raw: str) -> PhishingCheckResponse:
                 feature_names=feature_names
             )
         else:
-            scoring = score_url(analysis["triggered_rules"])
+            scoring = score_url(
+                analysis["triggered_rules"],
+                whois=analysis.get("whois"),
+                ssl=analysis.get("ssl"),
+            )
             from app.core.xai import get_feature_contributions
             feature_contributions = get_feature_contributions(indicators=analysis["triggered_rules"])
-    except Exception as e:
-        scoring = score_url(analysis["triggered_rules"])
+    except Exception:
+        scoring = score_url(
+            analysis["triggered_rules"],
+            whois=analysis.get("whois"),
+            ssl=analysis.get("ssl"),
+        )
         try:
             from app.core.xai import get_feature_contributions
             feature_contributions = get_feature_contributions(indicators=analysis["triggered_rules"])
@@ -124,15 +128,35 @@ def _analyze_single(raw: str) -> PhishingCheckResponse:
         domain_similarity_matches=analysis["domain_similarity_matches"],
         phishing_fingerprint=fingerprint,
         feature_contributions=feature_contributions,
+        whois=analysis.get("whois"),
+        ssl=analysis.get("ssl"),
         message="URL analyzed successfully",
     )
+
+
+def _analyze_single(raw: str) -> PhishingCheckResponse:
+    """Sync path: rules only (no WHOIS/SSL). Used by batch endpoint."""
+    raw = (raw or "").strip()
+    if not raw:
+        raise HTTPException(status_code=400, detail="URL must not be empty.")
+    analysis = analyze_url(raw)
+    return _build_response(raw, analysis)
+
+
+async def _analyze_single_async(raw: str) -> PhishingCheckResponse:
+    """Async path: rules + WHOIS + SSL in parallel."""
+    raw = (raw or "").strip()
+    if not raw:
+        raise HTTPException(status_code=400, detail="URL must not be empty.")
+    analysis = await analyze_url_async(raw)
+    return _build_response(raw, analysis)
 
 
 
 @router.post("/check", response_model=PhishingCheckResponse)
 @limiter.limit("30/minute")
 async def check_url(request: Request, body: PhishingCheckRequest, background_tasks: BackgroundTasks):
-    res = _analyze_single(body.url)
+    res = await _analyze_single_async(body.url)
     if body.ground_truth is not None:
         from ml.drift.registry import DriftRegistry
         y_pred = 1 if res.risk_score >= 50 else 0

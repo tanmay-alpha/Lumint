@@ -24,4 +24,6 @@ class PhishingCheckResponse(BaseModel):
     domain_similarity_matches: List[DomainSimilarityMatch]
     phishing_fingerprint: Optional[Any] = None
     feature_contributions: Optional[List[FeatureContributionSchema]] = None
+    whois: Optional[dict] = None
+    ssl: Optional[dict] = None
     message: str

@@ -1,7 +1,11 @@
 import re
+import asyncio
 import ipaddress
 from urllib.parse import urlparse, unquote
 from typing import List
+
+from app.services.phishshield.whois_lookup import lookup_whois
+from app.services.phishshield.ssl_lookup import lookup_ssl
 
 KNOWN_BANKS = [
     "hdfcbank", "sbi", "icicibank", "axisbank", "canarabank",
@@ -108,12 +112,23 @@ def _get_tld(domain: str) -> str:
 
 
 def analyze_url(raw_url: str) -> dict:
+    """Synchronous URL feature extraction.
+
+    For WHOIS + SSL data, call ``analyze_url_async`` instead. This function
+    remains synchronous so existing callers (tests, batch) keep working; the
+    async path enriches the dict with ``whois`` and ``ssl`` keys.
+    """
+    return _analyze_url_sync(raw_url)
+
+
+def _analyze_url_sync(raw_url: str) -> dict:
     normalized = _normalize(raw_url)
     if not normalized:
         return {
             "normalized_url": "", "domain": "",
             "triggered_rules": [{"rule": "empty_url", "score": 0, "detail": "URL is empty."}],
             "domain_similarity_matches": [], "top_keywords": [], "is_official_bank_domain": False,
+            "whois": None, "ssl": None,
         }
 
     parsed = urlparse(normalized)
@@ -173,4 +188,30 @@ def analyze_url(raw_url: str) -> dict:
         "domain_similarity_matches": matches,
         "top_keywords": found_kw,
         "is_official_bank_domain": is_official,
+        "whois": None,
+        "ssl": None,
     }
+
+
+async def analyze_url_async(raw_url: str) -> dict:
+    """Async variant: feature extraction + WHOIS + SSL lookups in parallel.
+
+    WHOIS and SSL calls each have a 3s timeout. If either fails or times out,
+    the corresponding field is ``None`` (the analyzer never raises).
+    """
+    result = _analyze_url_sync(raw_url)
+    domain = result.get("domain") or ""
+    if not domain or _is_ip(domain):
+        return result
+    try:
+        whois_task = asyncio.create_task(lookup_whois(domain))
+        ssl_task = asyncio.create_task(lookup_ssl(domain))
+        whois_res, ssl_res = await asyncio.gather(
+            whois_task, ssl_task, return_exceptions=True
+        )
+        result["whois"] = whois_res if not isinstance(whois_res, Exception) else None
+        result["ssl"] = ssl_res if not isinstance(ssl_res, Exception) else None
+    except Exception:
+        result["whois"] = None
+        result["ssl"] = None
+    return result
