@@ -14,6 +14,7 @@ export interface DashboardStats {
   clean_count: number;
   suspicious_count: number;
   high_risk_count: number;
+  critical_count: number;
   active_campaigns: number;
   average_risk_score: number;
   top_indicators: IndicatorCount[];
@@ -244,6 +245,21 @@ export interface HealthResponse {
   status: string;
   timestamp: string;
   version: string;
+}
+
+export interface TimelinePoint {
+  date: string;        // YYYY-MM-DD
+  phishing: number;    // URL events on that day
+  documents: number;   // DOCUMENT events on that day
+  total: number;       // phishing + documents
+}
+
+export interface TimelineResponse {
+  days: number;
+  start_date: string;
+  end_date: string;
+  points: TimelinePoint[];
+  total_scans: number;
 }
 
 export interface DocumentAIResult {

@@ -3,7 +3,8 @@ import {
   RecentEvent,
   RiskDistribution,
   IndicatorSummary,
-  HealthResponse
+  HealthResponse,
+  TimelineResponse
 } from "../types";
 import { apiBaseUrl } from "../config";
 
@@ -103,6 +104,10 @@ export const client = {
 
   getIndicatorSummary: async (): Promise<IndicatorSummary | null> => {
     return fetchApi<IndicatorSummary>("/api/dashboard/indicator-summary", {});
+  },
+
+  getTimeline: async (days: number = 7): Promise<TimelineResponse | null> => {
+    return fetchApi<TimelineResponse>(`/api/dashboard/timeline?days=${days}`, {});
   },
 
   // Research endpoints — real backend, no mock fallback.

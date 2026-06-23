@@ -32,24 +32,41 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
 } from "recharts";
+import { TimelinePoint } from "@/lib/types";
 
-// Synthetic Sparkline trends
-const statsSparkData = [120, 125, 122, 130, 135, 132, 140, 145, 142, 148];
-const docSparkData = [45, 48, 46, 52, 55, 53, 58, 62, 60, 64];
-const phishSparkData = [65, 68, 67, 72, 74, 73, 78, 80, 79, 84];
-const campaignSparkData = [3, 3, 4, 4, 3, 4, 4, 4, 3, 4];
+// Risk-distribution pie slices (must match the backend /risk-distribution order).
+const RISK_COLORS: Record<string, string> = {
+  CLEAN: "var(--safe, #10b981)",
+  SUSPICIOUS: "var(--warn, #f59e0b)",
+  HIGH: "var(--risk-high, #ef4444)",
+  CRITICAL: "#991b1b",
+};
 
-// 7-day detection counts per module (realistic upward trend, seed=42)
-const CHART_DATA = [
-  { name: "Day 1", "DocShield": 40, "PhishShield": 50, "UPI Shield": 20 },
-  { name: "Day 2", "DocShield": 44, "PhishShield": 55, "UPI Shield": 23 },
-  { name: "Day 3", "DocShield": 48, "PhishShield": 61, "UPI Shield": 26 },
-  { name: "Day 4", "DocShield": 53, "PhishShield": 68, "UPI Shield": 30 },
-  { name: "Day 5", "DocShield": 57, "PhishShield": 74, "UPI Shield": 33 },
-  { name: "Day 6", "DocShield": 61, "PhishShield": 79, "UPI Shield": 37 },
-  { name: "Day 7", "DocShield": 64, "PhishShield": 84, "UPI Shield": 40 },
-];
+// Format an ISO timestamp into "Last updated 30s ago" / "1m ago" / "5m ago".
+function formatLastUpdated(iso: string | null | undefined): string {
+  if (!iso) return "Never";
+  const ts = new Date(iso).getTime();
+  if (Number.isNaN(ts)) return "Never";
+  const diffSec = Math.max(0, Math.round((Date.now() - ts) / 1000));
+  if (diffSec < 5) return "Just now";
+  if (diffSec < 60) return `${diffSec}s ago`;
+  const mins = Math.floor(diffSec / 60);
+  if (mins < 60) return `${mins}m ago`;
+  return `${Math.floor(mins / 60)}h ago`;
+}
+
+// Sparkline uses the same color tokens as the metric card icon, no new theme.
+function padSparkData(points: TimelinePoint[], key: "total" | "documents" | "phishing", outLen = 7): number[] {
+  // Pad with leading zeros if fewer than outLen points are available
+  const tail = points.slice(-outLen).map((p) => p[key]);
+  if (tail.length >= outLen) return tail;
+  return Array(outLen - tail.length).fill(0).concat(tail);
+}
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
@@ -76,6 +93,9 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export default function DashboardOverviewPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [events, setEvents] = useState<RecentEvent[]>([]);
+  const [timeline, setTimeline] = useState<TimelinePoint[]>([]);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [tick, setTick] = useState(0); // forces "Last updated Xs ago" to re-render
   const { events: liveEvents, status: wsStatus } = useThreatStream(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -90,12 +110,15 @@ export default function DashboardOverviewPage() {
     else setIsLoading(true);
 
     try {
-      const [statsData, eventsData] = await Promise.all([
+      const [statsData, eventsData, timelineData] = await Promise.all([
         client.getStats(),
         client.getRecentEvents(25),
+        client.getTimeline(7),
       ]);
       setStats(statsData);
       setEvents(eventsData ?? []);
+      setTimeline(timelineData?.points ?? []);
+      setLastUpdated(statsData?.last_updated ?? new Date().toISOString());
     } catch (err) {
       console.error("Error loading dashboard metrics:", err);
     } finally {
@@ -104,12 +127,30 @@ export default function DashboardOverviewPage() {
     }
   };
 
+  // Initial fetch
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchDashboardData();
     }, 0);
     return () => clearTimeout(timer);
   }, []);
+
+  // 30s polling — TASK 4: refresh stats + timeline so "Last updated" stays fresh
+  // and the dashboard reflects new scans within 30s of their creation.
+  useEffect(() => {
+    const id = setInterval(() => {
+      fetchDashboardData();
+    }, 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Re-render the "Last updated" string every second (cheap; just re-reads
+  // lastUpdated from state and recomputes relative time).
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  void tick; // reference the state so React keeps the interval alive
 
   if (isLoading) {
     return (
@@ -185,11 +226,24 @@ export default function DashboardOverviewPage() {
     );
   }
 
-  // Calculate risk percentages
-  const totalRiskCount = (stats?.clean_count ?? 0) + (stats?.suspicious_count ?? 0) + (stats?.high_risk_count ?? 0);
+  // Calculate risk percentages — now includes CRITICAL bucket (TASK 4).
+  const totalRiskCount =
+    (stats?.clean_count ?? 0) +
+    (stats?.suspicious_count ?? 0) +
+    (stats?.high_risk_count ?? 0) +
+    (stats?.critical_count ?? 0);
   const cleanPercentage = totalRiskCount ? Math.round(((stats?.clean_count ?? 0) / totalRiskCount) * 100) : 0;
   const suspiciousPercentage = totalRiskCount ? Math.round(((stats?.suspicious_count ?? 0) / totalRiskCount) * 100) : 0;
   const highRiskPercentage = totalRiskCount ? Math.round(((stats?.high_risk_count ?? 0) / totalRiskCount) * 100) : 0;
+  const criticalPercentage = totalRiskCount ? Math.round(((stats?.critical_count ?? 0) / totalRiskCount) * 100) : 0;
+
+  // Pie chart data — matches /api/dashboard/risk-distribution order
+  const riskPieData = [
+    { name: "Clean",      value: stats?.clean_count ?? 0,      key: "CLEAN" },
+    { name: "Suspicious", value: stats?.suspicious_count ?? 0, key: "SUSPICIOUS" },
+    { name: "High",       value: stats?.high_risk_count ?? 0,  key: "HIGH" },
+    { name: "Critical",   value: stats?.critical_count ?? 0,   key: "CRITICAL" },
+  ].filter((s) => s.value > 0);
 
   // Table columns definition
   const columns: Column<RecentEvent>[] = [
@@ -343,34 +397,32 @@ export default function DashboardOverviewPage() {
         <MetricCard
           label="Aggregated Detections"
           value={stats?.total_events || 0}
-          trend={{ value: "+8.3%", isPositive: true }}
           icon={<Activity className="h-4 w-4 text-text-primary" />}
-          sparkData={statsSparkData}
+          sparkData={padSparkData(timeline, "total")}
         />
         <MetricCard
           label="DocShield Scans"
           value={stats?.document_events || 0}
-          trend={{ value: "+12.1%", isPositive: true }}
           icon={<FileSearch className="h-4 w-4 text-brand" />}
-          sparkData={docSparkData}
+          sparkData={padSparkData(timeline, "documents")}
         />
         <MetricCard
           label="PhishShield Audits"
           value={stats?.url_events || 0}
-          trend={{ value: "+4.6%", isPositive: true }}
           icon={<ShieldAlert className="h-4 w-4 text-warn" />}
-          sparkData={phishSparkData}
+          sparkData={padSparkData(timeline, "phishing")}
         />
         <MetricCard
           label="Threat Campaigns DNA"
           value={stats?.active_campaigns || 0}
-          trend={{ value: "Stable", isPositive: true }}
           icon={<Network className="h-4 w-4 text-teal-500" />}
-          sparkData={campaignSparkData}
+          // No dedicated campaign-history endpoint; show a flat constant
+          // (still driven by the same data system, not synthetic noise).
+          sparkData={Array(7).fill(stats?.active_campaigns || 0)}
         />
       </div>
 
-      {/* 7-Day Detection Chart */}
+      {/* 7-Day Detection Chart — driven by /api/dashboard/timeline */}
       <DataCard className="p-4">
         <div className="flex items-center justify-between mb-3">
           <div>
@@ -381,14 +433,20 @@ export default function DashboardOverviewPage() {
           <div className="flex items-center gap-4 text-[10px] font-medium text-text-muted">
             <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-brand" /> DocShield</span>
             <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-[var(--warn)]" /> PhishShield</span>
-            <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-teal-500" /> UPI Shield</span>
           </div>
         </div>
 
         {isMounted ? (
           <div className="h-[120px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={CHART_DATA} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+              <AreaChart
+                data={timeline.map((p) => ({
+                  date: p.date.slice(5), // MM-DD for a tighter x-axis
+                  DocShield: p.documents,
+                  PhishShield: p.phishing,
+                }))}
+                margin={{ top: 5, right: 5, left: -25, bottom: 0 }}
+              >
                 <defs>
                   <linearGradient id="colorDoc" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="var(--brand)" stopOpacity={0.2}/>
@@ -398,27 +456,23 @@ export default function DashboardOverviewPage() {
                     <stop offset="5%" stopColor="var(--warn)" stopOpacity={0.2}/>
                     <stop offset="95%" stopColor="var(--warn)" stopOpacity={0}/>
                   </linearGradient>
-                  <linearGradient id="colorUpi" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.2}/>
-                    <stop offset="95%" stopColor="#14b8a6" stopOpacity={0}/>
-                  </linearGradient>
                 </defs>
-                <XAxis 
-                  dataKey="name" 
-                  tickLine={false} 
+                <XAxis
+                  dataKey="date"
+                  tickLine={false}
                   axisLine={false}
                   tick={{ fill: "var(--text-4)", fontSize: 10, fontFamily: "var(--font-mono), monospace" }}
                 />
-                <YAxis 
-                  tickLine={false} 
+                <YAxis
+                  tickLine={false}
                   axisLine={false}
                   tick={{ fill: "var(--text-4)", fontSize: 10, fontFamily: "var(--font-mono), monospace" }}
+                  allowDecimals={false}
                 />
                 <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="3 3" opacity={0.4} />
                 <Tooltip content={<CustomTooltip />} />
                 <Area type="monotone" dataKey="DocShield" stroke="var(--brand)" strokeWidth={1.5} fillOpacity={1} fill="url(#colorDoc)" />
                 <Area type="monotone" dataKey="PhishShield" stroke="var(--warn)" strokeWidth={1.5} fillOpacity={1} fill="url(#colorPhish)" />
-                <Area type="monotone" dataKey="UPI Shield" stroke="#14b8a6" strokeWidth={1.5} fillOpacity={1} fill="url(#colorUpi)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -429,7 +483,7 @@ export default function DashboardOverviewPage() {
         )}
         <div className="mt-2 text-center">
           <span className="font-sans text-[10px] text-text-muted">
-            Historical trend (synthetic)
+            Last updated {formatLastUpdated(lastUpdated)} · refreshes every 30s
           </span>
         </div>
       </DataCard>
@@ -475,6 +529,46 @@ export default function DashboardOverviewPage() {
           <DataCard className="p-6">
             <h3 className="text-title text-text-primary mb-1">Risk Breakdown</h3>
             <p className="text-caption text-text-secondary mb-6">Percentage allocation of verified scanned entities.</p>
+
+            {/* Pie — TASK 4: real risk-distribution visualization */}
+            {isMounted && riskPieData.length > 0 ? (
+              <div className="h-[140px] w-full mb-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={riskPieData}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={32}
+                      outerRadius={56}
+                      paddingAngle={2}
+                      stroke="var(--surface)"
+                      strokeWidth={2}
+                    >
+                      {riskPieData.map((slice) => (
+                        <Cell key={slice.key} fill={RISK_COLORS[slice.key]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        background: "var(--surface)",
+                        border: "1px solid var(--border)",
+                        borderRadius: 8,
+                        fontSize: 11,
+                      }}
+                      formatter={(value, name) => [`${value ?? 0} events`, String(name ?? "")]}
+                    />
+                    <Legend
+                      iconType="circle"
+                      iconSize={8}
+                      wrapperStyle={{ fontSize: 10, color: "var(--text-3)" }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            ) : null}
 
             <div className="space-y-5">
               {/* Clean / Safe */}
@@ -545,6 +639,31 @@ export default function DashboardOverviewPage() {
                     animate={{ width: `${highRiskPercentage}%` }}
                     transition={{ duration: 1, ease: "easeOut" }}
                     className="h-full bg-risk-high"
+                  />
+                </div>
+              </div>
+
+              {/* Critical — TASK 4: new bucket exposed as its own bar */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-start">
+                  <div className="flex flex-col">
+                    <span className="flex items-center gap-2 text-[13px] font-medium text-text-primary">
+                      <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: "#991b1b" }} />
+                      Critical Threats
+                    </span>
+                    <span className="text-[11px] text-text-muted ml-3.5">
+                      {stats?.critical_count || 0} events
+                    </span>
+                  </div>
+                  <span className="font-mono text-[14px] font-bold text-text-primary">{criticalPercentage}%</span>
+                </div>
+                <div className="h-2 bg-[var(--surface-3)] rounded-full overflow-hidden border border-border-default/30">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${criticalPercentage}%` }}
+                    transition={{ duration: 1, ease: "easeOut" }}
+                    className="h-full"
+                    style={{ backgroundColor: "#991b1b" }}
                   />
                 </div>
               </div>
