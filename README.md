@@ -53,16 +53,23 @@ flowchart LR
 
 ## 🛑 The Problem
 
-Every single day in India:
+India's digital-payment ecosystem faces a growing fraud burden. The **Reserve Bank of India's Annual Report for FY 2023-24** puts **banking fraud at ₹36,342 crore** for the year — a scale that demands consumer-side defenses, not just bank-side ones.
 
-| 🛑 Daily fraud in India | Count |
-|------------------------|-------|
-| 💸 Money lost to UPI payment fraud | **₹100+ crore** |
-| 📸 Fake UPI payment screenshots circulated | **15,000+** |
-| 🎣 New phishing websites targeting banks | **40,000+** |
-| 📄 People scammed via fake KYC / documents | **2.3 million** |
+India's cyber-crime response is institutionally anchored at the **Indian Cyber Crime Coordination Centre (I4C)** under the **Ministry of Home Affairs**, with the **National Cyber Crime Reporting Portal** ([cybercrime.gov.in](https://cybercrime.gov.in)) as the citizen-facing interface and **1930** as the dedicated national cyber crime helpline.
 
 Most fraud tools only catch **one type** of fraud. Lumint catches **all of them — in one platform, with explanations for every decision.**
+
+---
+
+## 📞 How to report fraud in India
+
+If you suspect you've been targeted by digital-payment fraud:
+
+- **File a report online:** [https://cybercrime.gov.in](https://cybercrime.gov.in) — National Cyber Crime Reporting Portal
+- **Call the helpline:** **1930** — India's national cyber crime helpline (operated by I4C)
+- **Coordinating agency:** [Indian Cyber Crime Coordination Centre (I4C)](https://cybercrime.gov.in) under the Ministry of Home Affairs
+
+Report early — most UPI and card fraud reversals are time-bound.
 
 ---
 
