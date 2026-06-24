@@ -88,7 +88,7 @@ def test_ssl_self_signed_detected(monkeypatch):
     )
     monkeypatch.setattr(
         "app.services.phishshield.ssl_lookup.ssl.create_default_context",
-        lambda: fake_ctx(),
+        lambda: fake_ctx,
     )
     result = _sync_ssl("example.com")
     assert result is not None
@@ -116,7 +116,7 @@ def test_ssl_expired_detected(monkeypatch):
     )
     monkeypatch.setattr(
         "app.services.phishshield.ssl_lookup.ssl.create_default_context",
-        lambda: fake_ctx(),
+        lambda: fake_ctx,
     )
     result = _sync_ssl("example.com")
     assert result is not None
@@ -148,7 +148,7 @@ def test_ssl_san_count(monkeypatch):
     )
     monkeypatch.setattr(
         "app.services.phishshield.ssl_lookup.ssl.create_default_context",
-        lambda: fake_ctx(),
+        lambda: fake_ctx,
     )
     result = _sync_ssl("example.com")
     assert result is not None
