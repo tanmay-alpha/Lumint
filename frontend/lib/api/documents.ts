@@ -37,6 +37,11 @@ export const documentApi = {
       // surface a friendly empty state rather than a confusing error.
       return null;
     }
+    // Same-origin proxy pattern: in production, `apiBaseUrl()` returns
+    // "/api/proxy" and the Vercel route forwards to the Render backend
+    // server-to-server (no CORS). In development it returns the local
+    // FastAPI URL. Either way, the request path stays
+    // `/api/documents/analyze` — the proxy only adjusts the origin.
     const url = `${base}/api/documents/analyze`;
     const formData = new FormData();
     formData.append("file", file);

@@ -25,6 +25,14 @@ adversarial-robustness-toolbox>=1.17.0
 
 reportlab>=4.1.0
 
+# PhishShield network lookups
+python-whois==0.9.4
+# Bumped from 43.0.0 to clear 5 CVEs flagged by pip-audit (PYSEC-2026-35,
+# GHSA-h4gh-qq45-vh27, CVE-2024-12797, CVE-2026-26007, GHSA-537c-gmf6-5ccf).
+# 48.0.1 is the highest fix-version across all of them; range allows
+# patch updates within the 48.x line.
+cryptography>=48.0.1,<49
+
 # Dev / test only
 pytest==9.0.3
 pytest-asyncio==1.4.0

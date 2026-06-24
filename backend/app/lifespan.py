@@ -81,6 +81,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     Base.metadata.create_all(bind=engine)
     logger.info("Database tables ready")
 
+    # Seed Fraud DNA store on first start so the page is non-empty for
+    # demo deployments and fresh local installs. ``seed_if_empty`` is a
+    # no-op if events already exist, so we won't overwrite real data.
+    try:
+        from app.services.fraud_dna.seed_data import seed_if_empty
+        seeded = seed_if_empty()
+        if seeded:
+            logger.info("Fraud DNA: seeded %d sample events on first start", seeded)
+    except Exception:
+        logger.exception("Fraud DNA seed failed; continuing without sample data")
+
     yield
 
     # Shutdown: Dispose engine connections

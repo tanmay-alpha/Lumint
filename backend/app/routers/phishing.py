@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.rate_limit import limiter, api_key_or_ip_key
 from app.dependencies.auth import get_current_user
-from app.services.phishshield.url_analyzer import analyze_url
+from app.services.phishshield.url_analyzer import analyze_url, analyze_url_async
 from app.services.phishshield.risk_scorer import score_url
 from app.services.fraud_dna.store import save_fingerprint
 from app.schemas.phishing import PhishingCheckResponse
@@ -36,15 +36,16 @@ class BatchCheckRequest(BaseModel):
         return v
 
 
-def _analyze_single(raw: str) -> PhishingCheckResponse:
-    raw = (raw or "").strip()
-    if not raw:
-        raise HTTPException(status_code=400, detail="URL must not be empty.")
-    analysis = analyze_url(raw)
+def _build_response(raw: str, analysis: dict) -> PhishingCheckResponse:
+    """Build PhishingCheckResponse + save fingerprint. Shared by sync+async paths.
 
-    # Try using trained ML model if available. score_source tells the
-    # client which scoring path produced the final risk_score so they
-    # can reason about confidence and model availability.
+    `score_source` is set to:
+      - "ml"        when the trained phishing classifier was used
+      - "heuristic" when the rule-based fallback scored the URL
+    It is `None` only for very old client/server versions that predate the
+    field; current clients should always see one of the two values.
+    """
+    # Try using trained ML model if available
     score_source: Optional[str] = None
     try:
         from ml.registry import get_registry
@@ -75,12 +76,20 @@ def _analyze_single(raw: str) -> PhishingCheckResponse:
                 feature_names=feature_names
             )
         else:
-            scoring = score_url(analysis["triggered_rules"])
+            scoring = score_url(
+                analysis["triggered_rules"],
+                whois=analysis.get("whois"),
+                ssl=analysis.get("ssl"),
+            )
             score_source = "heuristic"
             from app.core.xai import get_feature_contributions
             feature_contributions = get_feature_contributions(indicators=analysis["triggered_rules"])
-    except Exception as e:
-        scoring = score_url(analysis["triggered_rules"])
+    except Exception:
+        scoring = score_url(
+            analysis["triggered_rules"],
+            whois=analysis.get("whois"),
+            ssl=analysis.get("ssl"),
+        )
         score_source = "heuristic"
         try:
             from app.core.xai import get_feature_contributions
@@ -131,9 +140,29 @@ def _analyze_single(raw: str) -> PhishingCheckResponse:
         domain_similarity_matches=analysis["domain_similarity_matches"],
         phishing_fingerprint=fingerprint,
         feature_contributions=feature_contributions,
+        whois=analysis.get("whois"),
+        ssl=analysis.get("ssl"),
         score_source=score_source,
         message="URL analyzed successfully",
     )
+
+
+def _analyze_single(raw: str) -> PhishingCheckResponse:
+    """Sync path: rules only (no WHOIS/SSL). Used by batch endpoint."""
+    raw = (raw or "").strip()
+    if not raw:
+        raise HTTPException(status_code=400, detail="URL must not be empty.")
+    analysis = analyze_url(raw)
+    return _build_response(raw, analysis)
+
+
+async def _analyze_single_async(raw: str) -> PhishingCheckResponse:
+    """Async path: rules + WHOIS + SSL in parallel."""
+    raw = (raw or "").strip()
+    if not raw:
+        raise HTTPException(status_code=400, detail="URL must not be empty.")
+    analysis = await analyze_url_async(raw)
+    return _build_response(raw, analysis)
 
 
 
@@ -153,7 +182,7 @@ async def check_url(request: Request, body: PhishingCheckRequest, background_tas
     # HTTP body at 20 MB, but for a single-URL request that's an
     # absurd ceiling — anything over ~4 KB is either a malformed
     # client or an attacker trying to spam the analyzer. We check the
-    # URL length here so the response is a clean 400 with a useful
+    # URL length here so the response is a clean 413 with a useful
     # message instead of a generic "body too large" from middleware.
     if len(body.url) > 2048:
         raise HTTPException(
@@ -161,7 +190,7 @@ async def check_url(request: Request, body: PhishingCheckRequest, background_tas
             detail=f"URL is {len(body.url)} chars; max is 2048.",
         )
 
-    res = _analyze_single(body.url)
+    res = await _analyze_single_async(body.url)
     if body.ground_truth is not None:
         y_pred = 1 if res.risk_score >= 50 else 0
         DriftRegistry.update_all("phish", body.ground_truth, y_pred)

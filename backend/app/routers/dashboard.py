@@ -5,12 +5,14 @@ from app.services.dashboard.stats import (
     get_recent_events,
     get_risk_distribution,
     get_indicator_summary,
+    get_timeline,
 )
 from app.schemas.dashboard import (
     StatsResponse,
     RecentEventsResponse,
     RiskDistributionResponse,
     IndicatorSummaryResponse,
+    TimelineResponse,
 )
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"], dependencies=[Depends(get_current_user)])
@@ -34,3 +36,9 @@ def risk_distribution():
 @router.get("/indicator-summary", response_model=IndicatorSummaryResponse)
 def indicator_summary():
     return get_indicator_summary()
+
+
+@router.get("/timeline", response_model=TimelineResponse)
+def timeline(days: int = Query(default=7, ge=1, le=90)):
+    """Scan-volume timeline (last ``days`` days). Powers the dashboard chart."""
+    return get_timeline(days)

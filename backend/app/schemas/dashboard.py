@@ -14,6 +14,7 @@ class StatsResponse(BaseModel):
     clean_count: int
     suspicious_count: int
     high_risk_count: int
+    critical_count: int
     active_campaigns: int
     average_risk_score: float
     top_indicators: List[IndicatorCount]
@@ -37,3 +38,18 @@ class RiskDistributionResponse(BaseModel):
 
 class IndicatorSummaryResponse(BaseModel):
     indicators: List[IndicatorCount]
+
+
+class TimelinePoint(BaseModel):
+    date: str
+    phishing: int
+    documents: int
+    total: int
+
+
+class TimelineResponse(BaseModel):
+    days: int
+    start_date: str
+    end_date: str
+    points: List[TimelinePoint]
+    total_scans: int
