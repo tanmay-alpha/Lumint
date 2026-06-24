@@ -1,6 +1,4 @@
 import asyncio
-import socket as socket_mod
-import ssl as ssl_mod
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -69,27 +67,87 @@ class FakeConnectCM:
         return False
 
 
+class FakeCtx:
+    """Minimal ``ssl.SSLContext``-shaped stand-in used by the cert-construction
+    tests below.
+
+    Why a class with ``__slots__`` instead of ``type('FakeCtx', ...)`` or a
+    plain ``Mock``: a real ``ssl.SSLContext`` rejects attribute writes to
+    names it does not define (e.g. ``ctx.check_hostnme = False`` raises
+    ``AttributeError``). A plain Python object would silently accept that
+    typo, hiding real production bugs. ``__slots__`` here mirrors that
+    behaviour: only the names the production code touches
+    (``check_hostname``, ``verify_mode``, ``wrap_socket``) are writable;
+    any other write raises ``AttributeError``, so a regression in the
+    production code that misspells one of these attributes will fail
+    loudly in CI instead of silently passing.
+    """
+
+    __slots__ = ("check_hostname", "verify_mode", "_ssl_sock")
+
+    def __init__(self, ssl_sock: FakeSSLSocket):
+        # Match ssl.SSLContext defaults: verification ON. Production code
+        # immediately disables both with explicit assignments, so the
+        # initial values here don't matter for the tests.
+        self.check_hostname = True
+        self.verify_mode = 0  # ssl.CERT_REQUIRED == 0
+        self._ssl_sock = ssl_sock
+
+    def wrap_socket(self, sock, server_hostname=None, **kw):
+        # Assert SNI is passed. The real ssl.SSLContext uses server_hostname
+        # for SNI; if production ever drops it, a real handshake to a
+        # SNI-only vhost would fail, but our mocked test wouldn't notice.
+        # Pinning the kwarg here turns that regression into a test failure.
+        assert "server_hostname" in {
+            "server_hostname": server_hostname,
+            **kw,
+        } or server_hostname is not None, (
+            "wrap_socket must be called with server_hostname for SNI"
+        )
+        return self._ssl_sock
+
+
+def _patch_ssl_for_test(monkeypatch, der: bytes) -> FakeCtx:
+    """Patch the network + SSL seams in ``_sync_ssl`` so a cert-construction
+    test can run without touching the real internet.
+
+    Returns the ``FakeCtx`` so the test can optionally inspect it.
+
+    Implementation note: ``monkeypatch.setattr`` rewrites the attribute on
+    the *named module* object. That works only because ``ssl_lookup.py``
+    accesses the helpers through the module (``socket.create_connection``
+    and ``ssl.create_default_context``), not via a bound import
+    (``from socket import create_connection``). If production code ever
+    changes to ``from ssl import create_default_context`` (binding the
+    name at import time), these patches will silently no-op and the
+    tests will fall through to the real network path. See
+    ``ssl_lookup.py`` for the contract.
+    """
+    fake_ssl_sock = FakeSSLSocket(der)
+    fake_ctx = FakeCtx(fake_ssl_sock)
+    fake_tcp_sock = object()
+    monkeypatch.setattr(
+        "app.services.phishshield.ssl_lookup.socket.create_connection",
+        lambda *a, **kw: FakeConnectCM(fake_tcp_sock),
+    )
+    # ssl.create_default_context() returns an instance (ssl.SSLContext),
+    # not a class. The lambda must return the instance — calling it
+    # (``lambda: fake_ctx()``) would raise TypeError, which _sync_ssl's
+    # bare ``except`` would silently swallow into a None return.
+    monkeypatch.setattr(
+        "app.services.phishshield.ssl_lookup.ssl.create_default_context",
+        lambda: fake_ctx,
+    )
+    return fake_ctx
+
+
 def test_ssl_self_signed_detected(monkeypatch):
     past = datetime.now(timezone.utc) - timedelta(days=30)
     future = datetime.now(timezone.utc) + timedelta(days=365)
     der = _make_cert_der(
         past, future, issuer_cn="Self CA", subject_cn="Self CA"
     )
-    fake_ssl_sock = FakeSSLSocket(der)
-    fake_ctx = type(
-        "FakeCtx",
-        (),
-        {"wrap_socket": lambda self, sock, **kw: fake_ssl_sock},
-    )()
-    fake_tcp_sock = object()
-    monkeypatch.setattr(
-        "app.services.phishshield.ssl_lookup.socket.create_connection",
-        lambda *a, **kw: FakeConnectCM(fake_tcp_sock),
-    )
-    monkeypatch.setattr(
-        "app.services.phishshield.ssl_lookup.ssl.create_default_context",
-        lambda: fake_ctx,
-    )
+    _patch_ssl_for_test(monkeypatch, der)
     result = _sync_ssl("example.com")
     assert result is not None
     assert result["is_self_signed"] is True
@@ -103,21 +161,7 @@ def test_ssl_expired_detected(monkeypatch):
     der = _make_cert_der(
         past, expired, issuer_cn="Test CA", subject_cn="example.com"
     )
-    fake_ssl_sock = FakeSSLSocket(der)
-    fake_ctx = type(
-        "FakeCtx",
-        (),
-        {"wrap_socket": lambda self, sock, **kw: fake_ssl_sock},
-    )()
-    fake_tcp_sock = object()
-    monkeypatch.setattr(
-        "app.services.phishshield.ssl_lookup.socket.create_connection",
-        lambda *a, **kw: FakeConnectCM(fake_tcp_sock),
-    )
-    monkeypatch.setattr(
-        "app.services.phishshield.ssl_lookup.ssl.create_default_context",
-        lambda: fake_ctx,
-    )
+    _patch_ssl_for_test(monkeypatch, der)
     result = _sync_ssl("example.com")
     assert result is not None
     assert result["is_expired"] is True
@@ -135,21 +179,7 @@ def test_ssl_san_count(monkeypatch):
     der = _make_cert_der(
         past, future, issuer_cn="Test CA", subject_cn="example.com", sans=sans
     )
-    fake_ssl_sock = FakeSSLSocket(der)
-    fake_ctx = type(
-        "FakeCtx",
-        (),
-        {"wrap_socket": lambda self, sock, **kw: fake_ssl_sock},
-    )()
-    fake_tcp_sock = object()
-    monkeypatch.setattr(
-        "app.services.phishshield.ssl_lookup.socket.create_connection",
-        lambda *a, **kw: FakeConnectCM(fake_tcp_sock),
-    )
-    monkeypatch.setattr(
-        "app.services.phishshield.ssl_lookup.ssl.create_default_context",
-        lambda: fake_ctx,
-    )
+    _patch_ssl_for_test(monkeypatch, der)
     result = _sync_ssl("example.com")
     assert result is not None
     assert result["san_count"] == 3
