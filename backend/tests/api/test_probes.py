@@ -151,3 +151,14 @@ def test_legacy_api_health_still_works(client):
     assert r.status_code == 200
     body = r.json()
     assert body["status"] == "ok"
+
+
+def test_health_endpoint_returns_ok_with_db(client):
+    """GET /health returns 200 + basic status, suitable for the Vercel
+    frontend's health probe (lighter than /readyz — no ML registry check)."""
+    r = client.get("/health")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "ok"
+    assert body["database"] == "connected"
+    assert body["app_name"] == "Lumint"
