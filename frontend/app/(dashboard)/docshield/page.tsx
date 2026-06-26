@@ -26,6 +26,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import aiApi from "@/lib/api/ai";
 import { DocumentAIResult } from "@/lib/types";
+import { saveScan } from "@/lib/scan-history";
 
 type TabID = "metadata" | "indicators" | "explanation" | "tampering" | "ai_report";
 
@@ -89,6 +90,13 @@ export default function DocShieldPage() {
         return;
       }
       setResult(response);
+      saveScan({
+        shield: "doc",
+        verdict: response.risk_level ?? "UNKNOWN",
+        label: response.message ?? "",
+        score: response.risk_score ?? 0,
+        fileName: response.original_filename,
+      });
 
       // Auto-trigger AI Analysis
       setIsAnalyzingAI(true);

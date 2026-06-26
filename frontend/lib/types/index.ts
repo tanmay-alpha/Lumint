@@ -122,6 +122,26 @@ export interface DomainSimilarityMatch {
   similarity: number;
 }
 
+export interface WhoisInfo {
+  registrar: string | null;
+  creation_date: string | null;
+  expiration_date: string | null;
+  country: string | null;
+  age_days: number | null;
+  is_recently_registered: boolean | null;
+}
+
+export interface SslInfo {
+  issuer: string | null;
+  subject: string | null;
+  valid_from: string | null;
+  valid_to: string | null;
+  is_expired: boolean | null;
+  is_self_signed: boolean | null;
+  san_count: number | null;
+  age_days: number | null;
+}
+
 export interface PhishingAnalysisResult {
   url: string;
   normalized_url: string;
@@ -132,6 +152,8 @@ export interface PhishingAnalysisResult {
   domain_similarity_matches: DomainSimilarityMatch[];
   phishing_fingerprint: RecentEvent | null;
   message: string;
+  whois: WhoisInfo | null;
+  ssl: SslInfo | null;
 }
 
 export interface FraudFingerprint {

@@ -9,6 +9,7 @@ import Badge from "@/components/ui/Badge";
 import RiskScore from "@/components/ui/RiskScore";
 import DataPoint from "@/components/ui/DataPoint";
 import { EmptyStateWithCTA } from "@/components/ui/EmptyStateWithCTA";
+import { saveScan } from "@/lib/scan-history";
 import {
   Link2,
   AlertTriangle,
@@ -57,6 +58,13 @@ export default function PhishShieldPage() {
         return;
       }
       setResult(response);
+      saveScan({
+        shield: "phish",
+        verdict: response.risk_level,
+        label: response.message,
+        score: response.risk_score,
+        url: response.url,
+      });
 
       // Auto-trigger AI Analysis
       setIsAnalyzingAI(true);
@@ -91,10 +99,15 @@ export default function PhishShieldPage() {
     }
   };
 
-  const getDomainAge = (domain: string, isHigh: boolean) => {
-    if (isHigh) return "14 days (Newly registered)";
-    if (domain?.includes("google.com") || domain?.includes("github.com")) return "27 years, 9 months";
-    return "4 years, 2 months";
+  const formatAge = (days: number | null | undefined): string => {
+    if (days === null || days === undefined) return "Unknown";
+    if (days < 0) return "Unknown";
+    if (days < 30) return `${days} days (Newly registered)`;
+    if (days < 365) return `${days} days`;
+    const years = Math.floor(days / 365);
+    const remaining = days % 365;
+    if (remaining === 0) return `${years} year${years > 1 ? "s" : ""}`;
+    return `${years}y ${Math.floor(remaining / 30)}mo`;
   };
 
   return (
@@ -377,8 +390,52 @@ export default function PhishShieldPage() {
                         value={
                           <span className="font-mono text-xs font-semibold text-[var(--text-1)] flex items-center gap-1.5">
                             <Calendar className="h-3.5 w-3.5 text-[var(--text-3)]" />
-                            {getDomainAge(result.domain, result.risk_score >= 50)}
+                            {formatAge(result.whois?.age_days)}
                           </span>
+                        }
+                        mono={true}
+                      />
+                      <DataPoint
+                        label="Registrar"
+                        value={
+                          <span className="font-mono text-xs font-semibold text-[var(--text-1)]">
+                            {result.whois?.registrar ?? <span className="text-[var(--text-4)] italic">Unknown</span>}
+                          </span>
+                        }
+                        mono={true}
+                      />
+                      <DataPoint
+                        label="SSL Issuer"
+                        value={
+                          <span className="font-mono text-xs font-semibold text-[var(--text-1)]">
+                            {result.ssl?.issuer
+                              ? result.ssl.issuer.split(",")[0].replace(/^[^=]*=/, "")
+                              : <span className="text-[var(--text-4)] italic">No SSL / Unknown</span>}
+                          </span>
+                        }
+                        mono={true}
+                      />
+                      <DataPoint
+                        label="SSL Expiry"
+                        value={
+                          <span className={`font-mono text-xs font-semibold ${result.ssl?.is_expired ? "text-[var(--high)]" : "text-[var(--text-1)]"}`}>
+                            {result.ssl?.valid_to
+                              ? result.ssl.valid_to.split("T")[0]
+                              : <span className="text-[var(--text-4)] italic">Unknown</span>}
+                          </span>
+                        }
+                        mono={true}
+                      />
+                      <DataPoint
+                        label="SSL Status"
+                        value={
+                          result.ssl?.is_expired ? (
+                            <span className="font-mono text-xs font-semibold text-[var(--high)]">EXPIRED</span>
+                          ) : result.ssl?.is_self_signed ? (
+                            <span className="font-mono text-xs font-semibold text-[var(--warn)]">SELF-SIGNED</span>
+                          ) : (
+                            <span className="font-mono text-xs font-semibold text-[var(--safe)]">VALID</span>
+                          )
                         }
                         mono={true}
                       />
