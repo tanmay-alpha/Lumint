@@ -106,6 +106,24 @@ def _run_all_checks() -> Tuple[bool, Dict[str, Any], List[str], List[str]]:
     return ready, checks, hard_missing, soft_missing
 
 
+@router.get("/health")
+def health() -> Dict[str, Any]:
+    """Basic health check — mirrors the legacy /api/health response.
+
+    Intentionally lightweight (DB ping only) so the Vercel frontend's
+    health probe can confirm the backend is up without triggering the full
+    readiness check (ML registry, tesseract). A 200 here means "the
+    service is alive"; use /readyz to check full readiness.
+    """
+    db_ok = check_db_connection()
+    return {
+        "status": "ok" if db_ok else "degraded",
+        "app_name": settings.APP_NAME,
+        "version": settings.APP_VERSION,
+        "database": "connected" if db_ok else "unavailable",
+    }
+
+
 @router.get("/healthz")
 def healthz() -> Dict[str, Any]:
     """Liveness probe — process is up. Returns 200 unconditionally.

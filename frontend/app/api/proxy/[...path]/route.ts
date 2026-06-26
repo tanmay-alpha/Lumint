@@ -132,6 +132,7 @@ async function forward(
   // as its own root entry. Same for ``readyz``.
   const allowedRoots = [
     "api",
+    "health",
     "healthz",
     "readyz",
     "docs",
@@ -190,6 +191,10 @@ async function forward(
     }
 
     const responseBody = await upstream.arrayBuffer();
+    // Always set no-store so Vercel never caches proxy responses.
+    // Backend responses can change on every request (e.g. health probes,
+    // scan results), and a stale cached 404 would hide real failures.
+    responseHeaders.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
     return new NextResponse(responseBody, {
       status: upstream.status,
       statusText: upstream.statusText,
