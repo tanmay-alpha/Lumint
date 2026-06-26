@@ -132,6 +132,7 @@ async function forward(
   // as its own root entry. Same for ``readyz``.
   const allowedRoots = [
     "api",
+    "health",
     "healthz",
     "readyz",
     "docs",
